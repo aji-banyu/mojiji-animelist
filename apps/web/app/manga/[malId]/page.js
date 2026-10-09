@@ -5,7 +5,7 @@ export default function MangaDetailPage({ params }) {
         Detail Manga
       </h1>
       <p className="text-sm text-muted-foreground">
-        MAL ID: {params.malId} — halaman ini dikerjakan di MJ-030.
+        MAL ID: {params.malId}
       </p>
     </div>
   );
