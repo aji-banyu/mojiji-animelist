@@ -1,0 +1,13 @@
+{
+  "name": "tracker-service",
+  "version": "1.0.0",
+  "description": "Mojiji Anime Tracker Service",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}
