@@ -42,7 +42,7 @@ Semua route menggunakan **App Router** (`app/` directory).
 
 - Route `(auth)` menggunakan **Route Group** Next.js agar tidak muncul di URL.
 - Route `/tracker` dan `/profile` harus mengecek sesi sebelum render. Jika tidak ada sesi, redirect ke `/login`.
-- `malId` adalah ID judul dari Jikan API (integer).
+- `malId` adalah ID judul (MAL ID) yang didapatkan dari Tenrai API v1 melalui Catalog Service (integer).
 
 ---
 
@@ -245,6 +245,7 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 | Kontrak API seluruh endpoint Sprint 1 | Backend — Syafii | ASSUMPTION: selesai sebelum implementasi fitur |
 | Konfirmasi port dan prefix path API Gateway | Backend — Syafii | **DECISION NEEDED** |
 | Konfirmasi skema field objek `tracker` item | Backend (Syafii) + DBA (Ryan) | **DECISION NEEDED** |
+| Konfirmasi struktur data hasil mapping Tenrai API v1 | Backend (Syafii) | **DECISION NEEDED** |
 
 ---
 
