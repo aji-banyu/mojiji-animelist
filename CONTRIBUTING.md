@@ -4,7 +4,7 @@ Aturan ini berlaku untuk semua anggota tim. Baca sebelum mengerjakan tiket perta
 
 ## 1. Prinsip dasar
 
-- Setiap pekerjaan punya tiket di GitHub Projects dengan ID `AL-xxx`. ID tiket wajib ada di nama branch, commit, dan PR.
+- Setiap pekerjaan punya tiket di GitHub Projects dengan ID `MJ-xxx`. ID tiket wajib ada di nama branch, commit, dan PR.
 - Dilarang push langsung ke `main` atau `develop`. Semua perubahan lewat Pull Request (PR).
 - Dilarang meng-commit rahasia (lihat bagian 7).
 - Jangan mengubah kontrak role lain (API, skema database, kebutuhan produk) secara diam-diam. Ajukan CHANGE REQUEST ke tim.
@@ -14,15 +14,15 @@ Aturan ini berlaku untuk semua anggota tim. Baca sebelum mengerjakan tiket perta
 - `main` = production. `develop` = integrasi/staging. Keduanya dilindungi.
 - Dilarang membuat branch permanen per role (frontend, backend, dba, qa, devops, uiux).
 - Semua pekerjaan memakai branch pendek yang dibuat dari `develop`.
-- Format nama: `tipe/AL-xxx-deskripsi-singkat`
+- Format nama: `tipe/MJ-xxx-deskripsi-singkat`
 - Tipe: `feat` (fitur), `fix` (bug), `test` (tes), `docs` (dokumen), `chore` (setup/infra), `refactor` (rapikan kode).
-- Contoh: `feat/AL-021-login-ui`, `fix/AL-025-login-validation`, `chore/AL-026-docker-environment`.
+- Contoh: `feat/MJ-021-login-ui`, `fix/MJ-025-login-validation`, `chore/MJ-026-docker-environment`.
 - Hapus branch setelah PR di-merge.
 
 ## 3. Commit
 
-- Format: `tipe(scope): deskripsi [AL-xxx]`
-- Contoh: `feat(auth): add login endpoint [AL-021]`, `docs(api): document login endpoint [AL-024]`.
+- Format: `tipe(scope): deskripsi [MJ-xxx]`
+- Contoh: `feat(auth): add login endpoint [MJ-021]`, `docs(api): document login endpoint [MJ-024]`.
 - Dilarang pesan tanpa makna: `update`, `fix`, `final`, `revision`, `test`, `final-final`.
 
 ## 4. Alur kerja per tiket
