@@ -1,0 +1,40 @@
+name: CI Dasar (Lint & Build)
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build-and-lint:
+    name: Lint and Build Check
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Check Backend (User Service)
+        working-directory: ./services/user-service
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm run build --if-present
+
+      - name: Check Frontend (Web)
+        working-directory: ./apps/web
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm run build --if-present
