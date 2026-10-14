@@ -18,3 +18,18 @@ PostgreSQL, Redis (Upstash), Tenrai API, Docker, GitHub Actions.
 ## Mulai berkontribusi
 Baca CONTRIBUTING.md. Papan kerja: GitHub Projects "Mojiji Kanban".
 Branch dibuat dari develop; semua perubahan lewat Pull Request ke develop.
+## Cara Menjalankan Lingkungan Development (Docker)
+
+Sesuai dengan kesepakatan tim, jalankan perintah berikut untuk menyalakan Backend, Database (PostgreSQL), dan Redis secara bersamaan:
+
+```bash
+docker compose -f infra/compose/docker-compose.dev.yml up --build -d
+```
+- Backend (User Service) berjalan di: `http://localhost:4001/health`
+- PostgreSQL berjalan di port: `5432`
+- Redis berjalan di port: `6379`
+
+Untuk mematikan semua layanan tanpa menghapus data database, jalankan:
+```bash
+docker compose -f infra/compose/docker-compose.dev.yml down
+```
