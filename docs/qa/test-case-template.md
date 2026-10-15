@@ -19,6 +19,7 @@
 | Tester | Nama QA |
 | Test Date | YYYY-MM-DD |
 | Build / Version | Versi aplikasi yang diuji |
+| Test URL / API Endpoint | URL halaman atau endpoint yang diuji |
 
 ## 2. Preconditions
 
@@ -49,7 +50,15 @@ Not Run / Pass / Fail / Blocked
 
 ## 8. Evidence
 
-Tambahkan link screenshot, response API yang sudah disensor, atau bukti pengujian lainnya.
+Tambahkan bukti pengujian yang relevan, seperti:
+
+- Screenshot hasil pengujian.
+- Response API dari Postman yang sudah disensor.
+- Link GitHub Actions atau deployment log jika relevan.
+- Bukti verifikasi migration atau backup jika relevan.
+
+Jangan mencantumkan password, token, API key,
+atau informasi sensitif.
 
 ## 9. Bug Reference / Notes
 
