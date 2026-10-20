@@ -1,6 +1,6 @@
 # API Contract MVP — Mojiji AnimeList
 
-* **Status:** Draft untuk review Backend, Frontend, dan QA
+* **Status:** Disepakati untuk implementasi
 * **Scope:** Authentication, User Profile, Catalog, dan Tracker
 * **Acuan:** Mojiji PRD Revisi 4, bagian 18 — API Overview
 * **Catatan:** Detail kontrak yang belum ditetapkan dalam PRD merupakan usulan awal dan perlu disepakati tim sebelum implementasi.
@@ -19,6 +19,7 @@
 
 ```json
 {
+  "success": true,
   "data": {}
 }
 ```
@@ -27,6 +28,7 @@ Untuk response berupa daftar:
 
 ```json
 {
+  "success": true,
   "data": [],
   "meta": {
     "page": 1,
@@ -41,6 +43,7 @@ Untuk response berupa daftar:
 
 ```json
 {
+  "success": false,
   "error": {
     "code": "VALIDATION_ERROR",
     "message": "Request validation failed",
@@ -120,6 +123,7 @@ Contoh response awal:
 
 ```json
 {
+  "success": true,
   "data": {
     "id": "user-id",
     "username": "contoh_user",
@@ -310,12 +314,12 @@ Endpoint komentar dan notifikasi/reminder belum dirinci dalam dokumen ini. Kontr
 
 ## 7. Hal yang Perlu Disepakati Sebelum Implementasi
 
-* [ ] Format final response sukses dan error.
-* [ ] Status HTTP final untuk tiap kondisi.
-* [ ] Mekanisme autentikasi, sesi, dan cookie.
-* [ ] Field final request dan response sesuai skema database.
-* [ ] Enum status tracker.
-* [ ] Aturan duplikasi judul pada tracker.
-* [ ] Aturan pagination dan batas `limit`.
-* [ ] Pemetaan error provider katalog ke response internal.
-* [ ] Review kontrak bersama Frontend dan QA.
+* [x] Format final response sukses dan error.
+* [x] Status HTTP final untuk tiap kondisi.
+* [x] Mekanisme autentikasi, sesi, dan cookie.
+* [x] Field final request dan response sesuai skema database.
+* [x] Enum status tracker.
+* [x] Aturan duplikasi judul pada tracker.
+* [x] Aturan pagination dan batas `limit`.
+* [x] Pemetaan error provider katalog ke response internal.
+* [x] Review kontrak bersama Frontend dan QA.
