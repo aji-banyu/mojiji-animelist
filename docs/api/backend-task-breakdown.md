@@ -1,152 +1,167 @@
-# Backend Task Breakdown & Response Standard — Mojiji AnimeList
+# Rincian Tugas Backend dan Standar Respons — Mojiji AnimeList
 
-## 1. Document Information
+## 1. Informasi Dokumen
 
-| Field | Value |
+| Kolom | Nilai |
 |---|---|
-| Project | Mojiji AnimeList |
-| Ticket | MJ-026 |
-| Owner | Syafii — Backend |
-| Related ticket | MJ-025 — API Contract MVP |
-| Document status | Working standard for implementation and QA |
-| Last updated | 2026-10-10 |
+| Proyek | Mojiji AnimeList |
+| Tiket | MJ-026 |
+| Pemilik | Syafii — Backend |
+| Tiket terkait | MJ-025 — Kontrak API MVP |
+| Status dokumen | Standar kerja untuk implementasi dan QA |
+| Terakhir diperbarui | 2026-10-10 |
 
-## 2. Purpose
+## 2. Tujuan
 
-This document breaks down MVP backend work and defines a consistent response convention for Backend, Frontend, and QA. Keep it aligned with `docs/api/api-contract-mvp.md`. Any later change to the public API contract should be reviewed by affected roles and reflected in both documents.
+Dokumen ini merinci pekerjaan Backend untuk MVP dan menetapkan standar respons yang konsisten bagi tim Backend, Frontend, dan QA. Dokumen ini harus tetap selaras dengan `docs/api/api-contract-mvp.md`. Setiap perubahan terhadap kontrak API publik harus ditinjau oleh pihak yang terdampak dan dicatat pada kedua dokumen tersebut.
 
-This document describes the agreed working convention and planned tasks. It does not claim that every endpoint has already been implemented or tested.
+Dokumen ini menjelaskan standar kerja yang telah disepakati dan rencana tugas. Dokumen ini **tidak menyatakan bahwa seluruh endpoint telah selesai diimplementasikan atau diuji**.
 
-## 3. Services and Responsibilities
+## 3. Layanan dan Tanggung Jawab
 
-| Service | Default local port | Responsibility |
+| Layanan | Port lokal default | Tanggung jawab |
 |---|---:|---|
-| API Gateway | 3000 | Client entry point and routing to the appropriate service |
-| User Service | 3001 | Registration, login/logout, and current-user profile |
-| Catalog Service | 3002 | Anime/manga search and detail retrieval from the external catalog provider |
-| Tracker Service | 3003 | User's tracked entries and progress/status changes |
+| API Gateway | 3000 | Titik masuk permintaan dari klien dan penerusan permintaan ke layanan yang sesuai |
+| User Service | 3001 | Registrasi, login/logout, dan profil pengguna yang sedang login |
+| Catalog Service | 3002 | Pencarian dan pengambilan detail anime/manga dari penyedia katalog eksternal |
+| Tracker Service | 3003 | Daftar anime/manga yang dilacak pengguna serta perubahan status dan progres |
 
-Ports describe the local setup; they do not imply every endpoint is implemented.
+Port tersebut menjelaskan konfigurasi lokal dan tidak berarti seluruh endpoint sudah diimplementasikan.
 
-## 4. MVP Endpoint Breakdown
+## 4. Rincian Endpoint MVP
 
-The endpoints below follow the project's API Overview and API Contract MVP.
+Endpoint berikut mengikuti gambaran umum API proyek dan dokumen Kontrak API MVP.
 
-| Area | Method and endpoint | Responsibility |
+| Area | Metode dan endpoint | Tanggung jawab |
 |---|---|---|
-| Auth | `POST /api/auth/register` | Create an account and validate registration input |
-| Auth | `POST /api/auth/login` | Authenticate a user using the agreed session/token approach |
-| Auth | `POST /api/auth/logout` | End the current session/token where applicable |
-| User | `GET /api/users/me` | Return the authenticated user's profile |
-| Catalog | `GET /api/catalog/search?type=anime\|manga&q=...` | Search the anime/manga catalog |
-| Catalog | `GET /api/catalog/:type/:malId` | Return details for one anime or manga item |
-| Tracker | `GET /api/tracker?status=...` | List the authenticated user's tracked entries, optionally filtered by status |
-| Tracker | `POST /api/tracker` | Add an item to the authenticated user's tracker |
-| Tracker | `PATCH /api/tracker/:id/status` | Change an entry's tracking status |
-| Tracker | `POST /api/tracker/:id/increment` | Increment progress according to the agreed tracker rules |
-| Tracker | `DELETE /api/tracker/:id` | Remove an entry owned by the authenticated user |
+| Auth | `POST /api/auth/register` | Membuat akun dan memvalidasi data registrasi |
+| Auth | `POST /api/auth/login` | Mengautentikasi pengguna menggunakan mekanisme sesi/token yang telah disepakati |
+| Auth | `POST /api/auth/logout` | Mengakhiri sesi/token yang sedang digunakan, sesuai mekanisme autentikasi |
+| User | `GET /api/users/me` | Mengembalikan profil pengguna yang sedang terautentikasi |
+| Catalog | `GET /api/catalog/search?type=anime\|manga&q=...` | Mencari katalog anime/manga |
+| Catalog | `GET /api/catalog/:type/:malId` | Mengembalikan detail satu anime atau manga |
+| Tracker | `GET /api/tracker?status=...` | Menampilkan daftar item yang dilacak pengguna, dengan filter status jika diperlukan |
+| Tracker | `POST /api/tracker` | Menambahkan item ke daftar pelacakan pengguna |
+| Tracker | `PATCH /api/tracker/:id/status` | Mengubah status pelacakan suatu item |
+| Tracker | `POST /api/tracker/:id/increment` | Menambah progres sesuai aturan pelacakan yang telah disepakati |
+| Tracker | `DELETE /api/tracker/:id` | Menghapus item milik pengguna dari daftar pelacakan |
 
-Comments, notifications, and reminders are outside this MVP list unless the product owner explicitly adds them to scope.
+Komentar, notifikasi, dan pengingat berada di luar cakupan MVP ini, kecuali jika Product Owner secara eksplisit menambahkannya ke dalam cakupan.
 
-## 5. Eight Required Fields for GitHub Projects Tickets
+## 5. Delapan Kolom Wajib pada Tiket GitHub Projects
 
-Every backend ticket should include:
+Setiap tiket Backend harus memiliki:
 
-1. **Ticket ID** — unique identifier, such as `MJ-026`.
-2. **Title** — concise, action-oriented name.
-3. **Description / Scope** — what is included and excluded.
-4. **Acceptance Criteria (AC)** — observable conditions for completion.
-5. **Owner** — person responsible for delivery.
-6. **Priority** — relative importance agreed by the team.
-7. **Status** — workflow state, such as Todo, In Progress, In Review, or Done.
-8. **Dependencies** — prerequisite tickets or decisions; use `None` if there are none.
+1. **ID Tiket** — identitas unik, misalnya `MJ-026`.
+2. **Judul** — nama singkat yang menjelaskan tindakan atau pekerjaan.
+3. **Deskripsi/Cakupan** — menjelaskan pekerjaan yang termasuk dan tidak termasuk dalam tiket.
+4. **Kriteria Penerimaan (Acceptance Criteria/AC)** — kondisi yang dapat diamati untuk menentukan bahwa pekerjaan selesai.
+5. **Pemilik (Owner)** — orang yang bertanggung jawab menyelesaikan pekerjaan.
+6. **Prioritas** — tingkat kepentingan relatif yang disepakati tim.
+7. **Status** — keadaan pekerjaan, seperti Todo, In Progress, In Review, atau Done.
+8. **Dependensi** — tiket atau keputusan yang harus diselesaikan terlebih dahulu. Gunakan `None` jika tidak ada dependensi.
 
-Estimate or due date may be added if the team's board requires it, but they are not counted among these eight required fields.
+Estimasi atau tanggal jatuh tempo dapat ditambahkan jika diperlukan oleh papan kerja tim, tetapi keduanya tidak termasuk dalam delapan kolom wajib tersebut.
 
-## 6. Proposed Backend Task Breakdown
+## 6. Rincian Tugas Backend yang Diusulkan
 
-Create or update these as actual tickets in GitHub Projects. The task groupings below are not proof that tickets already exist; assign the ticket ID, owner, priority, status, and dependencies on the board.
+Buat atau perbarui tugas-tugas berikut sebagai tiket yang benar-benar tercatat di GitHub Projects. Pengelompokan di bawah ini **bukan bukti bahwa tiket-tiket tersebut sudah dibuat**. Tetapkan ID tiket, pemilik, prioritas, status, dan dependensi pada papan kerja.
 
 ### A. API Gateway
-**Scope**
-- Provide the HTTP entry point for client requests.
-- Route supported `/api/auth`, `/api/users`, `/api/catalog`, and `/api/tracker` requests to the correct service.
-- Handle gateway-level errors without exposing stack traces or secrets.
 
-**Acceptance criteria**
-- Starts on its configured local port.
-- `GET /health` returns HTTP `200` when healthy.
-- Requests are routed according to the agreed route configuration.
-- Gateway-generated errors follow the shared error envelope.
+**Cakupan**
 
-**Dependencies:** service skeletons and agreed route configuration.
+- Menyediakan titik masuk HTTP untuk permintaan dari klien.
+- Meneruskan permintaan pada rute `/api/auth`, `/api/users`, `/api/catalog`, dan `/api/tracker` ke layanan yang sesuai.
+- Menangani error pada tingkat gateway tanpa membocorkan stack trace atau informasi rahasia.
 
-### B. User Service and Authentication
-**Scope**
-- Implement registration, login, logout, and `GET /api/users/me`.
-- Validate input and return safe errors.
-- Hash passwords; never store or return plaintext passwords.
-- Protect user-specific endpoints.
+**Kriteria Penerimaan**
 
-**Acceptance criteria**
-- Valid requests follow the API contract.
-- Invalid input returns the shared error envelope and an appropriate status.
-- Unauthenticated requests to protected endpoints return `401`.
-- Passwords and sensitive authentication material are never returned.
-- `GET /api/users/me` returns only the authenticated user's profile.
+- Layanan dapat berjalan pada port lokal yang telah dikonfigurasi.
+- `GET /health` mengembalikan HTTP `200` ketika layanan dalam kondisi sehat.
+- Permintaan diteruskan sesuai konfigurasi rute yang telah disepakati.
+- Error yang dihasilkan gateway mengikuti format respons error bersama.
 
-**Dependencies:** agreed authentication/session approach and database schema.
+**Dependensi:** Kerangka awal layanan dan konfigurasi rute yang telah disepakati.
+
+### B. User Service dan Autentikasi
+
+**Cakupan**
+
+- Mengimplementasikan registrasi, login, logout, dan `GET /api/users/me`.
+- Memvalidasi input dan mengembalikan pesan error yang aman.
+- Melakukan hashing kata sandi; kata sandi tidak boleh disimpan atau dikembalikan dalam bentuk teks biasa.
+- Melindungi endpoint yang memerlukan autentikasi.
+
+**Kriteria Penerimaan**
+
+- Permintaan yang valid mengikuti kontrak API.
+- Input yang tidak valid menghasilkan format respons error bersama dan status HTTP yang sesuai.
+- Permintaan tanpa autentikasi ke endpoint yang dilindungi menghasilkan `401`.
+- Kata sandi dan informasi autentikasi sensitif tidak pernah dikembalikan.
+- `GET /api/users/me` hanya mengembalikan profil pengguna yang sedang terautentikasi.
+
+**Dependensi:** Mekanisme autentikasi/sesi dan skema database yang telah disepakati.
 
 ### C. Catalog Service
-**Scope**
-- Implement search and detail endpoints for anime and manga.
-- Normalize external-provider data into the project's public response shape.
-- Handle provider timeouts, rate limits, outages, and malformed responses.
 
-**Acceptance criteria**
-- Search validates `type` and required query input.
-- Detail requests validate type and catalog identifier.
-- Successful results use the shared success envelope.
-- Invalid input returns `400`; a confirmed missing catalog item returns `404`.
-- Provider failures are translated into the public error format.
-- Raw provider payloads, credentials, and stack traces are not leaked.
+**Cakupan**
 
-**Dependencies:** catalog provider choice and API contract.
+- Mengimplementasikan endpoint pencarian dan detail anime/manga.
+- Menyeragamkan data dari penyedia eksternal ke dalam format respons publik proyek.
+- Menangani timeout, pembatasan permintaan (*rate limit*), gangguan layanan, dan respons yang tidak valid dari penyedia eksternal.
+
+**Kriteria Penerimaan**
+
+- Endpoint pencarian memvalidasi parameter `type` dan input pencarian yang wajib diisi.
+- Permintaan detail memvalidasi tipe dan ID katalog.
+- Hasil yang berhasil mengikuti format respons sukses bersama.
+- Input tidak valid menghasilkan `400`; item katalog yang dipastikan tidak ditemukan menghasilkan `404`.
+- Gangguan penyedia eksternal diterjemahkan ke format error publik.
+- Data mentah penyedia, kredensial, dan stack trace tidak bocor ke respons publik.
+
+**Dependensi:** Pemilihan penyedia katalog dan kontrak API.
 
 ### D. Tracker Service
-**Scope**
-- Implement list, create, status update, progress increment, and delete operations.
-- Require authentication for tracker data.
-- Enforce ownership checks and validate status/progress rules.
 
-**Acceptance criteria**
-- Users can list only their own entries.
-- Create/update/delete validate input and ownership.
-- Missing entries return `404`.
-- Unauthenticated requests return `401`; authenticated but forbidden operations return `403` where applicable.
-- Successful operations follow the shared success convention, except `204` responses which have no body.
+**Cakupan**
 
-**Dependencies:** authentication contract, tracker schema, and agreed status/progress rules.
+- Mengimplementasikan operasi daftar, tambah, ubah status, tambah progres, dan hapus.
+- Mewajibkan autentikasi untuk data pelacakan.
+- Memastikan pemeriksaan kepemilikan dan validasi aturan status/progres.
 
-### E. Shared API Response Convention
-**Scope**
-- Apply the response convention below to MVP endpoints.
-- Align `docs/api/api-contract-mvp.md` with this document.
-- Add/update tests for representative success and error responses.
+**Kriteria Penerimaan**
 
-**Acceptance criteria**
-- Contract documents success, error, and no-content responses.
-- Implemented endpoints use documented status codes and envelopes.
-- Error codes are stable for Frontend handling and QA assertions.
-- Frontend and QA can refer to the same committed contract.
+- Pengguna hanya dapat melihat item miliknya sendiri.
+- Operasi tambah, ubah, dan hapus memvalidasi input serta kepemilikan.
+- Item yang tidak ditemukan menghasilkan `404`.
+- Permintaan tanpa autentikasi menghasilkan `401`; pengguna yang telah terautentikasi tetapi tidak memiliki izin menghasilkan `403` jika sesuai dengan kasusnya.
+- Operasi yang berhasil mengikuti standar respons sukses bersama, kecuali respons `204` yang tidak memiliki isi (*body*).
 
-**Dependencies:** this document and the API Contract MVP review.
+**Dependensi:** Kontrak autentikasi, skema tracker, dan aturan status/progres yang telah disepakati.
 
-## 7. Shared API Response Convention
+### E. Standar Respons API Bersama
 
-### 7.1 Success with a body
+**Cakupan**
 
-Use this shape for successful responses that include a body:
+- Menerapkan standar respons pada seluruh endpoint MVP.
+- Menyelaraskan `docs/api/api-contract-mvp.md` dengan dokumen ini.
+- Menambahkan atau memperbarui pengujian untuk contoh respons sukses dan error yang mewakili kasus-kasus utama.
+
+**Kriteria Penerimaan**
+
+- Kontrak API mendokumentasikan respons sukses, error, dan tanpa isi.
+- Endpoint yang telah diimplementasikan menggunakan status HTTP dan format respons yang terdokumentasi.
+- Kode error bersifat konsisten sehingga dapat digunakan oleh Frontend dan QA.
+- Frontend dan QA dapat menggunakan kontrak API yang sama dan telah di-commit ke repositori.
+
+**Dependensi:** Dokumen ini dan hasil peninjauan Kontrak API MVP.
+
+## 7. Standar Respons API Bersama
+
+### 7.1 Respons Sukses dengan Isi
+
+Gunakan format berikut untuk respons sukses yang memiliki isi (*body*):
 
 ```json
 {
@@ -157,13 +172,14 @@ Use this shape for successful responses that include a body:
 }
 ```
 
-Rules:
-- `success` must be `true`.
-- `data` contains the endpoint's payload.
-- The structure of `data` must be documented per endpoint.
-- Add `meta` only when an endpoint actually defines metadata such as pagination.
+Aturan:
 
-For a list endpoint, `data` is an array:
+- `success` harus bernilai `true`.
+- `data` berisi data yang dikembalikan oleh endpoint.
+- Struktur `data` harus didokumentasikan untuk setiap endpoint.
+- Tambahkan `meta` hanya jika endpoint benar-benar mendefinisikan metadata, seperti informasi paginasi.
+
+Untuk endpoint yang mengembalikan daftar, `data` berupa array:
 
 ```json
 {
@@ -177,17 +193,17 @@ For a list endpoint, `data` is an array:
 }
 ```
 
-If pagination is implemented, document the exact `meta` fields in the endpoint contract before returning them.
+Jika paginasi diterapkan, dokumentasikan terlebih dahulu kolom `meta` secara tepat pada kontrak endpoint sebelum mengembalikannya.
 
-### 7.2 No-content response
+### 7.2 Respons Tanpa Isi
 
-Use HTTP `204 No Content` only when the operation succeeds and the API contract explicitly specifies no response body. A `204` response must not contain a JSON envelope or body.
+Gunakan HTTP `204 No Content` hanya jika operasi berhasil dan kontrak API secara eksplisit menetapkan bahwa respons tidak memiliki isi (*body*). Respons `204` tidak boleh berisi format JSON maupun isi respons lainnya.
 
-For example, a successful delete may return `204` if the API contract specifies it. Otherwise, use a documented response such as HTTP `200`.
+Sebagai contoh, operasi penghapusan yang berhasil dapat mengembalikan `204` jika kontrak API menetapkannya. Jika tidak, gunakan respons yang telah didokumentasikan, seperti HTTP `200`.
 
-### 7.3 Error response
+### 7.3 Respons Error
 
-For errors with a body, use:
+Untuk error yang memiliki isi respons, gunakan format berikut:
 
 ```json
 {
@@ -200,14 +216,15 @@ For errors with a body, use:
 }
 ```
 
-Rules:
-- `success` must be `false`.
-- `error.code` is a stable machine-readable code.
-- `error.message` is a concise, safe message.
-- `error.details` is an array of safe field-level or additional details; use `[]` when none apply.
-- Never return stack traces, secrets, password values, tokens, or private provider details.
+Aturan:
 
-Example with validation details:
+- `success` harus bernilai `false`.
+- `error.code` merupakan kode yang konsisten dan dapat dibaca oleh program.
+- `error.message` merupakan pesan singkat yang aman ditampilkan kepada klien.
+- `error.details` berupa array yang berisi detail aman terkait kolom atau informasi tambahan. Gunakan `[]` jika tidak ada detail.
+- Jangan pernah mengembalikan stack trace, rahasia, nilai kata sandi, token, atau detail internal penyedia eksternal.
+
+Contoh error validasi dengan detail:
 
 ```json
 {
@@ -225,78 +242,77 @@ Example with validation details:
 }
 ```
 
-### 7.4 HTTP status mapping
+### 7.4 Pemetaan Status HTTP
 
-Use the status that best describes the result. Document endpoint-specific behavior in `docs/api/api-contract-mvp.md`.
+Gunakan status HTTP yang paling sesuai dengan hasil operasi. Perilaku khusus setiap endpoint harus didokumentasikan dalam `docs/api/api-contract-mvp.md`.
 
-| HTTP status | Meaning | Example code/use |
-|---:|---|---|
-| `200 OK` | Success with a response body | Successful read or update |
-| `201 Created` | A resource was created | Registration or tracker creation |
-| `204 No Content` | Success with no body | Delete, only if specified by the contract |
-| `400 Bad Request` | Invalid client input | `VALIDATION_ERROR` |
-| `401 Unauthorized` | Authentication missing or invalid | `UNAUTHENTICATED` |
-| `403 Forbidden` | Authenticated user is not allowed to perform the action | `FORBIDDEN` |
-| `404 Not Found` | Resource or route does not exist | `NOT_FOUND` |
-| `409 Conflict` | Request conflicts with existing state | `CONFLICT` |
-| `429 Too Many Requests` | This API is rate-limiting the client | `RATE_LIMITED` |
-| `502 Bad Gateway` | Upstream provider/service returned an unusable response | `UPSTREAM_ERROR` |
-| `503 Service Unavailable` | Service is temporarily unavailable | `SERVICE_UNAVAILABLE` |
-| `504 Gateway Timeout` | An upstream request timed out | `UPSTREAM_TIMEOUT` |
-| `500 Internal Server Error` | Unexpected internal error | `INTERNAL_ERROR` |
+| Status HTTP | Arti | Contoh kode/penggunaan |
+|---|---|---|
+| `200 OK` | Berhasil dengan isi respons | Pembacaan atau pembaruan yang berhasil |
+| `201 Created` | Sumber daya berhasil dibuat | Registrasi atau pembuatan tracker |
+| `204 No Content` | Berhasil tanpa isi respons | Penghapusan, hanya jika ditentukan oleh kontrak |
+| `400 Bad Request` | Input dari klien tidak valid | `VALIDATION_ERROR` |
+| `401 Unauthorized` | Autentikasi tidak ada atau tidak valid | `UNAUTHENTICATED` |
+| `403 Forbidden` | Pengguna yang terautentikasi tidak diizinkan melakukan tindakan | `FORBIDDEN` |
+| `404 Not Found` | Sumber daya atau rute tidak ditemukan | `NOT_FOUND` |
+| `409 Conflict` | Permintaan bertentangan dengan kondisi data yang ada | `CONFLICT` |
+| `429 Too Many Requests` | API membatasi jumlah permintaan dari klien | `RATE_LIMITED` |
+| `502 Bad Gateway` | Penyedia atau layanan upstream mengembalikan respons yang tidak dapat digunakan | `UPSTREAM_ERROR` |
+| `503 Service Unavailable` | Layanan sementara tidak tersedia | `SERVICE_UNAVAILABLE` |
+| `504 Gateway Timeout` | Permintaan ke layanan upstream mengalami timeout | `UPSTREAM_TIMEOUT` |
+| `500 Internal Server Error` | Terjadi kesalahan internal yang tidak terduga | `INTERNAL_ERROR` |
 
-Do not blindly expose the upstream provider's status or raw response. Translate provider failures into the public API status and error code defined for this project.
+Jangan langsung meneruskan status HTTP atau respons mentah dari penyedia eksternal tanpa pemeriksaan. Terjemahkan error penyedia ke status HTTP dan kode error publik yang telah ditetapkan untuk proyek ini.
 
-## 8. Validation and Security Rules
+## 8. Aturan Validasi dan Keamanan
 
-- Validate query parameters, path parameters, and request bodies.
-- Use `400` with `VALIDATION_ERROR` for invalid client input.
-- Use `401` for missing/invalid authentication.
-- Use `403` for authenticated users who are not authorized to perform an operation.
-- Check ownership for all tracker operations that access user-specific entries.
-- Hash passwords and never log or return passwords, tokens, or secrets.
-- Return safe client-facing messages; keep detailed diagnostics in logs with sensitive data removed.
-- Catalog Service must handle provider timeouts, rate limits, and outages.
-- Public API responses must not expose the external provider's raw payload.
+- Validasi parameter query, parameter path, dan isi permintaan (*request body*).
+- Gunakan `400` dengan `VALIDATION_ERROR` untuk input klien yang tidak valid.
+- Gunakan `401` jika autentikasi tidak ada atau tidak valid.
+- Gunakan `403` jika pengguna sudah terautentikasi, tetapi tidak memiliki izin untuk melakukan operasi.
+- Periksa kepemilikan untuk seluruh operasi tracker yang mengakses data milik pengguna.
+- Lakukan hashing kata sandi dan jangan mencatat atau mengembalikan kata sandi, token, maupun informasi rahasia ke log atau respons.
+- Berikan pesan yang aman kepada klien. Simpan detail diagnostik di log dengan menghapus informasi sensitif.
+- Catalog Service harus menangani timeout, pembatasan permintaan, dan gangguan penyedia eksternal.
+- Respons API publik tidak boleh menampilkan data mentah dari penyedia eksternal.
 
-## 9. Responsibilities and Handoff
+## 9. Tanggung Jawab dan Serah Terima
 
 **Backend**
-- Maintain the API contract and implement the shared response convention.
-- Keep endpoint behavior and status codes aligned with documentation.
-- Test success, validation, authentication, authorization, missing resources, and upstream failures where relevant.
-- Update the contract after an approved API change.
+
+- Memelihara kontrak API dan mengimplementasikan standar respons bersama.
+- Menjaga agar perilaku endpoint dan status HTTP tetap sesuai dokumentasi.
+- Menguji respons sukses, validasi, autentikasi, otorisasi, sumber daya yang tidak ditemukan, serta gangguan penyedia eksternal jika relevan.
+- Memperbarui kontrak setelah perubahan API disetujui.
 
 **Frontend**
-- Read the contract and consume successful payloads from `data`.
-- Handle errors using `error.code` and a safe display message.
-- Report missing fields or mismatches instead of depending on undocumented behavior.
+
+- Membaca kontrak API dan menggunakan data respons sukses dari `data`.
+- Menangani error menggunakan `error.code` dan pesan yang aman ditampilkan.
+- Melaporkan kolom yang hilang atau ketidaksesuaian, bukan bergantung pada perilaku yang tidak terdokumentasi.
 
 **QA**
-- Derive tests from endpoint acceptance criteria and the API contract.
-- Verify status codes, envelopes, validation, authentication, ownership, and provider failures.
-- Report deviations against the documented contract.
 
-## 10. Definition of Done — MJ-026
+- Menyusun pengujian berdasarkan kriteria penerimaan setiap endpoint dan kontrak API.
+- Memverifikasi status HTTP, format respons, validasi, autentikasi, kepemilikan, dan gangguan penyedia eksternal.
+- Melaporkan penyimpangan terhadap kontrak API yang telah didokumentasikan.
 
-- [ ] This document is committed as `docs/api/backend-task-breakdown.md`.
-- [ ] `docs/api/api-contract-mvp.md` is checked and aligned with the response convention.
-- [ ] Backend task tickets exist in GitHub Projects and contain the eight required fields.
-- [ ] Each ticket has observable acceptance criteria and dependencies.
-- [ ] The response convention is recorded in the project documentation and shared with Frontend and QA.
-- [ ] Review feedback is resolved and reflected in the documents.
-- [ ] The Pull Request is reviewed and merged according to repository workflow.
+## 10. Kriteria Penyelesaian — MJ-026
 
-Do not mark an item complete without evidence. A written proposal alone does not prove tickets were created, tests passed, or implementation was completed.
+- [ ] Dokumen telah di-commit sebagai `docs/api/backend-task-breakdown.md`.
+- [ ] `docs/api/api-contract-mvp.md` telah diperiksa dan diselaraskan dengan standar respons.
+- [ ] Tiket tugas Backend telah dibuat di GitHub Projects dan memiliki delapan kolom wajib.
+- [ ] Setiap tiket memiliki kriteria penerimaan yang dapat diamati dan dependensi yang jelas.
+- [ ] Standar respons telah dicatat dalam dokumentasi proyek dan dibagikan kepada Frontend serta QA.
+- [ ] Masukan hasil peninjauan telah diselesaikan dan diterapkan pada dokumen.
+- [ ] Pull Request telah ditinjau dan di-merge sesuai alur kerja repositori.
 
-## 11. Next Git Steps
+Jangan menandai suatu item sebagai selesai tanpa bukti. Dokumen tertulis saja tidak membuktikan bahwa tiket telah dibuat, pengujian telah berhasil, atau implementasi telah selesai.
 
-The file was created locally on branch `docs/MJ-026-backend-task-breakdown`. After replacing the draft with this updated version, review the diff, stage, commit, push, and open a Pull Request targeting `develop`.
+## 11. Status dan Tindak Lanjut Git
 
-Suggested commit message:
+Dokumen MJ-026 telah di-commit dan di-merge ke branch `develop` melalui Pull Request. Karena itu, langkah pembuatan branch, commit, push, dan pembukaan Pull Request untuk MJ-026 tidak perlu diulangi.
 
-```text
-docs(api): break down backend tasks [MJ-026]
-```
+Jika ditemukan perubahan atau perbaikan pada dokumen ini, buat branch baru dari `develop`, lakukan perubahan, periksa hasilnya, lalu ajukan Pull Request baru dengan target `develop`.
 
-Before opening the PR, compare `docs/api/api-contract-mvp.md` against this standard and update any conflicting examples.
+Sebelum mengajukan perubahan, bandingkan `docs/api/api-contract-mvp.md` dengan standar ini dan perbaiki contoh yang bertentangan jika perubahan tersebut telah disepakati oleh tim.
