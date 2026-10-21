@@ -3,39 +3,87 @@ version: '3.8'
 services:
   db:
     image: postgres:15-alpine
-    container_name: mojiji_db
-    environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-mojiji}
+    container_name: mojiji_db_dev
+    env_file:
+      - ../../.env
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - pgdata_dev:/var/lib/postgresql/data
 
   redis:
     image: redis:7-alpine
-    container_name: mojiji_redis
+    container_name: mojiji_redis_dev
     ports:
       - "6379:6379"
 
+  migrate:
+    image: amacneil/dbmate
+    container_name: mojiji_migrate_dev
+    env_file:
+      - ../../.env
+    volumes:
+      - ../../database/migrations:/db/migrations
+    # Secara default hanya cek status, eksekusi dilakukan via 'docker compose run --rm migrate up'
+    command: ["--no-dump-schema", "status"]
+    depends_on:
+      - db
+
+  api-gateway:
+    build: 
+      context: ../../services/api-gateway
+    container_name: mojiji_gateway_dev
+    env_file:
+      - ../../.env
+    environment:
+      - PORT=${PORT_GATEWAY}
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+      - redis
+
   user-service:
-    build:
+    build: 
       context: ../../services/user-service
-      dockerfile: Dockerfile
-    container_name: mojiji_user_service
+    container_name: mojiji_user_dev
+    env_file:
+      - ../../.env
+    environment:
+      - PORT=${PORT_USER}
     ports:
       - "4001:4001"
+    depends_on:
+      - db
+      - redis
+
+  catalog-service:
+    build: 
+      context: ../../services/catalog-service
+    container_name: mojiji_catalog_dev
+    env_file:
+      - ../../.env
     environment:
-      - PORT=4001
-      - DB_HOST=db
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-      - DB_NAME=${DB_NAME:-mojiji}
-      - DB_PORT=5432
+      - PORT=${PORT_CATALOG}
+    ports:
+      - "4002:4002"
+    depends_on:
+      - db
+      - redis
+
+  tracker-service:
+    build: 
+      context: ../../services/tracker-service
+    container_name: mojiji_tracker_dev
+    env_file:
+      - ../../.env
+    environment:
+      - PORT=${PORT_TRACKER}
+    ports:
+      - "4003:4003"
     depends_on:
       - db
       - redis
 
 volumes:
-  pgdata:
+  pgdata_dev:

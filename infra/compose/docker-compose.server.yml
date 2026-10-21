@@ -1,0 +1,74 @@
+version: '3.8'
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: mojiji_caddy_server
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+  api-gateway:
+    image: ghcr.io/aji-banyu/mojiji-api-gateway:develop
+    container_name: mojiji_gateway_server
+    restart: unless-stopped
+    mem_limit: 96m
+    env_file:
+      - ../../.env
+    environment:
+      - PORT=${PORT_GATEWAY}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
+      interval: 30s
+      retries: 3
+
+  user-service:
+    image: ghcr.io/aji-banyu/mojiji-user-service:develop
+    container_name: mojiji_user_server
+    restart: unless-stopped
+    mem_limit: 96m
+    env_file:
+      - ../../.env
+    environment:
+      - PORT=${PORT_USER}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4001/health"]
+      interval: 30s
+      retries: 3
+
+  catalog-service:
+    image: ghcr.io/aji-banyu/mojiji-catalog-service:develop
+    container_name: mojiji_catalog_server
+    restart: unless-stopped
+    mem_limit: 96m
+    env_file:
+      - ../../.env
+    environment:
+      - PORT=${PORT_CATALOG}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4002/health"]
+      interval: 30s
+      retries: 3
+
+  tracker-service:
+    image: ghcr.io/aji-banyu/mojiji-tracker-service:develop
+    container_name: mojiji_tracker_server
+    restart: unless-stopped
+    mem_limit: 96m
+    env_file:
+      - ../../.env
+    environment:
+      - PORT=${PORT_TRACKER}
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4003/health"]
+      interval: 30s
+      retries: 3
+
+volumes:
+  caddy_data:
+  caddy_config:
