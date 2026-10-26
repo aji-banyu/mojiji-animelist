@@ -1,7 +1,7 @@
 <div align="center">
   <h1>🌟 Mojiji (AnimeList)</h1>
   <p><strong>Platform Pencatatan dan Pelacakan Anime & Manga Terpadu</strong></p>
-  
+
   [![Node.js](https://img.shields.io/badge/Node.js-Microservices-339933?logo=node.js&logoColor=white)](#)
   [![Next.js](https://img.shields.io/badge/Next.js-Frontend-000000?logo=next.js&logoColor=white)](#)
   [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Database-4169E1?logo=postgresql&logoColor=white)](#)
@@ -12,7 +12,7 @@
 
 ## 📖 Tentang Proyek
 
-Mojiji adalah aplikasi web responsif modern yang dirancang untuk membantu para penggemar kultur pop Jepang mencatat, melacak, dan mengelola daftar tontonan anime serta bacaan manga mereka. 
+Mojiji adalah aplikasi web responsif modern yang dirancang untuk membantu para penggemar kultur pop Jepang mencatat, melacak, dan mengelola daftar tontonan anime serta bacaan manga mereka.
 
 *Catatan: Aplikasi ini murni berfokus pada fitur pelacakan (tracker) dan komunitas, serta **tidak** mendistribusikan atau menyediakan layanan streaming/membaca secara ilegal.*
 
@@ -38,7 +38,7 @@ mojiji-animelist/
 │   ├── catalog-service/ # Manajemen Data Anime/Manga
 │   ├── tracker-service/ # Logika Pelacakan (Watchlist)
 │   └── user-service/  # Autentikasi dan Manajemen Profil
-├── database/          # Skrip Migrasi, Seeder, dan Skema DB
+├── database/          # Skrip Migrasi (dbmate), Seeder, dan Skema DB
 ├── tests/             # Unit, Integration, dan E2E Testing
 ├── infra/             # File Konfigurasi Docker dan Deployment
 └── docs/              # PRD, Arsitektur, API, dan Panduan
@@ -48,13 +48,13 @@ mojiji-animelist/
 
 ## 🚀 Panduan Memulai (Development)
 
-**⚠️ PERHATIAN TIM:** 
+**⚠️ PERHATIAN TIM:**
 Sebelum memulai, wajib membaca [**docs/deployment/panduan-docker-tim.md**](docs/deployment/panduan-docker-tim.md) untuk memahami perintah spesifik berdasarkan *role* Anda (Frontend/Backend/DBA).
 
 ### Persiapan Awal
 1. Kloning repositori ini.
-2. Salin `infra/compose/.env.example` menjadi `.env` dan letakkan di **root proyek**.
-3. Isi kredensial lokal pada file `.env` tersebut.
+2. Salin file `.env.example` menjadi `.env` (pastikan tetap berada di root proyek).
+3. Isi kredensial lokal pada file `.env` tersebut. Perhatikan aturan host `localhost` vs `db`/`redis` di panduan Docker tim.
 
 ### Menjalankan Lingkungan Lokal
 
@@ -82,7 +82,12 @@ docker compose --env-file .env -f infra/compose/docker-compose.dev.yml down
 
 ## 🌐 Deployment (VPS Staging/Production)
 
-Lingkungan server dioptimalkan untuk VPS (RAM 1GB/2GB). Proses ini menggunakan *image* bawaan dari GitHub Container Registry tanpa proses `build` lokal untuk menghemat memori.
+Lingkungan server dioptimalkan untuk VPS (RAM 1GB/2GB). Aplikasi berjalan secara statis (stateless) menarik image bawaan dari GitHub Container Registry tanpa proses `build` lokal untuk menghemat memori.
+
+**Otomatisasi CI/CD (GitHub Actions):**
+Sesuai PRD, proses deployment sepenuhnya terotomatisasi. Setiap perubahan pada branch `develop` (Staging) atau `main` (Production) akan memicu GitHub Actions untuk melakukan *build* image, *push* ke registri, dan *deploy* ke peladen VPS.
+
+Perintah manual di bawah ini **hanya** dieksekusi saat penyetelan awal peladen atau *debugging* darurat tingkat sistem oleh DevOps:
 
 ```bash
 # Menarik image terbaru dari registry
