@@ -85,3 +85,37 @@ jobs:
           # Kita hanya mengirim folder infra dan hasil build web ke direktori staging
           source: "infra/, frontend-build/"
           target: "/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
+
+  # 4. Eksekusi Deployment di VPS
+  deploy:
+    needs: transfer-to-vps
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute Deployment via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST_VPS }}
+          username: ${{ secrets.USERNAME_VPS }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 20125
+          script: |
+            cd /home/${{ secrets.USERNAME_VPS }}/mojiji-staging
+
+            # Membuat ulang fail .env secara dinamis dari GitHub Secrets
+            cat << 'ENVFILE' > .env
+            APP_ENV=staging
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            REDIS_URL=${{ secrets.REDIS_URL }}
+            REDIS_KEY_PREFIX=mojiji_staging:
+            TENRAI_BASE_URL=https://api.tenrai.org/v1
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            COOKIE_NAME=mojiji_session
+            PORT_GATEWAY=4000
+            PORT_USER=4001
+            PORT_CATALOG=4002
+            PORT_TRACKER=4003
+            ENVFILE
+
+            # Menarik pembaruan image terbaru dari GHCR dan menyalakan kontainer
+            docker compose -f infra/compose/docker-compose.server.yml pull
+            docker compose -f infra/compose/docker-compose.server.yml up -d --remove-orphans
