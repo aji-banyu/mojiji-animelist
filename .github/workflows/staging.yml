@@ -1,0 +1,85 @@
+name: Staging Pipeline (Build & Transfer)
+
+on:
+  push:
+    branches:
+      - develop
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # 1. Membangun Situs Statis Frontend
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Next.js Static Site
+        working-directory: ./apps/web
+        env:
+          NEXT_PUBLIC_TENRAI_BASE_URL: https://api.tenrai.org/v1
+          NEXT_PUBLIC_APP_ENV: staging
+        run: |
+          npm ci
+          npm run build
+          
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: ./apps/web/out/
+
+  # 2. Membangun & Mendorong Image Docker Backend
+  build-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Backend Images
+        # Menggunakan fail compose server yang ada di repo Anda
+        run: |
+          docker compose -f infra/compose/docker-compose.server.yml build
+          docker compose -f infra/compose/docker-compose.server.yml push
+
+  # 3. Mentransfer File ke VPS (Folder Staging)
+  transfer-to-vps:
+    needs: [build-frontend, build-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend-build/
+
+      - name: Transfer Files to VPS via SCP
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST_VPS }}
+          username: ${{ secrets.USERNAME_VPS }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # Kita hanya mengirim folder infra dan hasil build web ke direktori staging
+          source: "infra/, frontend-build/"
+          target: "/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
