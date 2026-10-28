@@ -57,6 +57,7 @@ jobs:
       - name: Build and Push Backend Images
         # Menggunakan fail compose server yang ada di repo Anda
         run: |
+          touch .env
           docker compose -f infra/compose/docker-compose.server.yml build
           docker compose -f infra/compose/docker-compose.server.yml push
 
@@ -80,6 +81,7 @@ jobs:
           host: ${{ secrets.HOST_VPS }}
           username: ${{ secrets.USERNAME_VPS }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 20125
           # Kita hanya mengirim folder infra dan hasil build web ke direktori staging
           source: "infra/, frontend-build/"
           target: "/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
