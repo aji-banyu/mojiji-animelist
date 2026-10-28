@@ -1,0 +1,15 @@
+mojiji.web.id {
+    # Nanti menyajikan file statis hasil export Next.js
+    root * /srv
+    file_server
+
+    # Meneruskan request /api ke API Gateway (berdasarkan PRD)
+    handle /api/* {
+        reverse_proxy api-gateway:4000
+    }
+}
+
+api.mojiji.web.id {
+    # Meneruskan semua request ke backend API Gateway
+    reverse_proxy api-gateway:4000
+}
