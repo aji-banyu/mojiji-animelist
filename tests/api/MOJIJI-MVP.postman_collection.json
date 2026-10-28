@@ -1,0 +1,60 @@
+{
+  "info": {
+    "name": "MOJIJI MVP",
+    "description": "MJ-049 — Starter Postman collection. Health test is executable once API Gateway is running. Auth, Catalog and Tracker folders are placeholders for later tickets. Service-specific health URLs must be confirmed with Backend/DevOps.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Auth requests to be added after final contract and implementation.",
+      "item": []
+    },
+    {
+      "name": "Catalog",
+      "description": "Catalog requests to be added later.",
+      "item": []
+    },
+    {
+      "name": "Tracker",
+      "description": "Tracker requests to be added later.",
+      "item": []
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET API Gateway Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ]
+            },
+            "description": "Expected HTTP 200 when health endpoint is live. Response body is not asserted because its schema is not specified in the supplied PRD."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP status is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
