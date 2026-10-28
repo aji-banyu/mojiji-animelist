@@ -81,7 +81,7 @@ jobs:
           host: ${{ secrets.HOST_VPS }}
           username: ${{ secrets.USERNAME_VPS }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 20215
+          port: 20125
           # Kita hanya mengirim folder infra dan hasil build web ke direktori staging
           source: "infra/, frontend-build/"
           target: "/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
