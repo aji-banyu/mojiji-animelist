@@ -14,6 +14,8 @@ services:
       - caddy_config:/config
 
   api-gateway:
+    build:
+      context: ../../services/api-gateway
     image: ghcr.io/aji-banyu/mojiji-api-gateway:develop
     container_name: mojiji_gateway_server
     restart: unless-stopped
@@ -28,6 +30,8 @@ services:
       retries: 3
 
   user-service:
+    build:
+      context: ../../services/user-service
     image: ghcr.io/aji-banyu/mojiji-user-service:develop
     container_name: mojiji_user_server
     restart: unless-stopped
@@ -42,6 +46,8 @@ services:
       retries: 3
 
   catalog-service:
+    build:
+      context: ../../services/catalog-service
     image: ghcr.io/aji-banyu/mojiji-catalog-service:develop
     container_name: mojiji_catalog_server
     restart: unless-stopped
@@ -56,6 +62,8 @@ services:
       retries: 3
 
   tracker-service:
+    build:
+      context: ../../services/tracker-service
     image: ghcr.io/aji-banyu/mojiji-tracker-service:develop
     container_name: mojiji_tracker_server
     restart: unless-stopped
