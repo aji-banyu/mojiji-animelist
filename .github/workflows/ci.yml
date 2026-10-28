@@ -25,8 +25,29 @@ jobs:
           cache: 'npm'
           cache-dependency-path: '**/package-lock.json'
 
+      - name: Check Backend (API Gateway)
+        working-directory: ./services/api-gateway
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm run build --if-present
+
       - name: Check Backend (User Service)
         working-directory: ./services/user-service
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm run build --if-present
+
+      - name: Check Backend (Catalog Service)
+        working-directory: ./services/catalog-service
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm run build --if-present
+
+      - name: Check Backend (Tracker Service)
+        working-directory: ./services/tracker-service
         run: |
           npm ci
           npm run lint --if-present
