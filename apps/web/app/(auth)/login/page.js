@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { loginApi } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,8 +24,8 @@ export default function LoginPage() {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (errors[name] || errors.general) {
+      setErrors((prev) => ({ ...prev, [name]: "", general: "" }));
     }
   };
 
@@ -47,16 +48,33 @@ export default function LoginPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // === Handler: Saat form di-submit ===
-  const handleSubmit = (e) => {
+  // === Handler: Saat form di-submit via API Layer ===
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      // Memanggil fungsi loginApi (otomatis memilih Mock jika NEXT_PUBLIC_USE_MOCK="true")
+      const result = await loginApi({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (result.success) {
+        router.push("/dashboard");
+      }
+    } catch (err) {
+      const errorMessage =
+        err?.error?.message || "Terjadi kesalahan saat masuk. Silakan coba lagi.";
+      setErrors((prev) => ({
+        ...prev,
+        general: errorMessage,
+      }));
+    } finally {
       setIsSubmitting(false);
-      router.push("/dashboard");
-    }, 1000);
+    }
   };
 
   return (
@@ -74,13 +92,18 @@ export default function LoginPage() {
 
       {/* === Konten Form === */}
       <div className="relative z-10 w-full max-w-[400px] px-5 py-12">
-
         {/* Judul */}
         <h1 className="mb-8 text-center text-3xl font-bold text-white">
           Masuk ke Mojiji
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Pesan Error Global (jika kredensial salah / server error) */}
+          {errors.general && (
+            <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-center text-xs font-medium text-red-400">
+              {errors.general}
+            </div>
+          )}
 
           {/* Field: Email Address */}
           <div className="space-y-2">
@@ -173,7 +196,6 @@ export default function LoginPage() {
           </svg>
           Masuk dengan Google
         </button>
-
       </div>
     </div>
   );
