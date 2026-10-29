@@ -1,4 +1,4 @@
--- Migration 001: User Service Schema
+-- migrate:up
 CREATE SCHEMA IF NOT EXISTS user_service;
 
 CREATE TABLE IF NOT EXISTS user_service.users (
@@ -10,3 +10,6 @@ CREATE TABLE IF NOT EXISTS user_service.users (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- migrate:down
+DROP TABLE IF EXISTS user_service.users;
+DROP SCHEMA IF EXISTS user_service;
