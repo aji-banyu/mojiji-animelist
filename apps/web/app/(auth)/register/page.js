@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
+import { registerApi } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -26,8 +27,8 @@ export default function RegisterPage() {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
 
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
+    if (errors[name] || errors.general) {
+      setErrors((prev) => ({ ...prev, [name]: "", general: "" }));
     }
   };
 
@@ -36,24 +37,28 @@ export default function RegisterPage() {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+    // Validasi Username — minimal 3 karakter
     if (!formData.username.trim()) {
       newErrors.username = "Username wajib diisi";
     } else if (formData.username.trim().length < 3) {
       newErrors.username = "Username minimal 3 karakter";
     }
 
+    // Validasi Email — wajib diisi dan format valid
     if (!formData.email.trim()) {
       newErrors.email = "Email wajib diisi";
     } else if (!emailRegex.test(formData.email)) {
       newErrors.email = "Format email tidak valid";
     }
 
+    // Validasi Password — WAJIB minimal 8 karakter (aturan mutlak PRD)
     if (!formData.password) {
       newErrors.password = "Password wajib diisi";
     } else if (formData.password.length < 8) {
       newErrors.password = "Password minimal 8 karakter";
     }
 
+    // Validasi Konfirmasi Password — harus sama persis dengan password
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = "Konfirmasi password wajib diisi";
     } else if (formData.confirmPassword !== formData.password) {
@@ -64,16 +69,34 @@ export default function RegisterPage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  // === Handler: Saat form di-submit ===
-  const handleSubmit = (e) => {
+  // === Handler: Saat form di-submit via API Layer ===
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
+
+    try {
+      // Memanggil fungsi registerApi (otomatis memilih Mock jika NEXT_PUBLIC_USE_MOCK="true")
+      const result = await registerApi({
+        username: formData.username,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (result.success) {
+        router.push("/login");
+      }
+    } catch (err) {
+      const errorMessage =
+        err?.error?.message || "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
+      setErrors((prev) => ({
+        ...prev,
+        general: errorMessage,
+      }));
+    } finally {
       setIsSubmitting(false);
-      router.push("/login");
-    }, 1000);
+    }
   };
 
   return (
@@ -91,15 +114,20 @@ export default function RegisterPage() {
 
       {/* === Konten Form === */}
       <div className="relative z-10 w-full max-w-[400px] px-5 py-12">
-
         {/* Judul */}
         <h1 className="mb-8 text-center text-3xl font-bold text-white">
           Buat Akun Baru
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Pesan Error Global (jika email sudah terdaftar / conflict) */}
+          {errors.general && (
+            <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-center text-xs font-medium text-red-400">
+              {errors.general}
+            </div>
+          )}
 
-          {/* Field: Nama Lengkap */}
+          {/* Field: Nama Lengkap / Username */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-white">Nama Lengkap</label>
             <input
@@ -242,7 +270,6 @@ export default function RegisterPage() {
           </svg>
           Daftar dengan Google
         </button>
-
       </div>
     </div>
   );
