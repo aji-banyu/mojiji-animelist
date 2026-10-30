@@ -106,11 +106,26 @@ export async function registerApi({ username, email, password }) {
 export async function loginApi({ email, password }) {
   if (USE_MOCK) {
     await simulateNetworkDelay();
+
+    // Smart Mock: Validasi kredensial khusus dika@mojiji.com & andika123
+    const isMatch =
+      email?.trim() === mockLoginSuccess.data.email &&
+      password === mockLoginSuccess.data.password;
+
+    if (!isMatch) {
+      throw {
+        success: false,
+        error: mockLoginUnauthorized.error,
+        status: 401,
+      };
+    }
+
     return {
-      ...mockLoginSuccess,
+      success: true,
       data: {
-        ...mockLoginSuccess.data,
-        email,
+        id: mockLoginSuccess.data.id,
+        username: mockLoginSuccess.data.username,
+        email: mockLoginSuccess.data.email,
       },
     };
   }
@@ -303,4 +318,3 @@ export async function deleteTrackerApi(id) {
     method: "DELETE",
   });
 }
-
