@@ -30,7 +30,7 @@ jobs:
         run: |
           npm ci
           npm run build
-          
+
       - name: Upload Frontend Artifact
         uses: actions/upload-artifact@v4
         with:
@@ -55,7 +55,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and Push Backend Images
-        # Menggunakan fail compose server yang ada di repo Anda
         run: |
           touch .env
           docker compose -f infra/compose/docker-compose.server.yml build
@@ -82,7 +81,6 @@ jobs:
           username: ${{ secrets.USERNAME_VPS }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 20125
-          # Kita hanya mengirim folder infra dan hasil build web ke direktori staging
           source: "infra/, frontend-build/"
           target: "/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
 
@@ -104,11 +102,11 @@ jobs:
             # Membuat ulang fail .env secara dinamis dari GitHub Secrets
             cat << 'ENVFILE' > .env
             APP_ENV=staging
-            DATABASE_URL=${{ secrets.DATABASE_URL }}
-            REDIS_URL=${{ secrets.REDIS_URL }}
+            DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}
+            REDIS_URL=${{ secrets.STAGING_REDIS_URL }}
             REDIS_KEY_PREFIX=mojiji_staging:
             TENRAI_BASE_URL=https://api.tenrai.org/v1
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_SECRET=${{ secrets.STAGING_JWT_SECRET }}
             COOKIE_NAME=mojiji_session
             PORT_GATEWAY=4000
             PORT_USER=4001
