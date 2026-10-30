@@ -143,10 +143,26 @@ Contoh request:
 
 ### 2.2 POST /api/auth/login
 
-**Tujuan:** Memulai sesi pengguna.
+* **Status:** Terimplementasi (Tiket `MJ-044`)
+* **Tujuan:** Memulai sesi pengguna (menerbitkan cookie sesi JWT).
+* **Autentikasi:** Publik (tanpa cookie).
+* **Base URL:**
+  * Direct Service (Lokal Development): `http://localhost:4001`
+  * Melalui API Gateway (Tiket MJ-045): `http://localhost:4000`
+  * Staging / Production: `https://staging.<domain>` / `https://<domain>`
+
+#### Request Headers
+| Header | Nilai | Keterangan |
+| :--- | :--- | :--- |
+| `Content-Type` | `application/json` | Wajib |
+
+#### Request Body Schema (JSON)
+| Field | Tipe | Wajib? | Aturan Validasi |
+| :--- | :--- | :--- | :--- |
+| `email` | `string` | Ya | Format email valid |
+| `password` | `string` | Ya | Minimal 1 karakter (tidak boleh kosong) |
 
 Contoh request:
-
 ```json
 {
   "email": "user@example.com",
@@ -154,53 +170,95 @@ Contoh request:
 }
 ```
 
-Usulan status HTTP:
+#### Status HTTP & Response
 
-* `200 OK` — login berhasil.
-* `400 Bad Request` — input tidak valid.
-* `401 Unauthorized` — kredensial salah.
-* `500 Internal Server Error` — kesalahan internal.
-
-Mekanisme sesi dan cookie perlu mengikuti keputusan autentikasi tim. Cookie atau session tidak boleh dibocorkan ke log.
-
-### 2.3 POST /api/auth/logout
-
-**Tujuan:** Mengakhiri sesi pengguna.
-
-Usulan status HTTP:
-
-* `200 OK` — logout berhasil.
-* `401 Unauthorized` — sesi tidak valid, jika diwajibkan kebijakan tim.
-* `500 Internal Server Error` — kesalahan internal.
-
-Sesi harus diakhiri dan cookie sesi dihapus atau dinonaktifkan sesuai mekanisme autentikasi yang dipilih.
-
-### 2.4 GET /api/users/me
-
-**Tujuan:** Mengambil informasi akun yang sedang login.
-
-Autentikasi: wajib.
-
-Contoh response awal:
-
+* **`200 OK`** — Login berhasil. Token JWT diterbitkan dan dikirimkan via Header `Set-Cookie` (`mojiji_session`, HttpOnly, SameSite=Lax, masa berlaku 7 hari). Data user dikembalikan tanpa token di JSON.
 ```json
 {
   "success": true,
   "data": {
-    "id": "user-id",
+    "id": "e4b2d56a-1f87-4948-a0c5-343219488a01",
     "username": "contoh_user",
     "email": "user@example.com"
   }
 }
 ```
 
-Usulan status HTTP:
+* **`401 Unauthorized`** — Kredensial tidak valid (email tidak ditemukan atau password salah). Demi keamanan, pesan selalu diseragamkan.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Email atau password salah"
+  }
+}
+```
 
-* `200 OK` — profil berhasil diambil.
-* `401 Unauthorized` — belum login atau sesi tidak valid.
-* `500 Internal Server Error` — kesalahan internal.
+* **`429 Too Many Requests`** — Pembatasan percobaan login (rate limiter aktif untuk mencegah brute force: maksimal 15 percobaan per 15 menit).
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Terlalu banyak percobaan login. Silakan coba lagi beberapa saat kemudian."
+  }
+}
+```
 
-Field profil merupakan contoh awal yang perlu dicocokkan dengan model data dan kebutuhan UI.
+---
+
+### 2.3 POST /api/auth/logout
+
+* **Status:** Terimplementasi (Tiket `MJ-044`)
+* **Tujuan:** Mengakhiri sesi pengguna dengan menghapus cookie sesi.
+* **Autentikasi:** Publik / Opsional (menghapus cookie jika ada).
+
+#### Status HTTP & Response
+
+* **`200 OK`** — Logout berhasil. Header `Set-Cookie` mengirimkan instruksi penghapusan cookie sesi ke browser (`Expires=Thu, 01 Jan 1970`).
+```json
+{
+  "success": true,
+  "data": {
+    "message": "Logout berhasil"
+  }
+}
+```
+
+---
+
+### 2.4 GET /api/users/me
+
+* **Status:** Terimplementasi (Tiket `MJ-044`)
+* **Tujuan:** Mengambil informasi akun pengguna yang sedang login.
+* **Autentikasi:** Wajib (harus memiliki cookie sesi `mojiji_session` yang valid atau header identitas dari Gateway).
+
+#### Status HTTP & Response
+
+* **`200 OK`** — Sesi terverifikasi dan data profil berhasil diambil.
+```json
+{
+  "success": true,
+  "data": {
+    "id": "e4b2d56a-1f87-4948-a0c5-343219488a01",
+    "username": "contoh_user",
+    "email": "user@example.com",
+    "createdAt": "2026-10-30T13:20:56.044Z"
+  }
+}
+```
+
+* **`401 Unauthorized`** — Belum login, cookie sesi tidak ditemukan, atau token kedaluwarsa/tidak valid.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali."
+  }
+}
+```
 
 ## 3. Catalog
 
