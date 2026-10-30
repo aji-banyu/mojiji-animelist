@@ -1,15 +1,12 @@
-mojiji.web.id {
-    # Nanti menyajikan file statis hasil export Next.js
-    root * /srv
-    file_server
-
-    # Meneruskan request /api ke API Gateway (berdasarkan PRD)
+staging.mojiji.web.id {
+    # 1. Cegat semua request URL yang berawalan /api dan lempar ke API Gateway
     handle /api/* {
         reverse_proxy api-gateway:4000
     }
-}
 
-api.mojiji.web.id {
-    # Meneruskan semua request ke backend API Gateway
-    reverse_proxy api-gateway:4000
+    # 2. Sisanya, layani sebagai file statis Frontend Next.js
+    handle {
+        root * /srv
+        file_server
+    }
 }
