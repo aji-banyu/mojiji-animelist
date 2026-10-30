@@ -59,6 +59,7 @@ export const mockLoginSuccess = {
     id: "usr_mock_123",
     username: "dika_dev",
     email: "dika@mojiji.com",
+    password: "andika123",
   },
 };
 
@@ -105,4 +106,3 @@ export const mockMeUnauthorized = {
     details: [],
   },
 };
-

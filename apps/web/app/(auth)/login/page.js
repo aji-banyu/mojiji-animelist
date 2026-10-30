@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { loginApi } from "@/lib/api";
+import useAuthStore from "@/store/authStore";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -56,13 +57,15 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // Memanggil fungsi loginApi (otomatis memilih Mock jika NEXT_PUBLIC_USE_MOCK="true")
+      // Memanggil fungsi loginApi (Smart Mock jika NEXT_PUBLIC_USE_MOCK="true")
       const result = await loginApi({
         email: formData.email,
         password: formData.password,
       });
 
       if (result.success) {
+        // Simpan sesi user ke authStore agar AuthGuard mengizinkan akses ke /dashboard
+        useAuthStore.getState().login(result.data);
         router.push("/dashboard");
       }
     } catch (err) {
