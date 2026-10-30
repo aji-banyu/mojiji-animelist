@@ -58,10 +58,27 @@ Untuk response berupa daftar:
 
 ### 2.1 POST /api/auth/register
 
-**Tujuan:** Membuat akun baru.
+* **Status:** Terimplementasi (Tiket `MJ-043`)
+* **Tujuan:** Membuat akun pengguna baru.
+* **Autentikasi:** Publik (tanpa login / cookie).
+* **Base URL:**
+  * Direct Service (Lokal Development): `http://localhost:4001`
+  * Melalui API Gateway (Tiket MJ-045): `http://localhost:4000`
+  * Staging / Production: `https://staging.<domain>` / `https://<domain>`
 
-Contoh request awal:
+#### Request Headers
+| Header | Nilai | Keterangan |
+| :--- | :--- | :--- |
+| `Content-Type` | `application/json` | Wajib |
 
+#### Request Body Schema (JSON)
+| Field | Tipe | Wajib? | Aturan Validasi |
+| :--- | :--- | :--- | :--- |
+| `username` | `string` | Ya | 3–50 karakter, alfanumerik dan garis bawah |
+| `email` | `string` | Ya | Format email valid, maksimal 255 karakter |
+| `password` | `string` | Ya | Minimal 8 karakter (sesuai AC US-007) |
+
+Contoh request:
 ```json
 {
   "username": "contoh_user",
@@ -70,14 +87,59 @@ Contoh request awal:
 }
 ```
 
-Usulan status HTTP:
+#### Status HTTP & Response
 
-* `201 Created` — akun berhasil dibuat.
-* `400 Bad Request` — input tidak valid.
-* `409 Conflict` — username atau email sudah digunakan, jika berlaku.
-* `500 Internal Server Error` — kesalahan internal.
+* **`201 Created`** — Akun berhasil dibuat dan disimpan ke database. Password tidak dikembalikan.
+```json
+{
+  "success": true,
+  "data": {
+    "id": "e4b2d56a-1f87-4948-a0c5-343219488a01",
+    "username": "contoh_user",
+    "email": "user@example.com",
+    "createdAt": "2026-10-30T13:20:56.044Z"
+  }
+}
+```
 
-Password wajib di-hash sebelum disimpan. Field request perlu disesuaikan dengan keputusan tim.
+* **`400 Bad Request`** — Validasi input gagal (password < 8 karakter, email tidak valid, username kosong/spesial karakter).
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validasi input gagal",
+    "details": [
+      "Password minimal terdiri dari 8 karakter"
+    ]
+  }
+}
+```
+
+* **`409 Conflict`** — Username atau email sudah digunakan di sistem.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "CONFLICT_ERROR",
+    "message": "Email atau username sudah digunakan",
+    "details": [
+      "Email sudah digunakan"
+    ]
+  }
+}
+```
+
+* **`500 Internal Server Error`** — Kesalahan internal server (koneksi database terputus/gagal). Tidak membocorkan stack trace.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INTERNAL_SERVER_ERROR",
+    "message": "Terjadi kesalahan pada server saat memproses registrasi"
+  }
+}
+```
 
 ### 2.2 POST /api/auth/login
 
