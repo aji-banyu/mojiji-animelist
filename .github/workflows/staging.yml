@@ -10,7 +10,6 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  # 1. Membangun Situs Statis Frontend
   build-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -37,7 +36,6 @@ jobs:
           name: frontend-build
           path: ./apps/web/out/
 
-  # 2. Membangun & Mendorong Image Docker Backend
   build-backend:
     runs-on: ubuntu-latest
     permissions:
@@ -60,7 +58,6 @@ jobs:
           docker compose -f infra/compose/docker-compose.server.yml build
           docker compose -f infra/compose/docker-compose.server.yml push
 
-  # 3. Mentransfer File ke VPS (Folder Staging)
   transfer-to-vps:
     needs: [build-frontend, build-backend]
     runs-on: ubuntu-latest
@@ -81,10 +78,9 @@ jobs:
           username: ${{ secrets.USERNAME_VPS }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 20125
-          source: "infra/, frontend-build/"
+          source: "infra/, frontend-build/, database/"
           target: "/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
 
-  # 4. Eksekusi Deployment di VPS
   deploy:
     needs: transfer-to-vps
     runs-on: ubuntu-latest
@@ -99,7 +95,6 @@ jobs:
           script: |
             cd /home/${{ secrets.USERNAME_VPS }}/mojiji-staging
 
-            # Membuat ulang fail .env secara dinamis dari GitHub Secrets
             cat << 'ENVFILE' > .env
             APP_ENV=staging
             DATABASE_URL=${{ secrets.STAGING_DATABASE_URL }}
@@ -114,6 +109,6 @@ jobs:
             PORT_TRACKER=4003
             ENVFILE
 
-            # Menarik pembaruan image terbaru dari GHCR dan menyalakan kontainer
             docker compose --env-file .env -f infra/compose/docker-compose.server.yml pull
+            docker compose --env-file .env -f infra/compose/docker-compose.server.yml run --rm migrate up
             docker compose --env-file .env -f infra/compose/docker-compose.server.yml up -d --remove-orphans
