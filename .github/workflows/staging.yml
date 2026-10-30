@@ -113,5 +113,5 @@ jobs:
             ENVFILE
 
             docker compose --env-file .env -f infra/compose/docker-compose.server.yml pull
-            docker compose --env-file .env -f infra/compose/docker-compose.server.yml run --rm migrate up
+            docker compose -f infra/compose/docker-compose.server.yml run --rm -e DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}" migrate --migrations-dir /db/migrations up
             docker compose --env-file .env -f infra/compose/docker-compose.server.yml up -d --remove-orphans
