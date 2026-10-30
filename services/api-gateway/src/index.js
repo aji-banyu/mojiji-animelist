@@ -13,7 +13,6 @@ const PORT = process.env.PORT || process.env.PORT_GATEWAY || 4000;
 app.disable("x-powered-by");
 
 // CORS: Izinkan frontend Next.js lokal (http://localhost:3000) dengan credentials: true
-// Di staging dan production, Frontend dan API berada di satu domain lewat Caddy (/api) sehingga CORS tidak diperlukan
 const isProduction = process.env.APP_ENV === "production" || process.env.APP_ENV === "staging";
 if (!isProduction) {
   app.use(
@@ -24,7 +23,7 @@ if (!isProduction) {
   );
 }
 
-// Endpoint health check (sesuai spesifikasi deployment dan Caddy)
+// Endpoint health check
 const healthHandler = (req, res) => {
   res.status(200).json({
     status: "ok",
@@ -36,20 +35,20 @@ const healthHandler = (req, res) => {
 app.get("/health", healthHandler);
 app.get("/api/health", healthHandler);
 
-// Menentukan alamat internal user-service
+// Menentukan alamat internal microservices
 let userServiceUrl = process.env.USER_SERVICE_URL;
 if (!userServiceUrl) {
-  // Jika dijalankan di lingkungan host lokal Windows (di luar Docker container)
-  if (process.platform === "win32") {
-    userServiceUrl = "http://localhost:4001";
-  } else {
-    // Di dalam jaringan container Docker Linux Compose
-    userServiceUrl = "http://user-service:4001";
-  }
+  userServiceUrl = process.platform === "win32" ? "http://localhost:4001" : "http://user-service:4001";
 }
 
-// Handler event proxy untuk User Service
-const proxyOptions = {
+let catalogServiceUrl = process.env.CATALOG_SERVICE_URL;
+if (!catalogServiceUrl) {
+  catalogServiceUrl = process.platform === "win32" ? "http://localhost:4002" : "http://catalog-service:4002";
+}
+
+// Handler event proxy umum
+const createServiceProxyOptions = (serviceName, targetUrl) => ({
+  target: targetUrl,
   changeOrigin: true,
   on: {
     proxyReq: (proxyReq, req, res) => {
@@ -57,36 +56,35 @@ const proxyOptions = {
       proxyReq.removeHeader("x-user-id");
     },
     error: (err, req, res) => {
-      console.error(`[Gateway Proxy Error] Gagal meneruskan request ke User Service:`, err.message);
+      console.error(`[Gateway Proxy Error] Gagal meneruskan ke ${serviceName}:`, err.message);
       if (!res.headersSent) {
         res.status(502).json({
           success: false,
           error: {
             code: "BAD_GATEWAY",
-            message: "User Service tidak dapat dihubungi atau sedang offline.",
+            message: `${serviceName} tidak dapat dihubungi atau sedang offline.`,
           },
         });
       }
     },
   },
-};
+});
 
 // Daftarkan rute proxy ke User Service
-// Mount path /api/auth dipadukan dengan target URL agar path tetap utuh saat sampai di user-service
 app.use(
   "/api/auth",
-  createProxyMiddleware({
-    ...proxyOptions,
-    target: `${userServiceUrl}/api/auth`,
-  })
+  createProxyMiddleware(createServiceProxyOptions("User Service", `${userServiceUrl}/api/auth`))
 );
 
 app.use(
   "/api/users",
-  createProxyMiddleware({
-    ...proxyOptions,
-    target: `${userServiceUrl}/api/users`,
-  })
+  createProxyMiddleware(createServiceProxyOptions("User Service", `${userServiceUrl}/api/users`))
+);
+
+// Daftarkan rute proxy ke Catalog Service
+app.use(
+  "/api/catalog",
+  createProxyMiddleware(createServiceProxyOptions("Catalog Service", `${catalogServiceUrl}/api/catalog`))
 );
 
 // Handler 404 jika route tidak ditemukan di gateway
@@ -103,6 +101,7 @@ app.use((req, res) => {
 app.listen(PORT, () => {
   console.log(`API Gateway running on http://localhost:${PORT}`);
   console.log(`Routing /api/auth and /api/users to ${userServiceUrl}`);
+  console.log(`Routing /api/catalog to ${catalogServiceUrl}`);
 });
 
 module.exports = app;
