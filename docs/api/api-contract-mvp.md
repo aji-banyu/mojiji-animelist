@@ -264,25 +264,95 @@ Contoh request:
 
 ### 3.1 GET /api/catalog/search?type=anime&q=naruto
 
-**Tujuan:** Mencari anime atau manga melalui Catalog Service.
+* **Status:** Terimplementasi (Tiket `MJ-062`)
+* **Tujuan:** Mencari anime atau manga melalui Catalog Service (data bersumber dari Tenrai API dengan throttling 4 req/detik).
+* **Autentikasi:** Publik (tanpa login).
+* **Base URL:**
+  * Melalui API Gateway: `http://localhost:4000/api/catalog/search`
+  * Direct Service: `http://localhost:4002/api/catalog/search`
+  * Staging / Production: `https://staging.<domain>/api/catalog/search`
 
-Query parameter:
+#### Query Parameters
+| Parameter | Tipe | Wajib? | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `type` | `string` | Ya | `anime` atau `manga` |
+| `q` | `string` | Ya | Kata kunci pencarian (minimal 1 karakter) |
+| `page` | `integer` | Tidak | Nomor halaman (default: 1) |
+| `limit` | `integer` | Tidak | Jumlah hasil per halaman (default: 20, max: 25) |
 
-* `type`: `anime` atau `manga`, wajib.
-* `q`: kata kunci pencarian, wajib.
-* `page`: nomor halaman, opsional jika pagination diterapkan.
-* `limit`: jumlah hasil, opsional jika pagination diterapkan.
+#### Status HTTP & Response
 
-Usulan status HTTP:
+* **`200 OK`** — Pencarian berhasil. Mengembalikan daftar judul yang telah dinormalisasi. Jika tidak ada hasil yang cocok, mengembalikan array kosong `[]` (bukan error).
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 20,
+      "malId": 20,
+      "type": "anime",
+      "title": "Naruto",
+      "image": "https://cdn.myanimelist.net/images/anime/1141/142503l.jpg",
+      "score": 8.03,
+      "synopsis": "Moments prior to Naruto Uzumaki's birth...",
+      "status": "Finished Airing",
+      "totalEpisodes": 220
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 20,
+    "total": 31
+  }
+}
+```
 
-* `200 OK` — pencarian berhasil.
-* `400 Bad Request` — parameter tidak valid.
-* `429 Too Many Requests` — pembatasan request berlaku.
-* `502 Bad Gateway` — provider gagal memberikan respons yang valid.
-* `504 Gateway Timeout` — provider mengalami timeout.
-* `500 Internal Server Error` — kesalahan internal lainnya.
+* **`400 Bad Request`** — Parameter tidak valid (misal: `type` bukan anime/manga, atau `q` kosong).
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Parameter pencarian tidak valid",
+    "details": [
+      "Parameter 'type' wajib bernilai 'anime' atau 'manga'"
+    ]
+  }
+}
+```
 
-Catalog Service harus menangani network error, rate limit, timeout, dan downtime provider tanpa membuat seluruh aplikasi crash.
+* **`429 Too Many Requests`** — Pembatasan request provider Tenrai tercapai. Server menyertakan header `Retry-After`.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Batas permintaan ke provider katalog tercapai. Silakan coba sebentar lagi."
+  }
+}
+```
+
+* **`502 Bad Gateway`** — Provider katalog eksternal gagal memberikan respons yang valid.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "BAD_GATEWAY",
+    "message": "Provider katalog gagal memberikan respons yang valid."
+  }
+}
+```
+
+* **`504 Gateway Timeout`** — Provider katalog mengalami timeout.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATEWAY_TIMEOUT",
+    "message": "Provider katalog mengalami timeout. Silakan coba beberapa saat lagi."
+  }
+}
+```
 
 ### 3.2 GET /api/catalog/:type/:malId
 
