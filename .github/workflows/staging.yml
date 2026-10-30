@@ -117,5 +117,5 @@ jobs:
             ENVFILE
 
             # Menarik pembaruan image terbaru dari GHCR dan menyalakan kontainer
-            docker compose -f infra/compose/docker-compose.server.yml pull
-            docker compose -f infra/compose/docker-compose.server.yml up -d --remove-orphans
+            docker compose --env-file .env -f infra/compose/docker-compose.server.yml pull
+            docker compose --env-file .env -f infra/compose/docker-compose.server.yml up -d --remove-orphans
