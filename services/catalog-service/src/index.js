@@ -5,6 +5,7 @@ const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, "../../../.env") });
 
 const catalogRoutes = require("./routes/catalogRoutes");
+const internalCatalogRoutes = require("./routes/internalCatalogRoutes");
 
 const app = express();
 const PORT = process.env.PORT || process.env.PORT_CATALOG || 4002;
@@ -27,8 +28,11 @@ const healthHandler = (req, res) => {
 app.get("/health", healthHandler);
 app.get("/api/health", healthHandler);
 
-// Registrasi routes katalog
+// Rute Publik (diteruskan oleh API Gateway)
 app.use("/api/catalog", catalogRoutes);
+
+// Rute Internal Microservice (akses privat antar-layanan, misal Tracker Service)
+app.use("/internal/catalog", internalCatalogRoutes);
 
 // Jalankan server
 const server = app.listen(PORT, () => {
