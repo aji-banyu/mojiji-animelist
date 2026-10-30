@@ -92,7 +92,10 @@ jobs:
           username: ${{ secrets.USERNAME_VPS }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 20125
+          script_stop: true
           script: |
+            set -e
+            
             cd /home/${{ secrets.USERNAME_VPS }}/mojiji-staging
 
             cat << 'ENVFILE' > .env
