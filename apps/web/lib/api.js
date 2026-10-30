@@ -32,8 +32,8 @@ import {
   mockTrackerDeleteSuccess,
 } from "@/lib/mock/trackerMock";
 
-// Konfigurasi Environment
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK === "true";
+// Konfigurasi Environment (Default MOCK aktif selama fase MVP, kecuali dimatikan dengan nilai "false")
+const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 // Helper jeda waktu simulasi jaringan (400ms)
