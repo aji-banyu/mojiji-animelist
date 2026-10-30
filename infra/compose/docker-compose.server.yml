@@ -17,8 +17,6 @@ services:
   migrate:
     image: amacneil/dbmate
     container_name: mojiji_migrate_server
-    env_file:
-      - ../../.env
     volumes:
       - ../../database/migrations:/db/migrations
 
