@@ -3,7 +3,7 @@ version: '3.8'
 services:
   caddy:
     image: caddy:2-alpine
-    container_name: mojiji_caddy_server
+    container_name: mojiji_caddy_server_${APP_ENV}
     restart: unless-stopped
     ports:
       - "80:80"
@@ -16,7 +16,7 @@ services:
 
   migrate:
     image: amacneil/dbmate
-    container_name: mojiji_migrate_server
+    container_name: mojiji_migrate_server_${APP_ENV}
     volumes:
       - ../../database/migrations:/db/migrations
 
@@ -24,13 +24,16 @@ services:
     build:
       context: ../../services/api-gateway
     image: ghcr.io/aji-banyu/mojiji-api-gateway:develop
-    container_name: mojiji_gateway_server
+    container_name: mojiji_gateway_server_${APP_ENV}
     restart: unless-stopped
     mem_limit: 96m
-    env_file:
-      - ../../.env
     environment:
-      - PORT=${PORT_GATEWAY}
+      APP_ENV: ${APP_ENV}
+      PORT: ${PORT_GATEWAY}
+      JWT_SECRET: ${JWT_SECRET}
+      TENRAI_BASE_URL: ${TENRAI_BASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
       interval: 30s
@@ -40,13 +43,17 @@ services:
     build:
       context: ../../services/user-service
     image: ghcr.io/aji-banyu/mojiji-user-service:develop
-    container_name: mojiji_user_server
+    container_name: mojiji_user_server_${APP_ENV}
     restart: unless-stopped
     mem_limit: 96m
-    env_file:
-      - ../../.env
     environment:
-      - PORT=${PORT_USER}
+      APP_ENV: ${APP_ENV}
+      PORT: ${PORT_USER}
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      COOKIE_NAME: ${COOKIE_NAME}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4001/health"]
       interval: 30s
@@ -56,13 +63,15 @@ services:
     build:
       context: ../../services/catalog-service
     image: ghcr.io/aji-banyu/mojiji-catalog-service:develop
-    container_name: mojiji_catalog_server
+    container_name: mojiji_catalog_server_${APP_ENV}
     restart: unless-stopped
     mem_limit: 96m
-    env_file:
-      - ../../.env
     environment:
-      - PORT=${PORT_CATALOG}
+      APP_ENV: ${APP_ENV}
+      PORT: ${PORT_CATALOG}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4002/health"]
       interval: 30s
@@ -72,13 +81,15 @@ services:
     build:
       context: ../../services/tracker-service
     image: ghcr.io/aji-banyu/mojiji-tracker-service:develop
-    container_name: mojiji_tracker_server
+    container_name: mojiji_tracker_server_${APP_ENV}
     restart: unless-stopped
     mem_limit: 96m
-    env_file:
-      - ../../.env
     environment:
-      - PORT=${PORT_TRACKER}
+      APP_ENV: ${APP_ENV}
+      PORT: ${PORT_TRACKER}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4003/health"]
       interval: 30s
