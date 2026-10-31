@@ -54,6 +54,25 @@ Untuk response berupa daftar:
 
 `details` dapat digunakan untuk memberikan informasi field yang tidak valid. Informasi sensitif seperti password dan cookie sesi tidak boleh dimasukkan ke response atau log.
 
+### 1.3 Arsitektur Keamanan Gateway & Penerusan Identitas Pengguna (Tiket MJ-064)
+
+API Gateway (port `4000`) bertindak sebagai Reverse Proxy dan garda keamanan terpusat bagi seluruh microservices:
+1. **Pencegahan Header Spoofing (Anti-Spoofing):**
+   * Gateway secara otomatis menghapus header eksternal: `X-User-Id`, `X-User-Name`, `X-User-Email`, dan `X-Internal-Key` dari setiap request masuk. Penyerang luar tidak dapat memalsukan identitas pengguna dengan menyuntikkan header buatan sendiri.
+2. **Pemeriksaan Sesi Terpusat (Session Verification):**
+   * Gateway membaca cookie sesi HTTP-Only (`mojiji_session`) atau header standar `Authorization: Bearer <token>`.
+   * Gateway memverifikasi integritas token JWT menggunakan `JWT_SECRET`.
+3. **Penolakan Permintaan Tanpa Sesi (Strict 401 Enforcement):**
+   * Permintaan ke endpoint privat/terlindungi (seperti `GET /api/users/me` dan seluruh rute `POST/GET/PATCH/DELETE /api/tracker/*`) yang tidak menyertakan sesi valid langsung ditolak di tingkat Gateway dengan status **`401 Unauthorized`** sebelum menyentuh service di belakangnya.
+4. **Penerusan Identitas Internal (Internal Identity Injection):**
+   * Jika sesi valid, Gateway menyuntikkan header identitas internal yang telah diverifikasi ke request proxy yang diteruskan ke microservice (User Service port 4001 & Tracker Service port 4003):
+     * `X-User-Id`: UUID pengguna
+     * `X-User-Name`: Username pengguna
+     * `X-User-Email`: Email pengguna
+     * `X-Internal-Key`: Kunci rahasia komunikasi internal (`process.env.INTERNAL_KEY`)
+
+---
+
 ## 2. Authentication dan User Profile
 
 ### 2.1 POST /api/auth/register
