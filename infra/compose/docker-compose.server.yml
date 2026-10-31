@@ -27,10 +27,13 @@ services:
     container_name: mojiji_gateway_server
     restart: unless-stopped
     mem_limit: 96m
-    env_file:
-      - ../../.env
     environment:
+      - APP_ENV=${APP_ENV}
       - PORT=${PORT_GATEWAY}
+      - JWT_SECRET=${JWT_SECRET}
+      - TENRAI_BASE_URL=${TENRAI_BASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_KEY_PREFIX=${REDIS_KEY_PREFIX}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
       interval: 30s
@@ -43,10 +46,14 @@ services:
     container_name: mojiji_user_server
     restart: unless-stopped
     mem_limit: 96m
-    env_file:
-      - ../../.env
     environment:
+      - APP_ENV=${APP_ENV}
       - PORT=${PORT_USER}
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - COOKIE_NAME=${COOKIE_NAME}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_KEY_PREFIX=${REDIS_KEY_PREFIX}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4001/health"]
       interval: 30s
@@ -59,10 +66,12 @@ services:
     container_name: mojiji_catalog_server
     restart: unless-stopped
     mem_limit: 96m
-    env_file:
-      - ../../.env
     environment:
+      - APP_ENV=${APP_ENV}
       - PORT=${PORT_CATALOG}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_KEY_PREFIX=${REDIS_KEY_PREFIX}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4002/health"]
       interval: 30s
@@ -75,10 +84,12 @@ services:
     container_name: mojiji_tracker_server
     restart: unless-stopped
     mem_limit: 96m
-    env_file:
-      - ../../.env
     environment:
+      - APP_ENV=${APP_ENV}
       - PORT=${PORT_TRACKER}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - REDIS_KEY_PREFIX=${REDIS_KEY_PREFIX}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4003/health"]
       interval: 30s
