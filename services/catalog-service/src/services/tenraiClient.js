@@ -86,9 +86,12 @@ async function fetchTenrai(endpointPath) {
         throw error;
       }
 
-      // Jika 404 dari Tenrai (misal pencarian tidak ditemukan pada query tertentu)
+      // Tangani status HTTP 404 Not Found dari Tenrai (item tidak ditemukan)
       if (response.status === 404) {
-        return { data: [], pagination: { items: { total: 0 } } };
+        const error = new Error("Data tidak ditemukan pada provider katalog");
+        error.code = "NOT_FOUND";
+        error.status = 404;
+        throw error;
       }
 
       // Jika provider mengalami error 5xx
@@ -125,8 +128,18 @@ async function searchCatalog(type, query, page = 1, limit = 20) {
   return await fetchTenrai(endpoint);
 }
 
+/**
+ * Mengambil detail satu anime atau manga berdasarkan MAL ID dari Tenrai API
+ * @param {'anime' | 'manga'} type 
+ * @param {number} malId 
+ */
+async function getCatalogDetail(type, malId) {
+  const endpoint = `/${type}/${malId}`;
+  return await fetchTenrai(endpoint);
+}
+
 module.exports = {
   searchCatalog,
+  getCatalogDetail,
   fetchTenrai,
 };
-

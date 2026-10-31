@@ -356,40 +356,144 @@ Contoh request:
 
 ### 3.2 GET /api/catalog/:type/:malId
 
-**Tujuan:** Mengambil detail anime atau manga.
+* **Status:** Terimplementasi (Tiket `MJ-063`)
+* **Tujuan:** Mengambil detail satu judul anime atau manga berdasarkan MAL ID.
+* **Autentikasi:** Publik (tanpa login).
+* **Base URL:**
+  * Melalui API Gateway: `http://localhost:4000/api/catalog/:type/:malId`
+  * Direct Service: `http://localhost:4002/api/catalog/:type/:malId`
+  * Staging / Production: `https://staging.<domain>/api/catalog/:type/:malId`
 
-Contoh endpoint:
+#### Path Parameters
+| Parameter | Tipe | Wajib? | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `type` | `string` | Ya | `anime` atau `manga` |
+| `malId` | `integer` | Ya | ID unik anime/manga pada MyAnimeList / Tenrai (bilangan bulat positif) |
 
-* `/api/catalog/anime/1`
-* `/api/catalog/manga/1`
+#### Status HTTP & Response
 
-Parameter:
+* **`200 OK` (Anime)** — Detail anime berhasil diambil dan dinormalisasi.
+```json
+{
+  "success": true,
+  "data": {
+    "id": 20,
+    "malId": 20,
+    "type": "anime",
+    "title": "Naruto",
+    "image": "https://cdn.myanimelist.net/images/anime/1141/142503l.jpg",
+    "score": 8.03,
+    "synopsis": "Twelve years ago, a colossal demon fox terrorized...",
+    "status": "Finished Airing",
+    "totalEpisodes": 220
+  }
+}
+```
 
-* `type`: `anime` atau `manga`.
-* `malId`: ID judul pada provider.
+* **`200 OK` (Manga)** — Detail manga berhasil diambil dan dinormalisasi.
+```json
+{
+  "success": true,
+  "data": {
+    "id": 1,
+    "malId": 1,
+    "type": "manga",
+    "title": "Monster",
+    "image": "https://cdn.myanimelist.net/images/manga/3/258224l.jpg",
+    "score": 9.16,
+    "synopsis": "Kenzou Tenma, a renowned Japanese neurosurgeon...",
+    "status": "Finished",
+    "totalChapters": 162
+  }
+}
+```
 
-Usulan field data katalog:
+* **`400 Bad Request`** — Parameter path tidak valid (misal: `type` bukan `anime` atau `manga`, atau `malId` bukan angka positif).
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Parameter detail katalog tidak valid",
+    "details": [
+      "Invalid option: expected one of \"anime\"|\"manga\""
+    ]
+  }
+}
+```
 
-* `id`
-* `type`
-* `title`
-* `image`
-* `synopsis`
-* `score`
-* `totalEpisodes`, jika tersedia.
-* `totalChapters`, jika tersedia.
+* **`404 Not Found`** — Judul anime atau manga dengan ID tersebut tidak ditemukan pada database penyedia katalog.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Anime dengan ID 99999999 tidak ditemukan"
+  }
+}
+```
 
-Usulan status HTTP:
+* **`429 Too Many Requests`** — Batas kuota permintaan ke penyedia katalog (Tenrai API) terlampaui. Server menyertakan header `Retry-After`.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "RATE_LIMITED",
+    "message": "Batas permintaan ke provider katalog tercapai. Silakan coba sebentar lagi."
+  }
+}
+```
 
-* `200 OK` — detail ditemukan.
-* `400 Bad Request` — parameter tidak valid.
-* `404 Not Found` — judul tidak ditemukan.
-* `429 Too Many Requests` — pembatasan request berlaku.
-* `502 Bad Gateway` — provider mengembalikan respons tidak valid.
-* `504 Gateway Timeout` — provider mengalami timeout.
-* `500 Internal Server Error` — kesalahan internal lainnya.
+* **`502 Bad Gateway`** — Penyedia katalog eksternal gagal memberikan respons yang valid.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "BAD_GATEWAY",
+    "message": "Provider katalog gagal memberikan respons yang valid."
+  }
+}
+```
 
-Field final harus diverifikasi terhadap dokumentasi provider dan pengujian aktual. Tidak semua field selalu tersedia.
+* **`504 Gateway Timeout`** — Permintaan ke penyedia katalog eksternal mengalami timeout.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "GATEWAY_TIMEOUT",
+    "message": "Provider katalog mengalami timeout. Silakan coba beberapa saat lagi."
+  }
+}
+```
+
+---
+
+### 3.3 GET /internal/catalog/:type/:malId (Internal Microservice)
+
+* **Status:** Terimplementasi (Tiket `MJ-063`)
+* **Tujuan:** Mengambil detail item katalog untuk validasi dan penarikan metadata oleh Tracker Service saat pengguna menambahkan item ke daftar pelacakan (`POST /api/tracker`).
+* **Autentikasi:** Header Internal `X-Internal-Key` (hanya dapat diakses jaringan privat antar-kontainer, tidak dibuka lewat API Gateway).
+* **Base URL:** `http://catalog-service:4002/internal/catalog/:type/:malId`
+
+#### Request Headers
+| Header | Nilai | Keterangan |
+| :--- | :--- | :--- |
+| `X-Internal-Key` | String | Kunci rahasia komunikasi antar-layanan (dicocokkan dengan `process.env.INTERNAL_KEY`) |
+
+#### Status HTTP & Response
+* Mengikuti skema respons yang sama dengan `3.2` di atas (`200 OK`, `400 Bad Request`, `404 Not Found`).
+* **`403 Forbidden`** — Jika header `X-Internal-Key` tidak valid atau tidak disertakan (ketika `INTERNAL_KEY` diaktifkan).
+```json
+{
+  "success": false,
+  "error": {
+    "code": "FORBIDDEN",
+    "message": "Akses internal ditolak. Kunci internal tidak valid atau tidak disertakan."
+  }
+}
+```
+
+---
 
 ## 4. Tracker
 
