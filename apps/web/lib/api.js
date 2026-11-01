@@ -3,10 +3,12 @@
  *
  * Mengatur saklar antara mode Mock API (data tiruan lokal) dan API riil (API Gateway):
  * - Jika NEXT_PUBLIC_USE_MOCK="true"  ➔ Mengembalikan data tiruan dari lib/mock/ dengan jeda buatan.
- * - Jika NEXT_PUBLIC_USE_MOCK="false" ➔ Melakukan fetch() asli ke API Gateway dengan credentials: 'include'.
+ * - Jika NEXT_PUBLIC_USE_MOCK="false" ➔ Melakukan request via Axios ke API Gateway (Port 4000) dengan withCredentials: true.
  *
- * Sesuai konvensi teknis: docs/architecture/frontend-technical-notes.md
+ * Sesuai konvensi teknis: docs/architecture/frontend-technical-notes.md dan tiket MJ-058.
  */
+
+import axios from "axios";
 
 import {
   mockRegisterSuccess,
@@ -40,8 +42,82 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const simulateNetworkDelay = (ms = 400) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+// ============================================================
+// AXIOS CLIENT CONFIGURATION (MJ-058)
+// ============================================================
+
 /**
- * Helper internal untuk fetch riil ke API Gateway
+ * Instance Axios terpusat menuju API Gateway (Port 4000).
+ * Mengirim dan menerima cookie sesi httpOnly secara otomatis lewat withCredentials: true.
+ */
+export const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    "Content-Type": "application/json",
+  },
+  withCredentials: true, // Wajib: agar cookie sesi httpOnly dikirim otomatis
+  timeout: 10000,        // 10 detik batas waktu jaringan
+});
+
+/**
+ * Interceptor Response:
+ * - Menangani respon sukses (langsung mengembalikan body data).
+ * - Menangkap respon error dari API Gateway/Backend dan memformatnya sesuai kontrak Mojiji.
+ */
+apiClient.interceptors.response.use(
+  (response) => {
+    return response.data;
+  },
+  (error) => {
+    const isOffline =
+      !error.response ||
+      error.code === "ERR_NETWORK" ||
+      error.code === "ECONNREFUSED" ||
+      error.message === "Network Error";
+
+    const status = error.response?.status || (isOffline ? 503 : 500);
+
+    const defaultMessage = isOffline
+      ? "Tidak dapat terhubung ke server. Periksa koneksi internet Anda atau coba beberapa saat lagi."
+      : status === 429
+      ? "Terlalu banyak percobaan. Harap tunggu beberapa saat sebelum mencoba kembali."
+      : "Terjadi kendala pada server. Silakan coba beberapa saat lagi.";
+
+    const errorData = error.response?.data || {
+      success: false,
+      error: {
+        code: isOffline
+          ? "SERVER_OFFLINE"
+          : status === 429
+          ? "RATE_LIMIT_EXCEEDED"
+          : "NETWORK_ERROR",
+        message: defaultMessage,
+        details: [],
+      },
+    };
+
+    // Pastikan status HTTP dan flag offline selalu tercantum untuk penanganan kondisi spesifik
+    errorData.status = status;
+    errorData.isOffline = isOffline;
+
+    if (isOffline && !error.response) {
+      if (!errorData.error) errorData.error = {};
+      errorData.error.code = "SERVER_OFFLINE";
+      errorData.error.message =
+        "Tidak dapat terhubung ke server. Periksa koneksi internet Anda atau coba beberapa saat lagi.";
+    } else if (status === 429) {
+      if (!errorData.error) errorData.error = {};
+      errorData.error.message =
+        errorData.error.message ||
+        "Terlalu banyak percobaan. Harap tunggu beberapa saat sebelum mencoba kembali.";
+    }
+
+    return Promise.reject(errorData);
+  }
+);
+
+/**
+ * Helper internal untuk fetch riil fallback
  */
 async function realFetch(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
@@ -55,7 +131,6 @@ async function realFetch(endpoint, options = {}) {
       ...defaultHeaders,
       ...options.headers,
     },
-    // Wajib: kirim cookie sesi httpOnly otomatis ke API Gateway
     credentials: "include",
   });
 
@@ -73,7 +148,7 @@ async function realFetch(endpoint, options = {}) {
 }
 
 // ============================================================
-// 1. AUTHENTICATION & USER PROFILE
+// 1. AUTHENTICATION & USER PROFILE (AXIOS TERINTEGRASI - MJ-058)
 // ============================================================
 
 /**
@@ -93,9 +168,10 @@ export async function registerApi({ username, email, password }) {
     };
   }
 
-  return realFetch("/api/auth/register", {
-    method: "POST",
-    body: JSON.stringify({ username, email, password }),
+  return await apiClient.post("/api/auth/register", {
+    username,
+    email,
+    password,
   });
 }
 
@@ -130,9 +206,9 @@ export async function loginApi({ email, password }) {
     };
   }
 
-  return realFetch("/api/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
+  return await apiClient.post("/api/auth/login", {
+    email,
+    password,
   });
 }
 
@@ -146,9 +222,7 @@ export async function logoutApi() {
     return mockLogoutSuccess;
   }
 
-  return realFetch("/api/auth/logout", {
-    method: "POST",
-  });
+  return await apiClient.post("/api/auth/logout");
 }
 
 /**
@@ -161,9 +235,7 @@ export async function getMeApi() {
     return mockMeSuccess;
   }
 
-  return realFetch("/api/users/me", {
-    method: "GET",
-  });
+  return await apiClient.get("/api/users/me");
 }
 
 // ============================================================
