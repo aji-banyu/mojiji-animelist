@@ -516,47 +516,186 @@ Contoh request:
 
 ## 4. Tracker
 
-Seluruh endpoint tracker hanya boleh mengakses data milik pengguna yang sedang login. Pemeriksaan kepemilikan wajib dilakukan sebelum perubahan data.
+Seluruh endpoint tracker hanya boleh mengakses data milik pengguna yang sedang login. Pemeriksaan kepemilikan dan autentikasi wajib ditegakkan (didukung oleh pemeriksaan sesi terpusat di API Gateway tiket `MJ-064`).
 
 ### 4.1 GET /api/tracker?status=watching
 
-**Tujuan:** Mengambil daftar tracker milik pengguna.
+* **Status:** Terimplementasi (Tiket `MJ-065`)
+* **Tujuan:** Mengambil seluruh daftar judul anime/manga yang sedang dilacak oleh pengguna yang sedang login (dapat disaring berdasarkan status).
+* **Autentikasi:** Wajib (Sesi login `mojiji_session` atau header `X-User-Id` dari Gateway).
+* **Base URL:**
+  * Melalui API Gateway: `http://localhost:4000/api/tracker`
+  * Direct Service: `http://localhost:4003/api/tracker`
 
-Query parameter:
+#### Query Parameters
+| Parameter | Tipe | Wajib? | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `status` | `string` | Tidak | Filter status: `plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped` |
 
-* `status`: filter status opsional; nilai yang diperbolehkan harus disepakati tim.
+#### Status HTTP & Response
 
-Usulan status HTTP:
-
-* `200 OK` — daftar berhasil diambil.
-* `400 Bad Request` — filter tidak valid.
-* `401 Unauthorized` — belum login.
-* `500 Internal Server Error` — kesalahan internal.
-
-### 4.2 POST /api/tracker
-
-**Tujuan:** Menambahkan judul ke tracker.
-
-Contoh request awal:
-
+* **`200 OK`** — Daftar pelacakan berhasil diambil. Hanya mengembalikan item milik pengguna yang terautentikasi (isolasi data antar-pengguna terjamin).
 ```json
 {
-  "type": "anime",
-  "malId": 1,
-  "status": "watching",
-  "progress": 0
+  "success": true,
+  "data": [
+    {
+      "id": "c1f7a8b2-5e4d-4e2b-9a8c-7f6e5d4c3b2a",
+      "userId": "e4b2d56a-1f87-4948-a0c5-343219488a01",
+      "mediaType": "anime",
+      "malId": 20,
+      "title": "Naruto",
+      "imageUrl": "https://cdn.myanimelist.net/images/anime/1141/142503l.jpg",
+      "total": 220,
+      "status": "watching",
+      "progress": 5,
+      "createdAt": "2026-11-01T10:00:00.000Z",
+      "updatedAt": "2026-11-01T10:00:00.000Z"
+    }
+  ]
 }
 ```
 
-Usulan status HTTP:
+* **`400 Bad Request`** — Parameter filter status tidak valid.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Parameter filter tidak valid",
+    "details": [
+      "Filter status tidak valid. Pilihan: plan, watching, reading, completed, on_hold, dropped"
+    ]
+  }
+}
+```
 
-* `201 Created` — tracker berhasil dibuat.
-* `400 Bad Request` — input tidak valid.
-* `401 Unauthorized` — belum login.
-* `409 Conflict` — judul sudah ada di tracker, jika dibatasi unique constraint.
-* `500 Internal Server Error` — kesalahan internal.
+* **`401 Unauthorized`** — Permintaan tanpa sesi login yang valid.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali."
+  }
+}
+```
 
-Field request perlu diselaraskan dengan skema database.
+---
+
+### 4.2 POST /api/tracker
+
+* **Status:** Terimplementasi (Tiket `MJ-065`)
+* **Tujuan:** Menambahkan anime atau manga ke daftar pelacakan pengguna. Metadata judul, poster, dan total episode divalidasi dan diambil secara otomatis dari Catalog Service.
+* **Autentikasi:** Wajib (Sesi login `mojiji_session` atau header `X-User-Id` dari Gateway).
+* **Base URL:**
+  * Melalui API Gateway: `http://localhost:4000/api/tracker`
+  * Direct Service: `http://localhost:4003/api/tracker`
+
+#### Request Headers
+| Header | Nilai | Keterangan |
+| :--- | :--- | :--- |
+| `Content-Type` | `application/json` | Wajib |
+
+#### Request Body Schema (JSON)
+| Field | Tipe | Wajib? | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `mediaType` / `type` | `string` | Ya | `anime` atau `manga` |
+| `malId` / `mal_id` | `integer` | Ya | ID unik anime/manga pada MyAnimeList / Catalog Service |
+| `status` | `string` | Tidak | Status awal: `plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped` (default: `plan`) |
+| `progress` | `integer` | Tidak | Progres awal (default: `0`, tidak boleh melebihi total episode/chapter yang diketahui) |
+
+Contoh request:
+```json
+{
+  "mediaType": "anime",
+  "malId": 20,
+  "status": "watching",
+  "progress": 5
+}
+```
+
+#### Status HTTP & Response
+
+* **`201 Created`** — Item berhasil ditambahkan ke tracker pengguna.
+```json
+{
+  "success": true,
+  "data": {
+    "id": "c1f7a8b2-5e4d-4e2b-9a8c-7f6e5d4c3b2a",
+    "userId": "e4b2d56a-1f87-4948-a0c5-343219488a01",
+    "mediaType": "anime",
+    "malId": 20,
+    "title": "Naruto",
+    "imageUrl": "https://cdn.myanimelist.net/images/anime/1141/142503l.jpg",
+    "total": 220,
+    "status": "watching",
+    "progress": 5,
+    "createdAt": "2026-11-01T10:00:00.000Z",
+    "updatedAt": "2026-11-01T10:00:00.000Z"
+  }
+}
+```
+
+* **`400 Bad Request`** — Input tidak valid (misal `mediaType` bukan anime/manga, atau `progress` melebihi total yang diketahui).
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Data tracker tidak valid",
+    "details": [
+      "Parameter 'mediaType' atau 'type' wajib bernilai 'anime' atau 'manga'"
+    ]
+  }
+}
+```
+
+* **`401 Unauthorized`** — Permintaan tanpa sesi login yang valid.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali."
+  }
+}
+```
+
+* **`404 Not Found`** — Item anime/manga dengan ID tersebut tidak ditemukan pada database penyedia katalog.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Item anime dengan ID 99999999 tidak ditemukan di katalog."
+  }
+}
+```
+
+* **`409 Conflict`** — Judul anime atau manga tersebut sudah ada di daftar pelacakan pengguna (pelanggaran unique constraint `unique_user_media_mal`).
+```json
+{
+  "success": false,
+  "error": {
+    "code": "CONFLICT",
+    "message": "Item ini sudah ada di daftar pelacakan kamu."
+  }
+}
+```
+
+* **`502 Bad Gateway`** — Tracker Service gagal menghubungi Catalog Service internal.
+```json
+{
+  "success": false,
+  "error": {
+    "code": "BAD_GATEWAY",
+    "message": "Gagal menghubungi Catalog Service untuk memverifikasi item."
+  }
+}
+```
+
+---
 
 ### 4.3 PATCH /api/tracker/:id/status
 
