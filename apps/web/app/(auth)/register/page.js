@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { registerApi } from "@/lib/api";
+import useAuthStore from "@/store/authStore";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
 
   // === State Form ===
   const [formData, setFormData] = useState({
@@ -22,6 +24,13 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Jika sudah login, jangan izinkan buka form register -> alihkan ke /dashboard
+  useEffect(() => {
+    if (user) {
+      router.replace("/dashboard");
+    }
+  }, [user, router]);
+
   // === Handler: Update data saat pengguna mengetik ===
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -32,26 +41,35 @@ export default function RegisterPage() {
     }
   };
 
-  // === Fungsi Validasi Sisi Klien (Sesuai PRD) ===
+  // === Fungsi Validasi Sisi Klien (Sesuai PRD US-007 & Zod Backend Syafii) ===
   const validate = () => {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
 
-    // Validasi Username — minimal 3 karakter
-    if (!formData.username.trim()) {
+    // Validasi Username — 3 hingga 50 karakter, alfanumerik & underscore
+    const trimmedUsername = formData.username.trim();
+    if (!trimmedUsername) {
       newErrors.username = "Username wajib diisi";
-    } else if (formData.username.trim().length < 3) {
+    } else if (trimmedUsername.length < 3) {
       newErrors.username = "Username minimal 3 karakter";
+    } else if (trimmedUsername.length > 50) {
+      newErrors.username = "Username maksimal 50 karakter";
+    } else if (!usernameRegex.test(trimmedUsername)) {
+      newErrors.username = "Username hanya boleh huruf, angka, dan underscore (_)";
     }
 
-    // Validasi Email — wajib diisi dan format valid
-    if (!formData.email.trim()) {
+    // Validasi Email — wajib diisi, format valid, maksimal 255 karakter
+    const trimmedEmail = formData.email.trim();
+    if (!trimmedEmail) {
       newErrors.email = "Email wajib diisi";
-    } else if (!emailRegex.test(formData.email)) {
+    } else if (!emailRegex.test(trimmedEmail)) {
       newErrors.email = "Format email tidak valid";
+    } else if (trimmedEmail.length > 255) {
+      newErrors.email = "Email maksimal 255 karakter";
     }
 
-    // Validasi Password — WAJIB minimal 8 karakter (aturan mutlak PRD)
+    // Validasi Password — WAJIB minimal 8 karakter (aturan mutlak PRD US-007)
     if (!formData.password) {
       newErrors.password = "Password wajib diisi";
     } else if (formData.password.length < 8) {
@@ -72,24 +90,49 @@ export default function RegisterPage() {
   // === Handler: Saat form di-submit via API Layer ===
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate() || isSubmitting) return;
 
     setIsSubmitting(true);
 
     try {
-      // Memanggil fungsi registerApi (otomatis memilih Mock jika NEXT_PUBLIC_USE_MOCK="true")
+      // Memanggil fungsi registerApi via Axios ke API Gateway (atau Mock jika USE_MOCK aktif)
       const result = await registerApi({
-        username: formData.username,
-        email: formData.email,
+        username: formData.username.trim(),
+        email: formData.email.trim(),
         password: formData.password,
       });
 
       if (result.success) {
+        // Registrasi berhasil -> alihkan ke /login sesuai Acceptance Criteria US-007
         router.push("/login");
       }
     } catch (err) {
-      const errorMessage =
-        err?.error?.message || "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
+      // Penanganan Kode Respon Error Spesifik
+      let errorMessage = "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
+
+      if (
+        err?.isOffline ||
+        err?.error?.code === "SERVER_OFFLINE" ||
+        err?.message === "Network Error" ||
+        !err?.status ||
+        err?.status === 503
+      ) {
+        errorMessage =
+          "Tidak dapat terhubung ke server. Periksa koneksi internet Anda atau coba beberapa saat lagi.";
+      } else if (err?.status === 409) {
+        errorMessage = err?.error?.message || "Username atau Email sudah terdaftar. Silakan gunakan yang lain.";
+      } else if (err?.status === 429) {
+        errorMessage =
+          err?.error?.message ||
+          "Terlalu banyak percobaan. Harap tunggu beberapa saat sebelum mencoba kembali.";
+      } else if (err?.error?.details && Array.isArray(err.error.details)) {
+        errorMessage = err.error.details
+          .map((d) => (typeof d === "string" ? d : d.message || JSON.stringify(d)))
+          .join(", ");
+      } else if (err?.error?.message) {
+        errorMessage = err.error.message;
+      }
+
       setErrors((prev) => ({
         ...prev,
         general: errorMessage,
@@ -120,14 +163,15 @@ export default function RegisterPage() {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Pesan Error Global (jika email sudah terdaftar / conflict) */}
+          {/* Pesan Error Global / Banner Status Koneksi */}
           {errors.general && (
-            <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-center text-xs font-medium text-red-400">
-              {errors.general}
+            <div className="flex items-start gap-2.5 rounded-lg border border-red-500/60 bg-red-950/50 p-3.5 text-xs text-red-300 shadow-md">
+              <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
+              <span className="leading-relaxed font-medium">{errors.general}</span>
             </div>
           )}
 
-          {/* Field: Nama Lengkap / Username */}
+          {/* Field: Username */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-white">Username</label>
             <input

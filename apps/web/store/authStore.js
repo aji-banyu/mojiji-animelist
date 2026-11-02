@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { getMeApi } from "@/lib/api";
 
 /**
  * Auth Store — Menyimpan data profil pengguna yang sedang login.
@@ -39,6 +40,30 @@ const useAuthStore = create(
         set({
           isLoading: value,
         }),
+
+      // Verifikasi sesi cookie ke backend saat aplikasi dimuat / di-refresh
+      checkSession: async () => {
+        try {
+          const res = await getMeApi();
+          if (res?.success && res?.data) {
+            const userData = res.data.user || res.data;
+            set({
+              user: {
+                id: userData.id,
+                username: userData.username,
+                email: userData.email,
+              },
+            });
+          } else {
+            set({ user: null });
+          }
+        } catch (e) {
+          // Jika 401 Unauthorized (cookie expired/invalid), bersihkan state user
+          if (e?.status === 401) {
+            set({ user: null });
+          }
+        }
+      },
     }),
     {
       name: "mojiji_auth",

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, AlertCircle } from "lucide-react";
 import { loginApi } from "@/lib/api";
 import useAuthStore from "@/store/authStore";
 
 export default function LoginPage() {
   const router = useRouter();
+  const user = useAuthStore((s) => s.user);
 
   // === State Form ===
   const [formData, setFormData] = useState({
@@ -19,6 +20,13 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Jika sudah login, jangan izinkan buka form login -> alihkan ke /dashboard
+  useEffect(() => {
+    if (user) {
+      router.replace("/dashboard");
+    }
+  }, [user, router]);
 
   // === Handler: Update data saat pengguna mengetik ===
   const handleChange = (e) => {
@@ -52,25 +60,50 @@ export default function LoginPage() {
   // === Handler: Saat form di-submit via API Layer ===
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate() || isSubmitting) return;
 
     setIsSubmitting(true);
 
     try {
-      // Memanggil fungsi loginApi (Smart Mock jika NEXT_PUBLIC_USE_MOCK="true")
+      // Memanggil fungsi loginApi (Smart Mock jika USE_MOCK="true", API Gateway jika "false")
       const result = await loginApi({
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
       });
 
       if (result.success) {
-        // Simpan sesi user ke authStore agar AuthGuard mengizinkan akses ke /dashboard
-        useAuthStore.getState().login(result.data);
+        // Simpan sesi user ke authStore
+        const userData = result.data?.user || result.data;
+        useAuthStore.getState().login(userData);
         router.push("/dashboard");
       }
     } catch (err) {
-      const errorMessage =
-        err?.error?.message || "Terjadi kesalahan saat masuk. Silakan coba lagi.";
+      // Penanganan Kode Respon Error Spesifik
+      let errorMessage = "Terjadi kesalahan saat masuk. Silakan coba lagi.";
+
+      if (
+        err?.isOffline ||
+        err?.error?.code === "SERVER_OFFLINE" ||
+        err?.message === "Network Error" ||
+        !err?.status ||
+        err?.status === 503
+      ) {
+        errorMessage =
+          "Tidak dapat terhubung ke server. Periksa koneksi internet Anda atau coba beberapa saat lagi.";
+      } else if (err?.status === 401) {
+        errorMessage = err?.error?.message || "Email atau password salah. Silakan periksa kembali.";
+      } else if (err?.status === 429) {
+        errorMessage =
+          err?.error?.message ||
+          "Terlalu banyak percobaan. Harap tunggu beberapa saat sebelum mencoba kembali.";
+      } else if (err?.error?.details && Array.isArray(err.error.details)) {
+        errorMessage = err.error.details
+          .map((d) => (typeof d === "string" ? d : d.message || JSON.stringify(d)))
+          .join(", ");
+      } else if (err?.error?.message) {
+        errorMessage = err.error.message;
+      }
+
       setErrors((prev) => ({
         ...prev,
         general: errorMessage,
@@ -101,10 +134,11 @@ export default function LoginPage() {
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Pesan Error Global (jika kredensial salah / server error) */}
+          {/* Pesan Error Global / Banner Status Koneksi */}
           {errors.general && (
-            <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-center text-xs font-medium text-red-400">
-              {errors.general}
+            <div className="flex items-start gap-2.5 rounded-lg border border-red-500/60 bg-red-950/50 p-3.5 text-xs text-red-300 shadow-md">
+              <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
+              <span className="leading-relaxed font-medium">{errors.general}</span>
             </div>
           )}
 
