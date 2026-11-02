@@ -1,6 +1,15 @@
 const { z } = require("zod");
 const { searchCatalog, getCatalogDetail } = require("../services/tenraiClient");
 const { normalizeList, normalizeItem } = require("../adapters/catalogAdapter");
+const {
+  getCache,
+  setCache,
+  getStaleCache,
+  generateSearchKey,
+  generateDetailKey,
+  TTL_SEARCH,
+  TTL_DETAIL,
+} = require("../services/cacheService");
 
 // Skema validasi query parameters untuk pencarian katalog
 const searchSchema = z.object({
@@ -31,9 +40,10 @@ const detailSchema = z.object({
 
 /**
  * GET /api/catalog/search
- * Mencari anime atau manga melalui Tenrai API
+ * Mencari anime atau manga melalui Tenrai API dengan Redis Caching
  */
 async function search(req, res) {
+  let cacheKey = null;
   try {
     // 1. Validasi query parameters
     const parseResult = searchSchema.safeParse(req.query);
@@ -51,15 +61,21 @@ async function search(req, res) {
     }
 
     const { type, q, page, limit } = parseResult.data;
+    cacheKey = generateSearchKey(type, q, page, limit);
 
-    // 2. Panggil Tenrai API melalui client yang sudah memiliki rate limiter
+    // 2. Cek Cache Redis (Cache Hit: respon instan < 300 ms)
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      res.set("X-Cache", "HIT");
+      return res.status(200).json(cachedData);
+    }
+
+    // 3. Jika Cache Miss, panggil Tenrai API melalui client
     const rawResponse = await searchCatalog(type, q, page, limit);
 
-    // 3. Normalisasi data hasil pencarian
+    // 4. Normalisasi data hasil pencarian
     const normalizedData = normalizeList(rawResponse.data, type);
-
-    // 4. Kembalikan response 200 OK
-    return res.status(200).json({
+    const responsePayload = {
       success: true,
       data: normalizedData,
       meta: {
@@ -67,7 +83,15 @@ async function search(req, res) {
         limit: limit,
         total: rawResponse.pagination?.items?.total ?? normalizedData.length,
       },
+    };
+
+    // 5. Simpan ke Redis Cache (TTL 1 jam)
+    setCache(cacheKey, responsePayload, TTL_SEARCH).catch((err) => {
+      console.warn("[Cache Error] Gagal menulis search cache:", err.message);
     });
+
+    res.set("X-Cache", "MISS");
+    return res.status(200).json(responsePayload);
   } catch (error) {
     // Jika provider mengembalikan 404 pada pencarian, kembalikan array kosong 200 OK
     if (error.code === "NOT_FOUND") {
@@ -82,6 +106,16 @@ async function search(req, res) {
           total: 0,
         },
       });
+    }
+
+    // Penanganan Tenrai Down / Rate Limited: Gunakan salinan stale jika ada (AC Tiket MJ-079)
+    if (cacheKey) {
+      const staleData = await getStaleCache(cacheKey);
+      if (staleData) {
+        console.warn(`[Cache Fallback] Upstream Tenrai bermasalah (${error.code || error.message}). Menggunakan salinan stale dari Redis.`);
+        res.set("X-Cache", "STALE");
+        return res.status(200).json(staleData);
+      }
     }
 
     // Penanganan pembatasan permintaan (429 dari upstream Tenrai)
@@ -131,9 +165,10 @@ async function search(req, res) {
 
 /**
  * GET /api/catalog/:type/:malId
- * Mengambil detail satu anime atau manga berdasarkan MAL ID
+ * Mengambil detail satu anime atau manga berdasarkan MAL ID dengan Redis Caching
  */
 async function getDetail(req, res) {
+  let cacheKey = null;
   try {
     // 1. Validasi route parameters (:type, :malId)
     const parseResult = detailSchema.safeParse(req.params);
@@ -151,8 +186,16 @@ async function getDetail(req, res) {
     }
 
     const { type, malId } = parseResult.data;
+    cacheKey = generateDetailKey(type, malId);
 
-    // 2. Panggil Tenrai API melalui client
+    // 2. Cek Cache Redis (Cache Hit: respon instan < 300 ms)
+    const cachedData = await getCache(cacheKey);
+    if (cachedData) {
+      res.set("X-Cache", "HIT");
+      return res.status(200).json(cachedData);
+    }
+
+    // 3. Jika Cache Miss, panggil Tenrai API melalui client
     const rawResponse = await getCatalogDetail(type, malId);
 
     if (!rawResponse || !rawResponse.data) {
@@ -166,19 +209,25 @@ async function getDetail(req, res) {
       });
     }
 
-    // 3. Normalisasi data objek menggunakan adapter
+    // 4. Normalisasi data objek menggunakan adapter
     const normalizedData = normalizeItem(rawResponse.data, type);
-
-    // 4. Kembalikan response 200 OK
-    return res.status(200).json({
+    const responsePayload = {
       success: true,
       data: normalizedData,
+    };
+
+    // 5. Simpan ke Redis Cache (TTL 24 jam)
+    setCache(cacheKey, responsePayload, TTL_DETAIL).catch((err) => {
+      console.warn("[Cache Error] Gagal menulis detail cache:", err.message);
     });
+
+    res.set("X-Cache", "MISS");
+    return res.status(200).json(responsePayload);
   } catch (error) {
     const typeLabel = req.params?.type === "anime" ? "Anime" : "Manga";
     const idLabel = req.params?.malId || "";
 
-    // Penanganan 404 Not Found jika judul tidak ditemukan di provider
+    // Penanganan 404 Not Found jika judul memang tidak ada di database Tenrai
     if (error.code === "NOT_FOUND") {
       return res.status(404).json({
         success: false,
@@ -187,6 +236,16 @@ async function getDetail(req, res) {
           message: `${typeLabel} dengan ID ${idLabel} tidak ditemukan`,
         },
       });
+    }
+
+    // Penanganan Tenrai Down / Timeout / Error Upstream: Gunakan salinan stale jika ada (AC Tiket MJ-079)
+    if (cacheKey) {
+      const staleData = await getStaleCache(cacheKey);
+      if (staleData) {
+        console.warn(`[Cache Fallback] Upstream Tenrai bermasalah (${error.code || error.message}). Menggunakan salinan stale dari Redis.`);
+        res.set("X-Cache", "STALE");
+        return res.status(200).json(staleData);
+      }
     }
 
     // Penanganan pembatasan permintaan (429 dari upstream Tenrai)
