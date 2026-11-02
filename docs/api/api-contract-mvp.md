@@ -281,6 +281,24 @@ Contoh request:
 
 ## 3. Catalog
 
+### 3.0 Kebijakan Caching Redis & Ketahanan Upstream (Tiket MJ-079)
+
+Untuk mengoptimalkan performa respons pencarian di bawah 300 ms, menghemat kuota gratis Upstash (maksimal 500.000 perintah/bulan), dan melindungi sistem saat provider Tenrai mengalami gangguan, Catalog Service menerapkan arsitektur Redis Caching:
+1. **Header Respons `X-Cache`:**
+   * `HIT`: Data diambil langsung dari memori Redis cache (waktu respons instan < 15 ms).
+   * `MISS`: Data belum tersedia di cache, Catalog Service mengambil dari Tenrai API dan menyimpannya ke Redis.
+   * `STALE`: Upstream Tenrai mengalami error (429/502/504/timeout), Catalog Service mengembalikan salinan cadangan stale dari Redis agar pengguna tetap mendapatkan data tanpa mengalami server error.
+2. **Durasi Penyimpanan (Time To Live / TTL):**
+   * Hasil Pencarian (`/api/catalog/search`): TTL 1 jam (`3600` detik).
+   * Detail Judul (`/api/catalog/:type/:malId`): TTL 24 jam (`86400` detik).
+   * Salinan Stale Cadangan: TTL 7 hari (`604800` detik).
+3. **Prefix Kunci per Lingkungan:**
+   * Menggunakan variabel `REDIS_KEY_PREFIX` (`mojiji_local:`, `stg:`, `prod:`) untuk mengisolasi data antar-lingkungan development, staging, dan production.
+4. **Graceful Degradation:**
+   * Jika koneksi Redis terputus, Catalog Service otomatis melakukan bypass langsung ke Tenrai API tanpa membuat server crash.
+
+---
+
 ### 3.1 GET /api/catalog/search?type=anime&q=naruto
 
 * **Status:** Terimplementasi (Tiket `MJ-062`)
