@@ -715,7 +715,9 @@ Contoh request:
 
 ---
 
-### 4.3 PATCH /api/tracker/:id/status
+### 4.3 PATCH /api/tracker/:id/status (atau PATCH /api/tracker/:id)
+
+* **Status:** Terimplementasi (Tiket MJ-080)
 
 **Tujuan:** Mengubah status tracker.
 
@@ -739,6 +741,8 @@ Usulan status HTTP:
 
 ### 4.4 POST /api/tracker/:id/increment
 
+* **Status:** Terimplementasi (Tiket MJ-080)
+
 **Tujuan:** Menambah progres tracker sebesar satu.
 
 Aturan awal:
@@ -756,6 +760,8 @@ Usulan status HTTP:
 * `500 Internal Server Error` — kesalahan internal.
 
 ### 4.5 DELETE /api/tracker/:id
+
+* **Status:** Terimplementasi (Tiket MJ-080)
 
 **Tujuan:** Menghapus tracker milik pengguna.
 
