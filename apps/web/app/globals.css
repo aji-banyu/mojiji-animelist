@@ -128,3 +128,15 @@
     @apply font-sans;
   }
 }
+
+
+/* Sembunyikan Next.js dev indicator ("N" button) secara menyeluruh */
+nextjs-portal,
+[data-nextjs-dev-tools-indicator],
+[data-nextjs-toast],
+div[data-nextjs-dev-tools-indicator] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

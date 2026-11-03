@@ -143,26 +143,23 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden">
-      {/* === Latar Belakang Gelap + Overlay === */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0F1015] to-[#000000]" />
-      <div className="absolute inset-0 bg-[#0F1015]/60" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0A0B0E] px-4 py-12">
+      {/* === Ambient Radial Glow (Latar Belakang Halus) === */}
+      <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-red-600/10 blur-[130px]" />
+      <div className="pointer-events-none absolute -bottom-40 left-1/4 h-[400px] w-[400px] rounded-full bg-purple-600/10 blur-[120px]" />
 
-      {/* === Logo Mojiji (Pojok Kiri Atas) === */}
-      <div className="absolute left-6 top-5 z-10">
-        <Link href="/" className="text-3xl font-bold tracking-tight text-[#FF4655]">
-          MJ
-        </Link>
-      </div>
-
-      {/* === Konten Form === */}
-      <div className="relative z-10 w-full max-w-[400px] px-5 py-12">
-        {/* Judul */}
-        <h1 className="mb-8 text-center text-3xl font-bold text-white">
+      {/* === Kartu Form Glassmorphism Terpusat (Tanpa Logo MJ Sesuai Preferensi) === */}
+      <div className="relative z-10 w-full max-w-[430px] rounded-2xl border border-white/10 bg-[#12141A]/90 p-8 shadow-2xl backdrop-blur-xl sm:p-10">
+        {/* Judul & Keterangan */}
+        <h1 className="mb-2 text-center text-2xl font-bold tracking-tight text-white sm:text-3xl">
           Buat Akun Baru
         </h1>
+        <p className="mb-8 text-center text-xs text-neutral-400 sm:text-sm">
+          Mulai perjalanan pelacakan anime dan manga kamu di Mojiji
+        </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Form dengan noValidate agar tooltip bawaan browser tidak mengganggu */}
+        <form noValidate onSubmit={handleSubmit} className="space-y-4">
           {/* Pesan Error Global / Banner Status Koneksi */}
           {errors.general && (
             <div className="flex items-start gap-2.5 rounded-lg border border-red-500/60 bg-red-950/50 p-3.5 text-xs text-red-300 shadow-md">
@@ -172,19 +169,24 @@ export default function RegisterPage() {
           )}
 
           {/* Field: Username */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white">Username</label>
+          <div className="space-y-1.5">
+            <label htmlFor="register-username" className="text-sm font-medium text-white">
+              Username
+            </label>
             <input
+              id="register-username"
               name="username"
               type="text"
-              placeholder="Masukkan Username"
+              autoComplete="username"
+              placeholder="Masukkan Username..."
               value={formData.username}
               onChange={handleChange}
               disabled={isSubmitting}
-              className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${errors.username
+              className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${
+                errors.username
                   ? "border-red-500 focus:border-red-500"
-                  : "border-white/80 focus:border-[#FF4655]"
-                }`}
+                  : "border-white/20 focus:border-[#FF4655]"
+              }`}
             />
             {errors.username && (
               <p className="text-xs text-red-400">{errors.username}</p>
@@ -192,19 +194,24 @@ export default function RegisterPage() {
           </div>
 
           {/* Field: Email Address */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white">Email Address</label>
+          <div className="space-y-1.5">
+            <label htmlFor="register-email" className="text-sm font-medium text-white">
+              Email Address
+            </label>
             <input
+              id="register-email"
               name="email"
               type="email"
+              autoComplete="email"
               placeholder="Masukkan Email..."
               value={formData.email}
               onChange={handleChange}
               disabled={isSubmitting}
-              className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${errors.email
+              className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${
+                errors.email
                   ? "border-red-500 focus:border-red-500"
-                  : "border-white/80 focus:border-[#FF4655]"
-                }`}
+                  : "border-white/20 focus:border-[#FF4655]"
+              }`}
             />
             {errors.email && (
               <p className="text-xs text-red-400">{errors.email}</p>
@@ -212,26 +219,32 @@ export default function RegisterPage() {
           </div>
 
           {/* Field: Password (dengan ikon mata) */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white">Password</label>
+          <div className="space-y-1.5">
+            <label htmlFor="register-password" className="text-sm font-medium text-white">
+              Password
+            </label>
             <div className="relative">
               <input
+                id="register-password"
                 name="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Masukkan Password..."
+                autoComplete="new-password"
+                placeholder="Minimal 8 karakter..."
                 value={formData.password}
                 onChange={handleChange}
                 disabled={isSubmitting}
-                className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 pr-12 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${errors.password
+                className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 pr-12 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${
+                  errors.password
                     ? "border-red-500 focus:border-red-500"
-                    : "border-white/80 focus:border-[#FF4655]"
-                  }`}
+                    : "border-white/20 focus:border-[#FF4655]"
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9EA7] hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9EA7] hover:text-white cursor-pointer"
                 tabIndex={-1}
+                aria-label={showPassword ? "Sembunyikan password" : "Lihat password"}
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -242,26 +255,32 @@ export default function RegisterPage() {
           </div>
 
           {/* Field: Konfirmasi Password (dengan ikon mata) */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-white">Konfirmasi Password</label>
+          <div className="space-y-1.5">
+            <label htmlFor="register-confirm-password" className="text-sm font-medium text-white">
+              Konfirmasi Password
+            </label>
             <div className="relative">
               <input
+                id="register-confirm-password"
                 name="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
-                placeholder="Masukkan Password..."
+                autoComplete="new-password"
+                placeholder="Ulangi password..."
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 disabled={isSubmitting}
-                className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 pr-12 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${errors.confirmPassword
+                className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 pr-12 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${
+                  errors.confirmPassword
                     ? "border-red-500 focus:border-red-500"
-                    : "border-white/80 focus:border-[#FF4655]"
-                  }`}
+                    : "border-white/20 focus:border-[#FF4655]"
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9EA7] hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9EA7] hover:text-white cursor-pointer"
                 tabIndex={-1}
+                aria-label={showConfirmPassword ? "Sembunyikan password" : "Lihat password"}
               >
                 {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -275,32 +294,32 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full rounded-lg bg-[#FF4655] py-3 text-lg font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="w-full rounded-lg bg-[#FF4655] py-3 text-base font-bold text-white shadow-lg transition-all hover:bg-[#e03d4a] active:scale-98 disabled:opacity-50 cursor-pointer"
           >
             {isSubmitting ? "Mendaftarkan..." : "Daftar"}
           </button>
         </form>
 
         {/* Link ke Login */}
-        <p className="mt-4 text-center text-sm font-semibold text-white">
+        <p className="mt-5 text-center text-sm font-medium text-neutral-300">
           Sudah punya akun?{" "}
-          <Link href="/login" className="text-[#FF4655] hover:underline">
+          <Link href="/login" className="font-semibold text-[#FF4655] hover:underline">
             Login di sini
           </Link>
         </p>
 
         {/* Pemisah "or" */}
-        <div className="my-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/40" />
-          <span className="text-sm font-medium text-white">or</span>
-          <div className="h-px flex-1 bg-white/40" />
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-white/10" />
+          <span className="text-xs uppercase tracking-wider text-neutral-400">or</span>
+          <div className="h-px flex-1 bg-white/10" />
         </div>
 
         {/* Tombol Daftar dengan Google */}
         <button
           type="button"
           disabled
-          className="flex w-full items-center justify-center gap-3 rounded-md border border-white/80 bg-[#181A20] px-4 py-3 text-sm font-semibold text-[#9E9EA7] transition-colors hover:border-white hover:text-white disabled:opacity-60"
+          className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/20 bg-[#181A20] px-4 py-3 text-sm font-semibold text-neutral-300 transition-colors hover:border-white/40 hover:text-white disabled:opacity-60 cursor-not-allowed"
         >
           <svg width="20" height="20" viewBox="0 0 48 48">
             <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
