@@ -246,21 +246,37 @@ export async function getMeApi() {
  * Pencarian anime atau manga
  * GET /api/catalog/search?q=...&type=...
  */
-export async function searchCatalogApi({ q = "", type = "anime", page = 1, limit = 10 }) {
+export async function searchCatalogApi({ q = "", type = "anime", page = 1, limit = 20 }, signal = null) {
   if (USE_MOCK) {
-    await simulateNetworkDelay();
-    return type === "manga" ? mockSearchManga : mockSearchAnime;
+    await simulateNetworkDelay(300);
+    const source = type === "manga" ? mockSearchManga.data : mockSearchAnime.data;
+    const trimmed = (q || "").trim().toLowerCase();
+
+    // Smart Mock: Saring data berdasarkan kata kunci pencarian
+    const filtered = trimmed
+      ? source.filter((item) => item.title && item.title.toLowerCase().includes(trimmed))
+      : source;
+
+    return {
+      success: true,
+      data: filtered,
+      meta: {
+        page: Number(page),
+        limit: Number(limit),
+        total: filtered.length,
+      },
+    };
   }
 
-  const queryParams = new URLSearchParams({
-    q,
-    type,
-    page: String(page),
-    limit: String(limit),
-  });
-
-  return realFetch(`/api/catalog/search?${queryParams.toString()}`, {
-    method: "GET",
+  // Pemanggilan riil ke API Gateway dengan dukungan AbortController signal
+  return await apiClient.get("/api/catalog/search", {
+    params: {
+      q: (q || "").trim(),
+      type,
+      page,
+      limit,
+    },
+    signal: signal || undefined,
   });
 }
 
