@@ -286,14 +286,12 @@ export async function searchCatalogApi({ q = "", type = "anime", page = 1, limit
  */
 export async function getCatalogDetailApi(type, malId) {
   if (USE_MOCK) {
-    await simulateNetworkDelay();
+    await simulateNetworkDelay(300);
     if (type === "manga") return mockMangaDetail;
     return mockAnimeDetail;
   }
 
-  return realFetch(`/api/catalog/${type}/${malId}`, {
-    method: "GET",
-  });
+  return await apiClient.get(`/api/catalog/${type}/${malId}`);
 }
 
 // ============================================================
