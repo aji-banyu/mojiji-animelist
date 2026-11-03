@@ -1,12 +1,12 @@
 ---
-title: "Panduan Deployment, Operasional Server & Batasan Free Hosting"
-sidebar_position: 5
-tags: [infrastruktur, devops, deployment, rollback, logs, free-hosting, staging, production]
+title: "Panduan Deployment, CI/CD Zero-Build & SOP Server (MJ-090)"
+sidebar_position: 6
+tags: [infrastruktur, devops, deployment, cicd, zero-build, github-actions, rollback, logs, staging, production]
 ---
 
-# Panduan Deployment, Operasional Server & Batasan Free Hosting (MJ-090)
+# Panduan Deployment, CI/CD Zero-Build & SOP Server (MJ-090)
 
-Dokumen ini merupakan panduan operasional resmi bagi seluruh anggota tim pengembang **Mojiji AnimeList** (DevOps, Backend, DBA, Frontend, QA). Panduan ini memuat tata letak arsitektur server VPS, alur otomatisasi deployment, prosedur darurat (*rollback*), tata cara penelusuran log, serta inventarisasi batasan layanan hosting gratis (*free-tier*) beserta langkah mitigasinya.
+Dokumen ini merupakan panduan operasional standar (*Standard Operating Procedure / SOP*) bagi seluruh anggota tim pengembang **Mojiji AnimeList** (DevOps, Backend, DBA, Frontend, QA). Panduan ini memuat tata letak arsitektur server VPS, alur otomatisasi deployment CI/CD tanpa beban di server (*Zero-Build Architecture*), penanganan *caching* & *hot-reload* web server, prosedur tanggap darurat (*rollback*), serta tata cara penelusuran log sistem.
 
 ---
 
@@ -25,16 +25,18 @@ Peladen VPS Mojiji menggunakan sistem operasi **Ubuntu 22.04 LTS (x86_64)** deng
 ├── staging/                           # Lingkungan Staging (staging.mojiji.web.id)
 │   ├── .env                           # Konfigurasi secret staging (chmod 600)
 │   ├── docker-compose.server.yml      # Orkestrasi container staging
+│   ├── web/                           # Berkas statis ekspor Next.js staging (/srv)
 │   └── .last_good_tag                 # Catatan tag image stabil terakhir untuk rollback
 │
 ├── production/                        # Lingkungan Production (mojiji.web.id)
 │   ├── .env                           # Konfigurasi secret production (chmod 600)
 │   ├── docker-compose.server.yml      # Orkestrasi container production
+│   ├── web/                           # Berkas statis ekspor Next.js production (/srv)
 │   └── .last_good_tag                 # Catatan tag image rilis stabil terakhir
 │
 ├── backups/                           # Repositori Backup Otomatis Database
 │   ├── mojiji_prod_backup_YYYYMMDD_HHMMSS.sql
-│   └── (Folder di luar repo git dengan hak akses ketat root/deploy)
+│   └── (Folder di luar repo git dengan hak akses ketat deploy:deploy)
 │
 └── caddy/
     ├── Caddyfile                      # Konfigurasi reverse proxy & SSL otomatis
@@ -45,18 +47,60 @@ Peladen VPS Mojiji menggunakan sistem operasi **Ubuntu 22.04 LTS (x86_64)** deng
 
 ---
 
-## 2. Alur Deployment Otomatis (CI/CD GitHub Actions)
+## 2. Diagram Alur CI/CD Zero-Build Pipeline
 
-Sesuai aturan baku PRD dan standar rekayasa tim:
-> ⚠️ **PANTANGAN UTAMA:** Dilarang keras melakukan proses build image Docker (`docker build`) atau kompilasi frontend (`npm run build`) langsung di dalam VPS. Semua proses kompilasi dilakukan pada runner GitHub Actions.
+Prinsip utama arsitektur deployment Mojiji AnimeList adalah **Zero-Build on VPS**. Server VPS berkapasitas 2 GB RAM **tidak pernah** menjalankan proses kompilasi berat seperti `docker build` atau `npm run build`. Seluruh kompilasi diselesaikan oleh runner GitHub Actions di cloud.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Dev as Developer / QA
+    participant GH as GitHub Repo (develop/main)
+    participant GHA as GitHub Actions Runner (Cloud)
+    participant GHCR as GitHub Container Registry (ghcr.io)
+    participant VPS as Peladen VPS (mojiji-1966)
+    participant DB as Supabase PostgreSQL
+
+    Dev->>GH: Merge Pull Request (Ke develop / main)
+    GH->>GHA: Trigger Pipeline Deployment
+    Note over GHA: 1. Jalankan Linter & Unit Test<br/>2. docker build 4 Microservices<br/>3. npm run build (Next.js Static Export)
+    GHA->>GHCR: Push Docker Images (:staging-<sha> atau :latest)
+    GHA->>VPS: Kirim File Statis Web & Salin Compose via SSH / rsync
+    
+    activate VPS
+    Note over VPS: Eksekusi deploy.sh
+    VPS->>DB: Jalankan Migrasi Skema: dbmate up (Ephemeral Container)
+    alt Migrasi Skema Berhasil
+        DB-->>VPS: Migrasi Selesai (200 OK)
+        VPS->>GHCR: Pull Image Baru dari GHCR
+        VPS->>VPS: docker compose up -d (Switch Kontainer)
+        VPS->>VPS: caddy reload / restart (Flush Cache Konfigurasi)
+        VPS->>VPS: Healthcheck /api/health (Max 10 Retries)
+        alt Healthcheck Sukses (200 OK)
+            VPS->>VPS: Simpan SHA ke .last_good_tag
+            VPS-->>GHA: Deployment Selesai Berhasil ✅
+        else Healthcheck Gagal / Timeout
+            VPS->>VPS: AUTO-ROLLBACK ke .last_good_tag ⚠️
+            VPS-->>GHA: Deployment Gagal (Rollback Terpicu) ❌
+        end
+    else Migrasi Skema Gagal
+        DB-->>VPS: Migration Error!
+        VPS-->>GHA: Batalkan Deployment (Versi Lama Tetap Utuh) 🛑
+    end
+    deactivate VPS
+```
+
+---
+
+## 3. Detail Pelaksanaan Tahapan Deployment
 
 ### A. Deployment Lingkungan Staging (`staging.mojiji.web.id`)
 1. **Pemicu (Trigger):** Setiap kali Pull Request di-merge ke branch **`develop`**.
-2. **Tahapan di GitHub Actions (`deploy-staging.yml`):**
-   * Linting dan verifikasi build seluruh paket monorepo.
+2. **Tahapan di GitHub Actions Runner:**
+   * Linting dan verifikasi kompilasi paket monorepo.
    * Pembuatan Docker Image backend dengan tag commit (`staging-<short-sha>`).
-   * Ekspor frontend Next.js statis (`output: "export"`).
-   * Pengiriman berkas rilis ke server VPS melalui jalur aman SSH.
+   * Ekspor frontend Next.js statis (`output: "export"` menghasilkan artefak di direktori `out/`).
+   * Pengiriman berkas rilis dan artefak frontend ke server VPS melalui jalur aman SSH.
 3. **Eksekusi di Peladen VPS (oleh Runner Pipeline):**
    * Migrasi skema database dijalankan otomatis terlebih dahulu:
      ```bash
@@ -67,18 +111,36 @@ Sesuai aturan baku PRD dan standar rekayasa tim:
      docker compose -p mojiji-staging --env-file /opt/mojiji/staging/.env -f /opt/mojiji/staging/docker-compose.server.yml up -d --remove-orphans
      ```
    * Penukaran file web statis di folder `/srv/staging`.
+   * Memuat ulang konfigurasi web server Caddy:
+     ```bash
+     docker exec mojiji_caddy_server_staging caddy reload --config /etc/caddy/Caddyfile || docker restart mojiji_caddy_server_staging
+     ```
    * Verifikasi kesehatan layanan (*healthcheck*) `/api/health`.
 
 ### B. Deployment Lingkungan Production (`mojiji.web.id`)
 1. **Pemicu (Trigger):** Setelah seluruh Acceptance Criteria diverifikasi oleh QA (Nadia) di Staging, dibuat Pull Request resmi dari `develop` ke **`main`**. Merge ke `main` memicu `deploy-production.yml`.
 2. **Prosedur Pengamanan Tambahan Production:**
-   * **Backup Otomatis Wajib (`pg_dump`):** Sebelum migrasi dieksekusi, pipeline secara otomatis melakukan dump database production ke `/opt/mojiji/backups/`. Jika backup gagal atau ukuran file kosong (0 byte), deploy langsung dibatalkan demi keamanan data.
+   * **Backup Otomatis Wajib (`pg_dump`):** Sebelum migrasi dieksekusi, pipeline secara otomatis melakukan dump database production ke `/opt/mojiji/backups/mojiji_prod_backup_YYYYMMDD_HHMMSS.sql`. Jika proses backup gagal atau ukuran file kosong (0 byte), deploy langsung dibatalkan demi keamanan integritas data.
    * Eksekusi migrasi database `migrate up` pada database production.
-   * Container aplikasi beralih ke tag rilis baru secara bertahap (*zero-downtime*).
+   * Kontainer aplikasi beralih ke tag rilis baru secara bertahap (*zero-downtime*).
+   * Verifikasi kesehatan layanan publik di `https://mojiji.web.id/api/health`.
 
 ---
 
-## 3. Panduan Pemantauan & Pengecekan Log (Perintah Harian DevOps)
+## 4. Pelajaran Kritis Operasional: Caddy Configuration & In-Memory Cache
+
+> [!WARNING] Catatan Penanganan Insiden Caddy (Incident Retrospective)
+> Saat melakukan deployment perubahan konfigurasi Caddyfile atau penggantian berkas statis frontend:
+> 1. **Perilaku Docker Compose:** Docker Compose hanya mendeteksi perubahan konfigurasi kontainer pada file YAML. Jika image tag kontainer Caddy (`caddy:2-alpine`) tidak berubah, Docker Compose akan menandai Caddy sebagai *up-to-date* dan **TIDAK AKAN me-restart kontainer Caddy**.
+> 2. **In-Memory Cache Caddy:** Caddy memuat konfigurasi `Caddyfile` ke dalam memori RAM saat proses awal dinyalakan. Jika file `Caddyfile` yang di-mount berubah, Caddy tetap menggunakan konfigurasi lama di memori hingga diperintahkan *reload*.
+> 3. **Solusi Standar:** Setiap skrip deployment (`deploy.sh` dan `staging-up.sh`) wajib menyertakan perintah eksplisit pemuatan ulang Caddy:
+>    ```bash
+>    docker exec mojiji_caddy_server_staging caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || docker restart mojiji_caddy_server_staging
+>    ```
+
+---
+
+## 5. Panduan Pemantauan & Pengecekan Log (Perintah Harian DevOps)
 
 Seluruh anggota tim yang memiliki akses ke server dapat memeriksa status sistem menggunakan perintah-perintah standar berikut:
 
@@ -89,7 +151,7 @@ docker compose -p mojiji-staging ps
 ```
 
 ### B. Memeriksa Log Aplikasi (Troubleshooting Error)
-Gunakan opsi `--tail 100` dan `-f` (*follow*) untuk memantau log secara real-time tanpa membebani terminal:
+Gunakan opsi `--tail 100` dan `-f` (*follow*) untuk memantau log secara real-time tanpa membebani memori terminal:
 ```bash
 # Log API Gateway
 docker compose -p mojiji-staging logs --tail 100 -f gateway
@@ -119,7 +181,7 @@ free -m
 df -h
 ```
 
-### D. Merestart Container yang Mengalami Kendala
+### D. Merestart Container Tertentu yang Mengalami Kendala
 Jika salah satu service mengalami *deadlock* atau *unresponsive*:
 ```bash
 docker compose -p mojiji-staging restart <nama_service>
@@ -127,53 +189,53 @@ docker compose -p mojiji-staging restart <nama_service>
 
 ---
 
-## 4. Prosedur Tanggap Darurat: Rollback Versi Aplikasi
+## 6. Prosedur Tanggap Darurat: Rollback Versi Aplikasi
 
 Jika rilis terbaru menimbulkan bug kritis di lingkungan Staging maupun Production:
 
-### A. Prosedur Rollback Aplikasi & Web Statis
-1. Salin tag rilis stabil sebelumnya dari berkas `.last_good_tag`:
+```mermaid
+flowchart TD
+    Issue[Insiden / Bug Kritis Ditemukan Pasca Deploy] --> Check[Periksa Ketersediaan .last_good_tag]
+    Check --> Action[Eksekusi ./infra/scripts/rollback.sh staging]
+    Action --> ReadTag[Ambil Tag Stabil Sebelumnya]
+    ReadTag --> Recreate[docker compose up -d dengan Tag Lama]
+    Recreate --> ReloadCaddy[docker restart / reload caddy]
+    ReloadCaddy --> Verify[curl /api/health -> 200 OK]
+    Verify --> Resolved[Sistem Kembali Normal Tanpa Merusak Database]
+```
+
+### A. Prosedur Rollback Cepat via Skrip VPS
+1. Masuk ke terminal VPS via SSH:
    ```bash
-   PREV_TAG=$(cat /opt/mojiji/staging/.last_good_tag)
+   ssh deploy@mojiji.web.id
    ```
-2. Jalankan deployment ulang menggunakan tag stabil tersebut:
+2. Jalankan skrip pemulihan darurat:
    ```bash
-   APP_TAG=$PREV_TAG docker compose -p mojiji-staging --env-file /opt/mojiji/staging/.env -f /opt/mojiji/staging/docker-compose.server.yml up -d
+   cd /opt/mojiji
+   ./infra/scripts/rollback.sh staging
    ```
-3. Kembalikan folder web statis ke versi build dari tag lama.
-4. Verifikasi endpoint `/api/health` kembali merespons status `200 OK`.
+3. Skrip akan secara otomatis membaca tag stabil dari `.last_good_tag`, menghidupkan kembali kontainer versi sebelumnya, memuat ulang Caddy, dan mengonfirmasi respons status `200 OK`.
 
 ### B. ⚠️ Filosofi Penanganan Database: Tidak Ada Rollback Skema Otomatis
-* **Aturan Emas:** Skrip deployment **DILARANG** menjalankan perintah `dbmate down` secara otomatis saat terjadi kegagalan aplikasi.
+* **Aturan Emas:** Skrip deployment dan rollback **DILARANG KERAS** menjalankan perintah `dbmate down` secara otomatis saat terjadi kegagalan aplikasi.
 * **Alasan:** Menjalankan rollback skema otomatis (`DROP COLUMN` atau `DROP TABLE`) dapat melenyapkan data pengguna yang baru saja masuk secara permanen.
 * **Standar Rekayasa Tim:** Seluruh migrasi DDL wajib bersifat *backward-compatible* (menambahkan kolom baru bersifat `NULLABLE` atau dengan `DEFAULT`). Jika terjadi kesalahan rancangan skema, solusinya adalah membuat tiket perbaikan cepat (*hotfix*) dengan file migrasi baru (*forward-fix migration*).
 
 ---
 
-## 5. Batasan Layanan Hosting Gratis (Free-Tier Limits) & Mitigasi
+## 7. Tindak Lanjut Kolaborasi Tim (Handoff Antar-Peran)
 
-Aplikasi Mojiji mengandalkan arsitektur *Zero-Cost Infrastructure* dengan memanfaatkan kuota gratis dari penyedia layanan cloud. Berikut adalah batasan kritis yang wajib dipahami oleh seluruh tim:
-
-| Penyedia Layanan | Komponen / Peran | Batasan Paket Gratis (*Free Tier Limit*) | Dampak Risiko | Tindakan Pencegahan / Mitigasi Tim |
-| :--- | :--- | :--- | :--- | :--- |
-| **Supabase** | Database PostgreSQL (Multi-Schema) | • Maksimal **2 projects** aktif per organisasi.<br>• Kuota penyimpanan DB: **500 MB**.<br>• **Auto-Pause (Hibernasi)** jika tidak ada akses selama **1 minggu** (7 hari).<br>• Tidak ada fitur Automated Backup harian gratis. | • Jika hibernasi saat jadwal demo dosen, aplikasi akan melempar *Network Error*.<br>• Kehilangan data jika skema rusak tanpa backup. | 1. **Pemanasan Pra-Demo:** DevOps wajib membuka aplikasi 1 hari sebelum presentasi untuk memastikan status Supabase *Active*.<br>2. **Automated pg_dump:** DevOps menyetel pencadangan mandiri ke `/opt/mojiji/backups` di VPS sebelum setiap migrasi rilis.<br>3. **Koneksi Hemat:** Pool koneksi diatur `max: 3` per service agar tidak kehabisan kuota direct connection. |
-| **Upstash** | Cache & Session Store (Redis Serverless) | • Kuota permintaan: **500.000 commands / bulan** (~10.000 - 15.000 commands / hari).<br>• Kapasitas memori: **256 MB**.<br>• Maksimal transfer data: 100 MB / request. | Jika kuota bulanan habis, Redis akan menolak perintah *SET/GET* (error `ERR max daily request limit exceeded`). | 1. **Cache TTL Eksplisit:** Setiap *key* cache wajib memiliki TTL (misal: anime detail 24 jam, search result 1 jam).<br>2. **Graceful Fallback di Backend:** Jika Redis error/overlimit, Backend wajib menangkap error (*try-catch*) dan langsung mengambil data dari PostgreSQL/API pihak ketiga tanpa membuat server *crash*.<br>3. Gunakan Redis hanya untuk data yang sering diakses berulang. |
-| **Peladen VPS** | Ubuntu Server (Host Docker & Caddy) | • RAM Fisik: **2 GB (2.048 MB)**.<br>• vCPU: **2 Cores**.<br>• Swap: **2 GB aktif** (`vm.swappiness=10`).<br>• Batas aman PRD: Konsumsi RAM tidak boleh melebihi **75% (1.536 MB)**. | Risiko *Out-Of-Memory (OOM)* jika container Node.js mengalami kebocoran memori (*memory leak*). | 1. **Hard Limit Docker:** Plafon `mem_limit: 96m` di setiap backend service.<br>2. **Node Heap Capping:** Flag `NODE_OPTIONS: "--max-old-space-size=64"` pada container.<br>3. **Caddy Limit:** Plafon memori Caddy dibatasi `mem_limit: 64m`.<br>4. Berdasarkan pengukuran live MJ-089, total konsumsi kontainer hanya **~92 MB**, sehingga Mode Staging aman beroperasi **Always-On**. |
-
----
-
-## 6. Tindak Lanjut Kolaborasi Tim (Handoff ke Backend & DBA)
-
-Untuk menjaga kesinambungan antar-peran, rekan tim pengembang dimohon meninjau poin-poin berikut:
+Untuk menjaga kesinambungan antar-peran dalam tim Mojiji:
 1. **Untuk Tim Backend (Dika & Syafii):**
-   * Pastikan setiap pemanggilan Redis dibungkus blok *try-catch* agar kegagalan cache tidak mematikan service.
-   * Pastikan konfigurasi *database pool* di backend klien (misal: pg / Prisma / Kysely) dibatasi maksimal 3 koneksi per instans.
+   * Pastikan setiap service mengimplementasikan endpoint `/health` yang mengembalikan status `200 OK` dan payload JSON `{ "status": "ok" }`.
+   * Pastikan *connection pool* PostgreSQL dibatasi maksimal 3 koneksi per service (`max: 3`).
 2. **Untuk Tim DBA (Ryan):**
    * Seluruh berkas migrasi SQL baru di `database/migrations/` wajib memakai nama skema eksplisit (*fully qualified name*) seperti `tracker_service.trackers` dan dilarang menyertakan perintah `SET search_path`.
-   * Skema baru harus kompatibel dengan versi aplikasi sebelumnya (*zero downtime compatibility*).
-3. **Untuk Tim QA (Nadia):**
+   * Skema baru harus kompatibel dengan versi aplikasi sebelumnya (*backward-compatible*).
+3. **Untuk Tim Frontend (Rian):**
+   * Pastikan build Next.js berformat ekspor statis (`output: "export"`) dan seluruh rute API backend diakses via relative path `/api/*` agar di-handle oleh Caddy tanpa CORS issue.
+4. **Untuk Tim QA (Nadia):**
    * Verifikasi pengujian Staging dapat dilakukan kapan saja di `https://staging.mojiji.web.id` tanpa perlu meminta DevOps menyalakan server secara manual.
 
 ---
 *Dokumen ini disusun oleh Aji (DevOps Engineer) sebagai pemenuhan Acceptance Criteria tiket **MJ-090** (Minggu 7 - Sprint 1).*
-
