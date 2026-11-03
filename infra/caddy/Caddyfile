@@ -1,12 +1,33 @@
+# Staging Environment
 staging.mojiji.web.id {
-    # 1. Cegat semua request URL yang berawalan /api dan lempar ke API Gateway
+    encode gzip
+
+    # 1. Forward API requests to API Gateway
     handle /api/* {
         reverse_proxy api-gateway:4000
     }
 
-    # 2. Sisanya, layani sebagai file statis Frontend Next.js
+    # 2. Serve static Next.js export files
     handle {
-        root * /srv
+        root * /srv/staging/web
+        try_files {path} {path}/index.html /index.html
+        file_server
+    }
+}
+
+# Production Environment (Milestone UTS Minggu 8 - Tiket MJ-099 & MJ-106)
+mojiji.web.id {
+    encode gzip
+
+    # 1. Forward API requests to Production API Gateway
+    handle /api/* {
+        reverse_proxy api-gateway:4000
+    }
+
+    # 2. Serve static Next.js production build files
+    handle {
+        root * /srv/production/web
+        try_files {path} {path}/index.html /index.html
         file_server
     }
 }
