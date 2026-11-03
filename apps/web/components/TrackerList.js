@@ -186,12 +186,14 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
     }
   };
 
-  // Tambah progres +1 episode/chapter
+  // Tambah progres +1 episode/chapter dengan Optimistic UI & Rollback (Tiket MJ-077 - AC US-004)
   const handleIncrement = async (item) => {
     const totalCount = Number(item.total) || 0;
-    const currentProgress = Number(item.progress) || 0;
+    const previousProgress = Number(item.progress) || 0;
+    const previousStatus = item.status;
 
-    if (totalCount > 0 && currentProgress >= totalCount) {
+    // Langkah 4: Nonaktifkan saat progres sudah mencapai total maksimal
+    if (totalCount > 0 && previousProgress >= totalCount) {
       setToast({
         type: "info",
         message: `Progres sudah mencapai total maksimal (${totalCount}).`,
@@ -199,37 +201,73 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
       return;
     }
 
+    const optimisticProgress = previousProgress + 1;
+    const optimisticStatus =
+      totalCount > 0 && optimisticProgress >= totalCount ? "completed" : previousStatus;
+
+    // Langkah 2: Optimistic UI — Langsung naikkan angka di layar seketika (0 ms)
+    setItems((prev) =>
+      prev.map((it) =>
+        it.id === item.id
+          ? {
+              ...it,
+              progress: optimisticProgress,
+              status: optimisticStatus,
+            }
+          : it
+      )
+    );
+
+    // Langkah 4: Kunci tombol agar tidak diklik ganda selama permintaan berjalan
     setActionLoadingId(item.id);
+
     try {
+      // Langkah 2: Panggil POST /api/tracker/:id/increment di latar belakang
       const res = await incrementProgressApi(item.id);
       const updated = res?.data;
 
-      setItems((prev) =>
-        prev.map((it) => {
-          if (it.id === item.id) {
-            const nextProgress = updated?.progress ?? currentProgress + 1;
-            const nextStatus =
-              updated?.status ??
-              (totalCount > 0 && nextProgress >= totalCount ? "completed" : it.status);
-            return {
-              ...it,
-              progress: nextProgress,
-              status: nextStatus,
-            };
-          }
-          return it;
-        })
-      );
+      // Sinkronkan jika server mengembalikan update resmi
+      if (updated) {
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === item.id
+              ? {
+                  ...it,
+                  progress: updated.progress ?? optimisticProgress,
+                  status: updated.status ?? optimisticStatus,
+                }
+              : it
+          )
+        );
+      }
 
       const unit = (item.mediaType || item.media_type) === "manga" ? "Chapter" : "Episode";
       setToast({
         type: "success",
-        message: `+1 ${unit} berhasil dicatat untuk "${item.title}"!`,
+        message: `+1 ${unit} berhasil disimpan (${optimisticProgress}/${totalCount > 0 ? totalCount : "TBA"})!`,
       });
     } catch (err) {
+      // Langkah 3: ROLLBACK bila gagal — Kembalikan angka ke semula & tampilkan pesan error (AC US-004)
+      setItems((prev) =>
+        prev.map((it) =>
+          it.id === item.id
+            ? {
+                ...it,
+                progress: previousProgress,
+                status: previousStatus,
+              }
+            : it
+        )
+      );
+
+      const errorMessage =
+        err?.isOffline || err?.status === 503 || err?.error?.code === "SERVER_OFFLINE"
+          ? "Koneksi terputus. Progres dikembalikan ke semula."
+          : err?.error?.message || "Gagal menyimpan progres. Angka dikembalikan ke semula.";
+
       setToast({
         type: "error",
-        message: err?.error?.message || "Gagal menambah progres.",
+        message: errorMessage,
       });
     } finally {
       setActionLoadingId(null);
