@@ -31,6 +31,42 @@ app.get("/api/health", healthHandler);
 // Registrasi endpoint tracker
 app.use("/api/tracker", trackerRoutes);
 
+// Handler 404 jika route tidak ditemukan
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      code: "NOT_FOUND",
+      message: `Rute ${req.method} ${req.originalUrl} tidak ditemukan pada Tracker Service`,
+      details: [],
+    },
+  });
+});
+
+// Handler error terpusat (Global Error Handler)
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Format JSON pada request body tidak valid",
+        details: ["Sintaks JSON tidak dapat diparsing"],
+      },
+    });
+  }
+
+  console.error("[Tracker Service Unhandled Error]", err);
+  return res.status(500).json({
+    success: false,
+    error: {
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Terjadi kesalahan internal pada Tracker Service",
+      details: [],
+    },
+  });
+});
+
 // Jalankan server HTTP
 const server = app.listen(PORT, () => {
   console.log(`Tracker Service running on http://localhost:${PORT}`);

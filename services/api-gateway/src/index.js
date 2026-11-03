@@ -98,6 +98,7 @@ const createServiceProxyOptions = (serviceName, targetUrl) => ({
           error: {
             code: "BAD_GATEWAY",
             message: `${serviceName} tidak dapat dihubungi atau sedang offline.`,
+            details: [],
           },
         });
       }
@@ -140,6 +141,20 @@ app.use((req, res) => {
     error: {
       code: "NOT_FOUND",
       message: `Rute ${req.method} ${req.originalUrl} tidak ditemukan di API Gateway`,
+      details: [],
+    },
+  });
+});
+
+// Handler error terpusat (Global Error Handler)
+app.use((err, req, res, next) => {
+  console.error("[API Gateway Unhandled Error]", err);
+  return res.status(500).json({
+    success: false,
+    error: {
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Terjadi kesalahan internal pada API Gateway",
+      details: [],
     },
   });
 });

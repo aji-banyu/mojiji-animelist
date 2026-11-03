@@ -34,6 +34,43 @@ app.get("/health", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 
+// Handler 404 jika route tidak ditemukan
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: {
+      code: "NOT_FOUND",
+      message: `Rute ${req.method} ${req.originalUrl} tidak ditemukan pada User Service`,
+      details: [],
+    },
+  });
+});
+
+// Handler error terpusat (Global Error Handler)
+app.use((err, req, res, next) => {
+  // Penanganan error sintaks JSON rusak pada request body (Bad Request)
+  if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Format JSON pada request body tidak valid",
+        details: ["Sintaks JSON tidak dapat diparsing"],
+      },
+    });
+  }
+
+  console.error("[User Service Unhandled Error]", err);
+  return res.status(500).json({
+    success: false,
+    error: {
+      code: "INTERNAL_SERVER_ERROR",
+      message: "Terjadi kesalahan internal pada server",
+      details: [],
+    },
+  });
+});
+
 // Jalankan server
 const server = app.listen(PORT, () => {
   console.log(`User Service running on http://localhost:${PORT}`);

@@ -40,6 +40,7 @@ async function createTracker(req, res) {
         error: {
           code: "UNAUTHORIZED",
           message: "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+          details: [],
         },
       });
     }
@@ -72,6 +73,7 @@ async function createTracker(req, res) {
           error: {
             code: "NOT_FOUND",
             message: `Item ${mediaType} dengan ID ${malId} tidak ditemukan di katalog.`,
+            details: [],
           },
         });
       }
@@ -81,6 +83,7 @@ async function createTracker(req, res) {
           error: {
             code: "GATEWAY_TIMEOUT",
             message: "Catalog Service mengalami timeout saat memvalidasi metadata.",
+            details: [],
           },
         });
       }
@@ -89,6 +92,7 @@ async function createTracker(req, res) {
         error: {
           code: "BAD_GATEWAY",
           message: "Gagal menghubungi Catalog Service untuk memverifikasi item.",
+          details: [],
         },
       });
     }
@@ -102,6 +106,7 @@ async function createTracker(req, res) {
         error: {
           code: "VALIDATION_ERROR",
           message: `Progres (${adjustedProgress}) tidak boleh melebihi total yang diketahui (${totalCount}).`,
+          details: [`Progres (${adjustedProgress}) tidak boleh melebihi total episode/chapter (${totalCount})`],
         },
       });
     }
@@ -146,6 +151,7 @@ async function createTracker(req, res) {
         error: {
           code: "CONFLICT",
           message: "Item ini sudah ada di daftar pelacakan kamu.",
+          details: ["Item dengan mediaType dan malId tersebut sudah tersimpan di daftar pelacakan Anda."],
         },
       });
     }
@@ -156,6 +162,7 @@ async function createTracker(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan internal saat menambahkan item tracker.",
+        details: [],
       },
     });
   }
@@ -175,6 +182,7 @@ async function getTrackers(req, res) {
         error: {
           code: "UNAUTHORIZED",
           message: "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+          details: [],
         },
       });
     }
@@ -225,6 +233,7 @@ async function getTrackers(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan internal saat mengambil daftar tracker.",
+        details: [],
       },
     });
   }
@@ -244,6 +253,7 @@ async function updateTrackerStatus(req, res) {
         error: {
           code: "UNAUTHORIZED",
           message: "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+          details: [],
         },
       });
     }
@@ -291,6 +301,7 @@ async function updateTrackerStatus(req, res) {
         error: {
           code: "NOT_FOUND",
           message: "Item tracker tidak ditemukan atau bukan milik Anda.",
+          details: [],
         },
       });
     }
@@ -324,6 +335,7 @@ async function updateTrackerStatus(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan internal saat memperbarui status tracker.",
+        details: [],
       },
     });
   }
@@ -343,6 +355,7 @@ async function incrementTrackerProgress(req, res) {
         error: {
           code: "UNAUTHORIZED",
           message: "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+          details: [],
         },
       });
     }
@@ -375,6 +388,7 @@ async function incrementTrackerProgress(req, res) {
         error: {
           code: "NOT_FOUND",
           message: "Item tracker tidak ditemukan atau bukan milik Anda.",
+          details: [],
         },
       });
     }
@@ -389,6 +403,7 @@ async function incrementTrackerProgress(req, res) {
         error: {
           code: "VALIDATION_ERROR",
           message: `Progres sudah mencapai batas maksimal total ${currentTracker.media_type === "manga" ? "chapter" : "episode"} (${total}).`,
+          details: [`Progres tidak dapat ditambah karena sudah mencapai batas maksimal (${total})`],
         },
       });
     }
@@ -424,6 +439,7 @@ async function incrementTrackerProgress(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan internal saat menambah progres tracker.",
+        details: [],
       },
     });
   }
@@ -443,6 +459,7 @@ async function deleteTracker(req, res) {
         error: {
           code: "UNAUTHORIZED",
           message: "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+          details: [],
         },
       });
     }
@@ -477,6 +494,7 @@ async function deleteTracker(req, res) {
         error: {
           code: "NOT_FOUND",
           message: "Item tracker tidak ditemukan atau bukan milik Anda.",
+          details: [],
         },
       });
     }
@@ -490,6 +508,7 @@ async function deleteTracker(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan internal saat menghapus item tracker.",
+        details: [],
       },
     });
   }

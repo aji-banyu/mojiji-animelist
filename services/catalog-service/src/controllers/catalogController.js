@@ -20,8 +20,17 @@ const searchSchema = z.object({
     .string({ required_error: "Parameter 'q' (kata kunci pencarian) wajib diisi" })
     .trim()
     .min(1, "Kata kunci pencarian tidak boleh kosong"),
-  page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().min(1).max(25).default(20),
+  page: z.coerce
+    .number({ invalid_type_error: "Parameter 'page' harus berupa angka" })
+    .int("Parameter 'page' harus berupa bilangan bulat positif")
+    .positive("Parameter 'page' harus bernilai minimal 1")
+    .default(1),
+  limit: z.coerce
+    .number({ invalid_type_error: "Parameter 'limit' harus berupa angka" })
+    .int("Parameter 'limit' harus berupa bilangan bulat")
+    .min(1, "Parameter 'limit' minimal 1")
+    .max(25, "Parameter 'limit' maksimal 25")
+    .default(20),
 });
 
 // Skema validasi route parameters untuk detail katalog (:type/:malId)
@@ -34,7 +43,7 @@ const detailSchema = z.object({
       required_error: "Parameter 'malId' wajib diisi",
       invalid_type_error: "Parameter 'malId' harus berupa angka",
     })
-    .int("Parameter 'malId' harus berupa bilangan bulat")
+    .int("Parameter 'malId' harus berupa bilangan bulat positif")
     .positive("Parameter 'malId' harus berupa angka positif"),
 });
 
@@ -73,15 +82,23 @@ async function search(req, res) {
     // 3. Jika Cache Miss, panggil Tenrai API melalui client
     const rawResponse = await searchCatalog(type, q, page, limit);
 
-    // 4. Normalisasi data hasil pencarian
-    const normalizedData = normalizeList(rawResponse.data, type);
+    // 4. Normalisasi data response ke kontrak Mojiji
+    const normalizedData = normalizeList(rawResponse.data || [], type);
+    const pagination = rawResponse.pagination || {
+      currentPage: page,
+      hasNextPage: false,
+      itemsPerPage: limit,
+      totalItems: normalizedData.length,
+    };
+
     const responsePayload = {
       success: true,
       data: normalizedData,
-      meta: {
-        page: page,
-        limit: limit,
-        total: rawResponse.pagination?.items?.total ?? normalizedData.length,
+      pagination: {
+        currentPage: pagination.currentPage,
+        hasNextPage: pagination.hasNextPage,
+        itemsPerPage: pagination.itemsPerPage,
+        totalItems: pagination.totalItems,
       },
     };
 
@@ -100,15 +117,16 @@ async function search(req, res) {
       return res.status(200).json({
         success: true,
         data: [],
-        meta: {
-          page: page,
-          limit: limit,
-          total: 0,
+        pagination: {
+          currentPage: page,
+          hasNextPage: false,
+          itemsPerPage: limit,
+          totalItems: 0,
         },
       });
     }
 
-    // Penanganan Tenrai Down / Rate Limited: Gunakan salinan stale jika ada (AC Tiket MJ-079)
+    // Penanganan Tenrai Down / Timeout / Error Upstream: Gunakan salinan stale jika ada (AC Tiket MJ-079)
     if (cacheKey) {
       const staleData = await getStaleCache(cacheKey);
       if (staleData) {
@@ -126,6 +144,7 @@ async function search(req, res) {
         error: {
           code: "RATE_LIMITED",
           message: "Batas permintaan ke provider katalog tercapai. Silakan coba sebentar lagi.",
+          details: [],
         },
       });
     }
@@ -137,6 +156,7 @@ async function search(req, res) {
         error: {
           code: "GATEWAY_TIMEOUT",
           message: "Provider katalog mengalami timeout. Silakan coba beberapa saat lagi.",
+          details: [],
         },
       });
     }
@@ -148,6 +168,7 @@ async function search(req, res) {
         error: {
           code: "BAD_GATEWAY",
           message: "Provider katalog gagal memberikan respons yang valid.",
+          details: [],
         },
       });
     }
@@ -158,6 +179,7 @@ async function search(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan internal pada Catalog Service",
+        details: [],
       },
     });
   }
@@ -165,12 +187,12 @@ async function search(req, res) {
 
 /**
  * GET /api/catalog/:type/:malId
- * Mengambil detail satu anime atau manga berdasarkan MAL ID dengan Redis Caching
+ * Mengambil detail lengkap anime atau manga berdasarkan MAL ID dengan Redis Caching
  */
 async function getDetail(req, res) {
   let cacheKey = null;
   try {
-    // 1. Validasi route parameters (:type, :malId)
+    // 1. Validasi route parameters
     const parseResult = detailSchema.safeParse(req.params);
     if (!parseResult.success) {
       const issues = parseResult.error.issues || parseResult.error.errors || [];
@@ -205,15 +227,16 @@ async function getDetail(req, res) {
         error: {
           code: "NOT_FOUND",
           message: `${typeLabel} dengan ID ${malId} tidak ditemukan`,
+          details: [],
         },
       });
     }
 
-    // 4. Normalisasi data objek menggunakan adapter
-    const normalizedData = normalizeItem(rawResponse.data, type);
+    // 4. Normalisasi data response ke kontrak Mojiji
+    const normalizedItem = normalizeItem(rawResponse.data, type);
     const responsePayload = {
       success: true,
-      data: normalizedData,
+      data: normalizedItem,
     };
 
     // 5. Simpan ke Redis Cache (TTL 24 jam)
@@ -234,6 +257,7 @@ async function getDetail(req, res) {
         error: {
           code: "NOT_FOUND",
           message: `${typeLabel} dengan ID ${idLabel} tidak ditemukan`,
+          details: [],
         },
       });
     }
@@ -256,6 +280,7 @@ async function getDetail(req, res) {
         error: {
           code: "RATE_LIMITED",
           message: "Batas permintaan ke provider katalog tercapai. Silakan coba sebentar lagi.",
+          details: [],
         },
       });
     }
@@ -267,6 +292,7 @@ async function getDetail(req, res) {
         error: {
           code: "GATEWAY_TIMEOUT",
           message: "Provider katalog mengalami timeout. Silakan coba beberapa saat lagi.",
+          details: [],
         },
       });
     }
@@ -278,6 +304,7 @@ async function getDetail(req, res) {
         error: {
           code: "BAD_GATEWAY",
           message: "Provider katalog gagal memberikan respons yang valid.",
+          details: [],
         },
       });
     }
@@ -288,6 +315,7 @@ async function getDetail(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan internal pada Catalog Service",
+        details: [],
       },
     });
   }
