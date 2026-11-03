@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { Search, BookMarked, LogIn, UserPlus, Menu, X, User, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -31,6 +32,16 @@ export default function Navbar() {
 
   const isActive = (href) => pathname === href;
 
+  // Normalisasi rute (buang trailing slash agar cocok dengan trailingSlash: true)
+  const normalizedPath = (pathname || "").replace(/\/+$/, "") || "/";
+  const hideNavbarRoutes = ["/", "/login", "/register"];
+
+  // Navbar HANYA muncul ketika user sudah login (memiliki sesi aktif)
+  // dan disembunyikan di landing page, login, atau register
+  if (!mounted || !user || hideNavbarRoutes.includes(normalizedPath)) {
+    return null;
+  }
+
   const handleLogout = async () => {
     setMobileOpen(false);
     try {
@@ -46,13 +57,20 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        {/* Logo */}
+        {/* Logo Mojiji */}
         <Link
           href="/"
-          className="flex items-center gap-2 font-semibold text-foreground transition-opacity hover:opacity-80"
+          className="flex items-center gap-2.5 font-bold text-foreground transition-opacity hover:opacity-85"
         >
-          <span className="text-xl">🎌</span>
-          <span className="text-base tracking-tight">Mojiji</span>
+          <Image
+            src="/images/logo_mojiji.png"
+            alt="Logo Mojiji"
+            width={28}
+            height={20}
+            className="h-6 w-auto"
+            priority
+          />
+          <span className="text-base font-bold tracking-tight">Mojiji</span>
         </Link>
 
         {/* Desktop Nav */}
@@ -76,7 +94,7 @@ export default function Navbar() {
         {/* Desktop Auth */}
         <div className="hidden items-center gap-2 md:flex">
           {mounted && user ? (
-            // Tampilan saat SUDAH LOGIN (MJ-058: Tampilkan Username di Navbar)
+            // Tampilan saat SUDAH LOGIN: Menampilkan Username, Profil, dan Tombol Keluar
             <div className="flex items-center gap-2">
               <Link
                 href="/dashboard"
@@ -85,14 +103,27 @@ export default function Navbar() {
                     ? "bg-primary text-primary-foreground"
                     : "text-foreground hover:bg-accent hover:text-accent-foreground"
                 }`}
+                title="Dashboard Saya"
               >
                 <User size={15} className="text-[#FF4655]" />
                 <span className="font-semibold">{user.username}</span>
               </Link>
 
+              <Link
+                href="/profile"
+                className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                  isActive("/profile")
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                }`}
+                title="Profil Pengguna"
+              >
+                Profil
+              </Link>
+
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400"
+                className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
                 title="Keluar dari akun"
               >
                 <LogOut size={13} />
@@ -100,7 +131,7 @@ export default function Navbar() {
               </button>
             </div>
           ) : (
-            // Tampilan saat BELUM LOGIN (Sesuai navbar awal)
+            // Tampilan saat BELUM LOGIN
             <>
               <Link
                 href="/login"
@@ -126,7 +157,7 @@ export default function Navbar() {
 
         {/* Mobile Hamburger */}
         <button
-          className="flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground md:hidden"
+          className="flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground md:hidden cursor-pointer"
           onClick={() => setMobileOpen((prev) => !prev)}
           aria-label="Toggle menu"
         >
@@ -134,10 +165,10 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="border-t border-border bg-background px-4 pb-4 md:hidden">
-          <nav className="flex flex-col gap-1 pt-3">
+        <div className="border-b border-border bg-background px-4 py-3 md:hidden">
+          <nav className="flex flex-col gap-1">
             {navLinks.map(({ href, label, icon: Icon }) => (
               <Link
                 key={href}
@@ -154,55 +185,52 @@ export default function Navbar() {
               </Link>
             ))}
 
-            <hr className="my-2 border-border" />
+            <div className="my-2 border-t border-border" />
 
             {mounted && user ? (
-              // Mobile Auth: SUDAH LOGIN
               <>
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive("/dashboard")
-                      ? "bg-primary text-primary-foreground"
-                      : "text-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-foreground"
                 >
                   <User size={16} className="text-[#FF4655]" />
-                  <span>Dashboard ({user.username})</span>
+                  <span>{user.username} (Dashboard)</span>
+                </Link>
+                <Link
+                  href="/profile"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <span>Profil Pengguna</span>
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 cursor-pointer"
                 >
                   <LogOut size={16} />
-                  <span>Keluar (Logout)</span>
+                  <span>Keluar</span>
                 </button>
               </>
             ) : (
-              // Mobile Auth: BELUM LOGIN
-              <>
+              <div className="flex flex-col gap-2 pt-1">
                 <Link
                   href="/login"
                   onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
-                    isActive("/login")
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
+                  className="flex items-center justify-center gap-1.5 rounded-md border border-border py-2 text-sm font-medium"
                 >
-                  <LogIn size={16} />
+                  <LogIn size={15} />
                   Masuk
                 </Link>
                 <Link
                   href="/register"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                  className="flex items-center justify-center gap-1.5 rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground"
                 >
-                  <UserPlus size={16} />
+                  <UserPlus size={15} />
                   Daftar
                 </Link>
-              </>
+              </div>
             )}
           </nav>
         </div>

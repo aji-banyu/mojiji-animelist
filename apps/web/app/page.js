@@ -1,103 +1,91 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import useAuthStore from "@/store/authStore";
+
+const slides = [
+  "/images/slide1.webp",
+  "/images/slide2.webp",
+  "/images/slide3.webp",
+  "/images/slide4.webp",
+];
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.js
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [mounted, setMounted] = useState(false);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const user = useAuthStore((s) => s.user);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Timer otomatis berganti slide setiap 5 detik
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Jika sudah login arahkan ke dashboard, jika belum ke login
+  const targetHref = mounted && user ? "/dashboard" : "/login";
+
+  return (
+    <main className="relative flex h-screen w-full flex-col justify-center overflow-hidden bg-black px-6 sm:px-12 md:px-16 lg:px-24">
+      {/* 4 Background Slides dengan Efek Crossfade Halus */}
+      {slides.map((src, idx) => (
+        <div
+          key={src}
+          className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-1000 ease-in-out ${currentSlide === idx ? "opacity-100" : "opacity-0 pointer-events-none"
+            }`}
+          style={{ backgroundImage: `url('${src}')` }}
+        />
+      ))}
+
+      {/* Lapisan gradasi terukur:
+          1. Overlay film tipis 15% agar slide terang tidak silau tanpa menutupi artwork anime
+          2. Gradasi sisi kiri hingga 50% layout agar teks tetap kontras di atas slide terang (seperti Eren)
+          3. Gradasi sisi bawah hingga 35% layout untuk pijakan navigasi slide */}
+      <div className="pointer-events-none absolute inset-0 bg-black/15" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/90 via-black/65 via-30% to-transparent to-50% sm:via-black/55 sm:via-25% sm:to-50%" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/80 via-black/40 via-25% to-transparent" />
+
+      {/* Konten Hero (Tanpa Logo MJ sesuai arahan) */}
+      <div className="relative z-10 max-w-2xl">
+        <h1 className="font-serif text-4xl font-bold tracking-tight text-white drop-shadow-2xl sm:text-6xl lg:text-[3.9rem] lg:leading-[1.12]">
+          Perjalanan Dalam <br /> Satu Ruang
+        </h1>
+
+        <p className="mt-5 max-w-xl font-serif text-base leading-relaxed text-gray-200/95 drop-shadow-lg sm:mt-6 sm:text-lg lg:text-[1.15rem]">
+          Temukan anime favoritmu, lacak progres tontonan, dan ikuti episode terbaru setiap musimnya.
+        </p>
+
+        <div className="mt-8 sm:mt-9">
+          <Link
+            href={targetHref}
+            className="inline-flex min-w-[230px] sm:min-w-[260px] items-center justify-center rounded-xl border border-white/90 bg-black/50 px-14 py-3 text-center text-base font-bold text-white shadow-xl backdrop-blur-md transition-all duration-300 ease-out hover:border-[#FF4655] hover:bg-[#FF4655] hover:shadow-lg hover:shadow-[#FF4655]/40 active:scale-95"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            Mulai Sekarang
+          </Link>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </div>
+
+      {/* 4 Bullet Indicators di bagian bawah */}
+      <div className="absolute bottom-8 left-6 z-20 flex items-center gap-2.5 sm:left-12 md:left-16 lg:left-24">
+        {slides.map((_, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => setCurrentSlide(idx)}
+            aria-label={`Pindah ke slide ${idx + 1}`}
+            className={`h-2.5 rounded-full transition-all duration-300 cursor-pointer ${currentSlide === idx
+                ? "w-8 bg-white shadow-md shadow-white/40"
+                : "w-2.5 bg-white/40 hover:bg-white/70"
+              }`}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+        ))}
+      </div>
+    </main>
   );
 }
