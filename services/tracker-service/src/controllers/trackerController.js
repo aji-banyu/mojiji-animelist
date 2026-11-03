@@ -8,6 +8,62 @@ const {
 const { fetchCatalogMetadata } = require("../services/catalogClient");
 
 /**
+ * Mapping status dari API Contract ke enum constraint Database PostgreSQL (Tiket MJ-097 & MJ-067)
+ * Database constraint: 'PLAN_TO_WATCH', 'WATCHING', 'COMPLETED', 'DROPPED', 'PAUSED'
+ */
+function toDbStatus(apiStatus) {
+  if (!apiStatus) return "PLAN_TO_WATCH";
+  const normalized = String(apiStatus).toLowerCase().trim();
+  switch (normalized) {
+    case "plan":
+    case "planned":
+    case "plan_to_watch":
+      return "PLAN_TO_WATCH";
+    case "watching":
+    case "reading":
+    case "in_progress":
+      return "WATCHING";
+    case "completed":
+      return "COMPLETED";
+    case "on_hold":
+    case "paused":
+      return "PAUSED";
+    case "dropped":
+      return "DROPPED";
+    default:
+      return apiStatus.toUpperCase();
+  }
+}
+
+/**
+ * Mapping status dari Database PostgreSQL ke format API Contract (Tiket MJ-097)
+ * API Contract: 'plan', 'watching', 'reading', 'completed', 'on_hold', 'dropped'
+ */
+function toApiStatus(dbStatus, mediaType = "anime") {
+  if (!dbStatus) return "plan";
+  const normalized = String(dbStatus).toUpperCase().trim();
+  switch (normalized) {
+    case "PLAN_TO_WATCH":
+    case "PLAN":
+    case "PLANNED":
+      return "plan";
+    case "WATCHING":
+      return mediaType === "manga" ? "reading" : "watching";
+    case "READING":
+      return "reading";
+    case "COMPLETED":
+      return "completed";
+    case "PAUSED":
+    case "ON_HOLD":
+      return "on_hold";
+    case "DROPPED":
+      return "dropped";
+    default:
+      return String(dbStatus).toLowerCase();
+  }
+}
+
+/**
  * Format baris data dari database ke format respons JSON API
  */
 function formatTrackerItem(row) {
@@ -19,7 +75,7 @@ function formatTrackerItem(row) {
     title: row.title,
     imageUrl: row.image_url,
     total: row.total,
-    status: row.status,
+    status: toApiStatus(row.status, row.media_type),
     progress: row.progress,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -32,7 +88,8 @@ function formatTrackerItem(row) {
  */
 async function createTracker(req, res) {
   try {
-    // 1. Ekstrak identitas pengguna dari header Gateway (Tiket MJ-064)
+    // 1. Ekstrak identitas pengguna dari header Gateway (Tiket MJ-064 & MJ-097)
+    // Keamanan: user_id HANYA diambil dari header x-user-id yang telah disanitasi dan disuntikkan oleh Gateway
     const userId = req.headers["x-user-id"];
     if (!userId) {
       return res.status(401).json({
@@ -45,7 +102,7 @@ async function createTracker(req, res) {
       });
     }
 
-    // 2. Validasi input request body
+    // 2. Validasi input request body (parameter userId dari body selalu diabaikan)
     const parseResult = validateCreateTracker(req.body);
     if (!parseResult.success) {
       const issues = parseResult.error.issues || parseResult.error.errors || [];
@@ -116,6 +173,9 @@ async function createTracker(req, res) {
       adjustedProgress = totalCount;
     }
 
+    // Normalisasi status ke format constraint database PostgreSQL
+    const dbStatus = toDbStatus(status);
+
     // 5. Simpan ke database PostgreSQL schema tracker_service
     const insertQuery = `
       INSERT INTO tracker_service.trackers 
@@ -132,7 +192,7 @@ async function createTracker(req, res) {
       catalogItem.title,
       catalogItem.image,
       totalCount,
-      status,
+      dbStatus,
       adjustedProgress,
     ];
 
@@ -213,8 +273,19 @@ async function getTrackers(req, res) {
     `;
 
     if (status) {
-      queryValues.push(status);
-      queryText += ` AND status = $2`;
+      const targetDbStatus = toDbStatus(status);
+      queryValues.push(targetDbStatus);
+      queryValues.push(status.toLowerCase());
+
+      // Jika filter 'reading', cocokkan dengan DB status 'WATCHING' dan media_type 'manga'
+      if (status.toLowerCase() === "reading") {
+        queryText += ` AND (status = $2 OR status = $3) AND media_type = 'manga'`;
+      } else if (status.toLowerCase() === "watching") {
+        // Jika filter 'watching', cocokkan dengan DB status 'WATCHING' dan media_type 'anime'
+        queryText += ` AND (status = $2 OR status = $3) AND media_type = 'anime'`;
+      } else {
+        queryText += ` AND (status = $2 OR status = $3)`;
+      }
     }
 
     queryText += ` ORDER BY updated_at DESC`;
@@ -290,7 +361,7 @@ async function updateTrackerStatus(req, res) {
 
     // 4. Verifikasi keberadaan dan kepemilikan data (Owner Verification)
     const checkQuery = `
-      SELECT id, user_id, total, status, progress 
+      SELECT id, user_id, media_type, total, status, progress 
       FROM tracker_service.trackers 
       WHERE id = $1
     `;
@@ -315,14 +386,16 @@ async function updateTrackerStatus(req, res) {
       newProgress = currentTracker.total;
     }
 
-    // 5. Update status di database
+    const dbStatus = toDbStatus(newStatus);
+
+    // 5. Update status di database (wajib WHERE id = $3 AND user_id = $4)
     const updateQuery = `
       UPDATE tracker_service.trackers
       SET status = $1, progress = $2, updated_at = NOW()
       WHERE id = $3 AND user_id = $4
       RETURNING id, user_id, media_type, mal_id, title, image_url, total, status, progress, created_at, updated_at;
     `;
-    const updateResult = await pool.query(updateQuery, [newStatus, newProgress, trackerId, userId]);
+    const updateResult = await pool.query(updateQuery, [dbStatus, newProgress, trackerId, userId]);
 
     return res.status(200).json({
       success: true,
@@ -409,24 +482,28 @@ async function incrementTrackerProgress(req, res) {
     }
 
     const nextProgress = currentTracker.progress + 1;
-    let nextStatus = currentTracker.status;
+    let nextDbStatus = currentTracker.status;
 
-    // Jika progres mencapai total episode/chapter, otomatis ubah status ke 'completed'
+    // Jika progres mencapai total episode/chapter, otomatis ubah status ke 'COMPLETED'
     if (total > 0 && nextProgress >= total) {
-      nextStatus = "completed";
-    } else if (currentTracker.status === "plan") {
-      // Jika sebelumnya 'plan' dan progres mulai diisi, ubah ke watching/reading
-      nextStatus = currentTracker.media_type === "manga" ? "reading" : "watching";
+      nextDbStatus = "COMPLETED";
+    } else if (
+      currentTracker.status === "PLAN_TO_WATCH" ||
+      currentTracker.status === "plan" ||
+      currentTracker.status === "planned"
+    ) {
+      // Jika sebelumnya plan dan progres mulai diisi, ubah ke WATCHING
+      nextDbStatus = "WATCHING";
     }
 
-    // 5. Update progres ke database
+    // 5. Update progres ke database (wajib WHERE id = $3 AND user_id = $4)
     const updateQuery = `
       UPDATE tracker_service.trackers
       SET progress = $1, status = $2, updated_at = NOW()
       WHERE id = $3 AND user_id = $4
       RETURNING id, user_id, media_type, mal_id, title, image_url, total, status, progress, created_at, updated_at;
     `;
-    const updateResult = await pool.query(updateQuery, [nextProgress, nextStatus, trackerId, userId]);
+    const updateResult = await pool.query(updateQuery, [nextProgress, nextDbStatus, trackerId, userId]);
 
     return res.status(200).json({
       success: true,

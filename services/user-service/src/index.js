@@ -12,6 +12,9 @@ const userRoutes = require("./routes/userRoutes");
 const app = express();
 const PORT = process.env.PORT || 4001;
 
+// Percayai reverse proxy upstream (Caddy / API Gateway) agar IP klien asli terdeteksi dengan tepat untuk rate limiting
+app.set("trust proxy", 1);
+
 // Standar keamanan: nonaktifkan header x-powered-by
 app.disable("x-powered-by");
 

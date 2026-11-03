@@ -156,7 +156,10 @@ async function login(req, res) {
 
     // Konfigurasi cookie sesi httpOnly sesuai panduan keamanan tim di PRD
     const cookieName = process.env.COOKIE_NAME || "mojiji_session";
-    const isProduction = process.env.APP_ENV === "production" || process.env.APP_ENV === "staging";
+    const isProduction =
+      process.env.APP_ENV === "production" ||
+      process.env.APP_ENV === "staging" ||
+      process.env.NODE_ENV === "production";
 
     res.cookie(cookieName, token, {
       httpOnly: true, // Mencegah akses via JavaScript di browser (proteksi XSS)
@@ -195,7 +198,10 @@ async function login(req, res) {
 async function logout(req, res) {
   try {
     const cookieName = process.env.COOKIE_NAME || "mojiji_session";
-    const isProduction = process.env.APP_ENV === "production" || process.env.APP_ENV === "staging";
+    const isProduction =
+      process.env.APP_ENV === "production" ||
+      process.env.APP_ENV === "staging" ||
+      process.env.NODE_ENV === "production";
 
     // Hapus cookie sesi
     res.clearCookie(cookieName, {

@@ -11,11 +11,18 @@ require("dotenv").config({ path: path.resolve(__dirname, "../../../.env") });
 const app = express();
 const PORT = process.env.PORT || process.env.PORT_GATEWAY || 4000;
 
+// Percayai reverse proxy upstream (Caddy / reverse proxy VPS) agar IP klien asli terdeteksi
+app.set("trust proxy", 1);
+
 // Standar keamanan: nonaktifkan header x-powered-by
 app.disable("x-powered-by");
 
 // CORS: Izinkan frontend Next.js lokal (http://localhost:3000) dengan credentials: true
-const isProduction = process.env.APP_ENV === "production" || process.env.APP_ENV === "staging";
+const isProduction =
+  process.env.APP_ENV === "production" ||
+  process.env.APP_ENV === "staging" ||
+  process.env.NODE_ENV === "production";
+
 if (!isProduction) {
   app.use(
     cors({
@@ -28,7 +35,7 @@ if (!isProduction) {
 // Parsing Cookie sesi untuk verifikasi autentikasi di tingkat Gateway
 app.use(cookieParser());
 
-// Bersihkan header spoofing dari request eksternal
+// Bersihkan header spoofing dari request eksternal (Tiket MJ-097 & MJ-064)
 app.use(sanitizeHeaders);
 
 // Ekstrak sesi login (JWT) pada setiap request (jika ada cookie / token)
@@ -68,7 +75,7 @@ const createServiceProxyOptions = (serviceName, targetUrl) => ({
   changeOrigin: true,
   on: {
     proxyReq: (proxyReq, req, res) => {
-      // Keamanan: Hapus header identitas bawaan dari klien eksternal
+      // Keamanan: Hapus header identitas bawaan dari klien eksternal (Anti-Spoofing Tiket MJ-097)
       proxyReq.removeHeader("x-user-id");
       proxyReq.removeHeader("x-user-name");
       proxyReq.removeHeader("x-user-email");
