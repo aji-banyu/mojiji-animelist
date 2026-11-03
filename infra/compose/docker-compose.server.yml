@@ -19,21 +19,29 @@ services:
     container_name: mojiji_migrate_server_${APP_ENV}
     volumes:
       - ../../database/migrations:/db/migrations
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
 
   api-gateway:
     build:
       context: ../../services/api-gateway
-    image: ghcr.io/aji-banyu/mojiji-api-gateway:develop
+    image: ghcr.io/aji-banyu/mojiji-api-gateway:${TAG:-latest}
     container_name: mojiji_gateway_server_${APP_ENV}
     restart: unless-stopped
     mem_limit: 96m
     environment:
       APP_ENV: ${APP_ENV}
-      PORT: ${PORT_GATEWAY}
+      PORT: ${PORT_GATEWAY:-4000}
       JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_KEY: ${INTERNAL_KEY}
+      COOKIE_NAME: ${COOKIE_NAME}
       TENRAI_BASE_URL: ${TENRAI_BASE_URL}
       REDIS_URL: ${REDIS_URL}
       REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
+      USER_SERVICE_URL: http://user-service:4001
+      CATALOG_SERVICE_URL: http://catalog-service:4002
+      TRACKER_SERVICE_URL: http://tracker-service:4003
+      NODE_OPTIONS: "--max-old-space-size=64"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
       interval: 30s
@@ -42,18 +50,20 @@ services:
   user-service:
     build:
       context: ../../services/user-service
-    image: ghcr.io/aji-banyu/mojiji-user-service:develop
+    image: ghcr.io/aji-banyu/mojiji-user-service:${TAG:-latest}
     container_name: mojiji_user_server_${APP_ENV}
     restart: unless-stopped
     mem_limit: 96m
     environment:
       APP_ENV: ${APP_ENV}
-      PORT: ${PORT_USER}
+      PORT: ${PORT_USER:-4001}
       DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
+      INTERNAL_KEY: ${INTERNAL_KEY}
       COOKIE_NAME: ${COOKIE_NAME}
       REDIS_URL: ${REDIS_URL}
       REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
+      NODE_OPTIONS: "--max-old-space-size=64"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4001/health"]
       interval: 30s
@@ -62,16 +72,19 @@ services:
   catalog-service:
     build:
       context: ../../services/catalog-service
-    image: ghcr.io/aji-banyu/mojiji-catalog-service:develop
+    image: ghcr.io/aji-banyu/mojiji-catalog-service:${TAG:-latest}
     container_name: mojiji_catalog_server_${APP_ENV}
     restart: unless-stopped
     mem_limit: 96m
     environment:
       APP_ENV: ${APP_ENV}
-      PORT: ${PORT_CATALOG}
+      PORT: ${PORT_CATALOG:-4002}
       DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_KEY: ${INTERNAL_KEY}
+      TENRAI_BASE_URL: ${TENRAI_BASE_URL}
       REDIS_URL: ${REDIS_URL}
       REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
+      NODE_OPTIONS: "--max-old-space-size=64"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4002/health"]
       interval: 30s
@@ -80,16 +93,19 @@ services:
   tracker-service:
     build:
       context: ../../services/tracker-service
-    image: ghcr.io/aji-banyu/mojiji-tracker-service:develop
+    image: ghcr.io/aji-banyu/mojiji-tracker-service:${TAG:-latest}
     container_name: mojiji_tracker_server_${APP_ENV}
     restart: unless-stopped
     mem_limit: 96m
     environment:
       APP_ENV: ${APP_ENV}
-      PORT: ${PORT_TRACKER}
+      PORT: ${PORT_TRACKER:-4003}
       DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_KEY: ${INTERNAL_KEY}
+      CATALOG_SERVICE_URL: http://catalog-service:4002
       REDIS_URL: ${REDIS_URL}
       REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
+      NODE_OPTIONS: "--max-old-space-size=64"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4003/health"]
       interval: 30s
