@@ -1,22 +1,27 @@
 # API Contract MVP — Mojiji AnimeList
 
-* **Status:** Disepakati untuk implementasi
-* **Scope:** Authentication, User Profile, Catalog, dan Tracker
-* **Acuan:** Mojiji PRD Revisi 4, bagian 18 — API Overview
-* **Catatan:** Detail kontrak yang belum ditetapkan dalam PRD merupakan usulan awal dan perlu disepakati tim sebelum implementasi.
+* **Status:** Final MVP (Terverifikasi & Sesuai Kode Produksi)
+* **Scope:** Authentication, User Profile, Catalog Discovery, Tracker Service, dan Health Check
+* **Acuan:** Mojiji PRD Revisi 4, bagian 18 — API Overview & Tiket MJ-098
+* **Pemilik Dokumen:** Syafii (Backend)
+* **Reviewer:** Dika (Frontend), Nadia (QA)
+
+---
 
 ## 1. Konvensi Umum
 
-* Prefix API: `/api`
-* Format request dan response: JSON.
-* Endpoint personal wajib memeriksa sesi pengguna.
-* Seluruh input harus divalidasi.
-* Password harus di-hash sebelum disimpan.
-* Response eksternal dari provider katalog tidak boleh diteruskan mentah; Catalog Service harus menormalisasi data.
-* Format response sukses dan error harus konsisten di seluruh service.
+1. **Prefix API:** Seluruh endpoint publik disajikan melalui API Gateway dengan prefix `/api`.
+2. **Format Data:** Request body dan response body selalu menggunakan format `application/json` berkarakter UTF-8 (kecuali `DELETE /api/tracker/:id` yang mengembalikan `204 No Content` tanpa body).
+3. **Pemisahan Identitas (Header Sanitization & Anti-Spoofing):**
+   * Gateway secara otomatis membuang header eksternal `X-User-Id`, `X-User-Name`, `X-User-Email`, dan `X-Internal-Key` dari request klien eksternal.
+   * Hanya Gateway yang berhak menyuntikkan header identitas tersebut ke downstream microservice setelah memverifikasi sesi login JWT yang sah.
+4. **Isolasi Data (Multi-tenancy):** Seluruh data personal (profil dan tracker) diverifikasi berdasarkan identitas `user_id` milik pengguna yang sedang login. Upaya mengakses atau memanipulasi data pengguna lain mengembalikan status `404 Not Found` (mencegah enumerasi data).
+5. **Standar Keamanan Kata Sandi:** Disimpan dalam bentuk hash `bcryptjs` (salt cost 10). `password_hash` tidak pernah dikembalikan ke respons publik maupun log.
+6. **Query Database Berparameter:** 100% kueri database menggunakan parameterized queries (`$1, $2, ...`) untuk mencegah SQL Injection.
 
-### 1.1 Usulan Response Sukses
+### 1.1 Format Respons Sukses
 
+Untuk respons sukses yang memiliki isi (*body*):
 ```json
 {
   "success": true,
@@ -24,66 +29,71 @@
 }
 ```
 
-Untuk response berupa daftar:
-
+Untuk respons sukses berupa daftar (*array*):
 ```json
 {
   "success": true,
   "data": [],
   "meta": {
     "page": 1,
-    "limit": 10
+    "limit": 20,
+    "total": 31
   }
 }
 ```
+*Catatan: Objek `meta` hanya disertakan jika endpoint mendefinisikan metadata atau paginasi.*
 
-`meta` digunakan jika pagination diterapkan.
+### 1.2 Format Respons Error Terstandarisasi
 
-### 1.2 Usulan Response Error
-
+Semua service (API Gateway, User Service, Catalog Service, Tracker Service) mengembalikan format respons error yang seragam:
 ```json
 {
   "success": false,
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Request validation failed",
+    "message": "Pesan deskriptif yang aman untuk pengguna",
     "details": []
   }
 }
 ```
 
-`details` dapat digunakan untuk memberikan informasi field yang tidak valid. Informasi sensitif seperti password dan cookie sesi tidak boleh dimasukkan ke response atau log.
+Aturan Response Error:
+* `success` selalu bernilai `false`.
+* `error.code`: Kode string huruf kapital terstandarisasi untuk memudahkan penanganan di frontend dan pengujian QA.
+* `error.message`: Pesan singkat dan ramah dalam bahasa Indonesia yang aman ditampilkan kepada klien.
+* `error.details`: Array berisi rincian validasi per-field. Berisi `[]` jika tidak ada detail tambahan.
+* Stack trace sistem, file path server, atau detail koneksi database **tidak pernah dibocorkan** ke klien publik.
 
-### 1.3 Arsitektur Keamanan Gateway & Penerusan Identitas Pengguna (Tiket MJ-064)
+### 1.3 Daftar Standar Kode HTTP dan Error Code
 
-API Gateway (port `4000`) bertindak sebagai Reverse Proxy dan garda keamanan terpusat bagi seluruh microservices:
-1. **Pencegahan Header Spoofing (Anti-Spoofing):**
-   * Gateway secara otomatis menghapus header eksternal: `X-User-Id`, `X-User-Name`, `X-User-Email`, dan `X-Internal-Key` dari setiap request masuk. Penyerang luar tidak dapat memalsukan identitas pengguna dengan menyuntikkan header buatan sendiri.
-2. **Pemeriksaan Sesi Terpusat (Session Verification):**
-   * Gateway membaca cookie sesi HTTP-Only (`mojiji_session`) atau header standar `Authorization: Bearer <token>`.
-   * Gateway memverifikasi integritas token JWT menggunakan `JWT_SECRET`.
-3. **Penolakan Permintaan Tanpa Sesi (Strict 401 Enforcement):**
-   * Permintaan ke endpoint privat/terlindungi (seperti `GET /api/users/me` dan seluruh rute `POST/GET/PATCH/DELETE /api/tracker/*`) yang tidak menyertakan sesi valid langsung ditolak di tingkat Gateway dengan status **`401 Unauthorized`** sebelum menyentuh service di belakangnya.
-4. **Penerusan Identitas Internal (Internal Identity Injection):**
-   * Jika sesi valid, Gateway menyuntikkan header identitas internal yang telah diverifikasi ke request proxy yang diteruskan ke microservice (User Service port 4001 & Tracker Service port 4003):
-     * `X-User-Id`: UUID pengguna
-     * `X-User-Name`: Username pengguna
-     * `X-User-Email`: Email pengguna
-     * `X-Internal-Key`: Kunci rahasia komunikasi internal (`process.env.INTERNAL_KEY`)
+| Status HTTP | Error Code | Deskripsi & Kasus Penggunaan |
+|---|---|---|
+| `200 OK` | - | Permintaan pembacaan atau pembaruan berhasil dengan payload response. |
+| `201 Created` | - | Sumber daya baru berhasil dibuat (registrasi atau pembuatan tracker). |
+| `204 No Content` | - | Operasi penghapusan berhasil tanpa body respons. |
+| `400 Bad Request` | `VALIDATION_ERROR` | Format body JSON rusak atau validasi input Zod gagal. |
+| `401 Unauthorized` | `UNAUTHORIZED` | Kredensial login salah atau cookie/token sesi tidak ditemukan/kedaluwarsa. |
+| `403 Forbidden` | `FORBIDDEN` | Akses ditolak (misal: pemanggilan internal tanpa `X-Internal-Key` yang sah). |
+| `404 Not Found` | `NOT_FOUND` | Rute URL tidak ada, item katalog tidak ditemukan, atau item tracker bukan milik pengguna. |
+| `409 Conflict` | `CONFLICT` | Bentrok integritas data (email/username sudah terdaftar, atau judul sudah ada di tracker). |
+| `429 Too Many Requests` | `RATE_LIMITED` | Batas kuota permintaan terlampaui (brute force login limiter atau batas rate Tenrai). |
+| `502 Bad Gateway` | `BAD_GATEWAY` / `UPSTREAM_ERROR` | Layanan downstream atau provider eksternal (Tenrai) offline atau merespons tidak valid. |
+| `504 Gateway Timeout` | `GATEWAY_TIMEOUT` | Permintaan ke layanan upstream mengalami timeout. |
+| `500 Internal Server Error` | `INTERNAL_SERVER_ERROR` | Kesalahan internal server yang tidak terduga. |
 
 ---
 
-## 2. Authentication dan User Profile
+## 2. Authentication & User Profile
+
+Base URL:
+* Melalui API Gateway (Rute Publik): `http://localhost:4000/api/auth` & `http://localhost:4000/api/users`
+* Direct Service (Lokal Development): `http://localhost:4001`
+* Staging / Production: `https://staging.<domain>/api/*` / `https://<domain>/api/*`
 
 ### 2.1 POST /api/auth/register
 
-* **Status:** Terimplementasi (Tiket `MJ-043`)
-* **Tujuan:** Membuat akun pengguna baru.
-* **Autentikasi:** Publik (tanpa login / cookie).
-* **Base URL:**
-  * Direct Service (Lokal Development): `http://localhost:4001`
-  * Melalui API Gateway (Tiket MJ-045): `http://localhost:4000`
-  * Staging / Production: `https://staging.<domain>` / `https://<domain>`
+* **Tujuan:** Mendaftarkan akun pengguna baru.
+* **Autentikasi:** Publik (tanpa login).
 
 #### Request Headers
 | Header | Nilai | Keterangan |
@@ -93,54 +103,51 @@ API Gateway (port `4000`) bertindak sebagai Reverse Proxy dan garda keamanan ter
 #### Request Body Schema (JSON)
 | Field | Tipe | Wajib? | Aturan Validasi |
 | :--- | :--- | :--- | :--- |
-| `username` | `string` | Ya | 3–50 karakter, alfanumerik dan garis bawah |
+| `username` | `string` | Ya | 3–50 karakter, alfanumerik dan underscore |
 | `email` | `string` | Ya | Format email valid, maksimal 255 karakter |
 | `password` | `string` | Ya | Minimal 8 karakter (sesuai AC US-007) |
 
-Contoh request:
+Contoh Request:
 ```json
 {
-  "username": "contoh_user",
-  "email": "user@example.com",
-  "password": "example-password"
+  "username": "syafii_dev",
+  "email": "syafii@example.com",
+  "password": "Password123!"
 }
 ```
 
 #### Status HTTP & Response
-
-* **`201 Created`** — Akun berhasil dibuat dan disimpan ke database. Password tidak dikembalikan.
+* **`201 Created`** — Akun berhasil dibuat:
 ```json
 {
   "success": true,
   "data": {
     "id": "e4b2d56a-1f87-4948-a0c5-343219488a01",
-    "username": "contoh_user",
-    "email": "user@example.com",
-    "createdAt": "2026-10-30T13:20:56.044Z"
+    "username": "syafii_dev",
+    "email": "syafii@example.com",
+    "createdAt": "2026-11-03T10:00:00.000Z"
   }
 }
 ```
-
-* **`400 Bad Request`** — Validasi input gagal (password < 8 karakter, email tidak valid, username kosong/spesial karakter).
+* **`400 Bad Request`** (`VALIDATION_ERROR`):
 ```json
 {
   "success": false,
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Validasi input gagal",
+    "message": "Validasi input registrasi gagal",
     "details": [
       "Password minimal terdiri dari 8 karakter"
     ]
   }
 }
 ```
-
-* **`409 Conflict`** — Username atau email sudah digunakan di sistem.
+* **`409 Conflict`** (`CONFLICT`):
 ```json
 {
   "success": false,
   "error": {
-    "code": "CONFLICT_ERROR",
+    "code": "CONFLICT",
     "message": "Email atau username sudah digunakan",
     "details": [
       "Email sudah digunakan"
@@ -149,78 +156,61 @@ Contoh request:
 }
 ```
 
-* **`500 Internal Server Error`** — Kesalahan internal server (koneksi database terputus/gagal). Tidak membocorkan stack trace.
-```json
-{
-  "success": false,
-  "error": {
-    "code": "INTERNAL_SERVER_ERROR",
-    "message": "Terjadi kesalahan pada server saat memproses registrasi"
-  }
-}
-```
+---
 
 ### 2.2 POST /api/auth/login
 
-* **Status:** Terimplementasi (Tiket `MJ-044`)
-* **Tujuan:** Memulai sesi pengguna (menerbitkan cookie sesi JWT).
-* **Autentikasi:** Publik (tanpa cookie).
-* **Base URL:**
-  * Direct Service (Lokal Development): `http://localhost:4001`
-  * Melalui API Gateway (Tiket MJ-045): `http://localhost:4000`
-  * Staging / Production: `https://staging.<domain>` / `https://<domain>`
-
-#### Request Headers
-| Header | Nilai | Keterangan |
-| :--- | :--- | :--- |
-| `Content-Type` | `application/json` | Wajib |
+* **Tujuan:** Mengautentikasi pengguna dan menerbitkan cookie sesi JWT HTTP-Only.
+* **Autentikasi:** Publik.
+* **Proteksi:** Rate limited maksimal 15 percobaan per 15 menit per IP.
 
 #### Request Body Schema (JSON)
 | Field | Tipe | Wajib? | Aturan Validasi |
 | :--- | :--- | :--- | :--- |
 | `email` | `string` | Ya | Format email valid |
-| `password` | `string` | Ya | Minimal 1 karakter (tidak boleh kosong) |
+| `password` | `string` | Ya | Minimal 1 karakter |
 
-Contoh request:
+Contoh Request:
 ```json
 {
-  "email": "user@example.com",
-  "password": "example-password"
+  "email": "syafii@example.com",
+  "password": "Password123!"
 }
 ```
 
 #### Status HTTP & Response
-
-* **`200 OK`** — Login berhasil. Token JWT diterbitkan dan dikirimkan via Header `Set-Cookie` (`mojiji_session`, HttpOnly, SameSite=Lax, masa berlaku 7 hari). Data user dikembalikan tanpa token di JSON.
+* **`200 OK`** — Login berhasil. Header `Set-Cookie` mengirimkan `mojiji_session=<jwt>; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800` (disertai `Secure` pada staging/production):
 ```json
 {
   "success": true,
   "data": {
     "id": "e4b2d56a-1f87-4948-a0c5-343219488a01",
-    "username": "contoh_user",
-    "email": "user@example.com"
+    "username": "syafii_dev",
+    "email": "syafii@example.com"
   }
 }
 ```
-
-* **`401 Unauthorized`** — Kredensial tidak valid (email tidak ditemukan atau password salah). Demi keamanan, pesan selalu diseragamkan.
+* **`401 Unauthorized`** (`UNAUTHORIZED`):
 ```json
 {
   "success": false,
   "error": {
     "code": "UNAUTHORIZED",
-    "message": "Email atau password salah"
+    "message": "Email atau password salah",
+    "details": []
   }
 }
 ```
-
-* **`429 Too Many Requests`** — Pembatasan percobaan login (rate limiter aktif untuk mencegah brute force: maksimal 15 percobaan per 15 menit).
+* **`429 Too Many Requests`** (`RATE_LIMITED`):
 ```json
 {
   "success": false,
   "error": {
     "code": "RATE_LIMITED",
-    "message": "Terlalu banyak percobaan login. Silakan coba lagi beberapa saat kemudian."
+    "message": "Terlalu banyak percobaan login. Silakan coba lagi beberapa saat kemudian.",
+    "details": [
+      "Batas percobaan login tercapai (maksimal 15 kali per 15 menit)."
+    ]
   }
 }
 ```
@@ -229,13 +219,11 @@ Contoh request:
 
 ### 2.3 POST /api/auth/logout
 
-* **Status:** Terimplementasi (Tiket `MJ-044`)
-* **Tujuan:** Mengakhiri sesi pengguna dengan menghapus cookie sesi.
-* **Autentikasi:** Publik / Opsional (menghapus cookie jika ada).
+* **Tujuan:** Menghapus cookie sesi login pengguna di peramban.
+* **Autentikasi:** Publik / Sesi opsional.
 
 #### Status HTTP & Response
-
-* **`200 OK`** — Logout berhasil. Header `Set-Cookie` mengirimkan instruksi penghapusan cookie sesi ke browser (`Expires=Thu, 01 Jan 1970`).
+* **`200 OK`** — Header `Set-Cookie` mengirimkan instruksi invalidasi cookie (`Expires=Thu, 01 Jan 1970 00:00:00 GMT`):
 ```json
 {
   "success": true,
@@ -249,77 +237,63 @@ Contoh request:
 
 ### 2.4 GET /api/users/me
 
-* **Status:** Terimplementasi (Tiket `MJ-044`)
-* **Tujuan:** Mengambil informasi akun pengguna yang sedang login.
-* **Autentikasi:** Wajib (harus memiliki cookie sesi `mojiji_session` yang valid atau header identitas dari Gateway).
+* **Tujuan:** Mengambil data profil pengguna yang sedang login.
+* **Autentikasi:** Wajib (Cookie sesi `mojiji_session` atau header `Authorization: Bearer <token>`).
 
 #### Status HTTP & Response
-
-* **`200 OK`** — Sesi terverifikasi dan data profil berhasil diambil.
+* **`200 OK`** — Data profil pengguna:
 ```json
 {
   "success": true,
   "data": {
     "id": "e4b2d56a-1f87-4948-a0c5-343219488a01",
-    "username": "contoh_user",
-    "email": "user@example.com",
-    "createdAt": "2026-10-30T13:20:56.044Z"
+    "username": "syafii_dev",
+    "email": "syafii@example.com",
+    "createdAt": "2026-11-03T10:00:00.000Z"
   }
 }
 ```
-
-* **`401 Unauthorized`** — Belum login, cookie sesi tidak ditemukan, atau token kedaluwarsa/tidak valid.
+* **`401 Unauthorized`** (`UNAUTHORIZED`):
 ```json
 {
   "success": false,
   "error": {
     "code": "UNAUTHORIZED",
-    "message": "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali."
+    "message": "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+    "details": []
   }
 }
 ```
 
-## 3. Catalog
+---
+
+## 3. Catalog Service
+
+Base URL:
+* Melalui API Gateway: `http://localhost:4000/api/catalog`
+* Direct Service: `http://localhost:4002/api/catalog`
+* Internal Microservice (Private): `http://catalog-service:4002/internal/catalog`
 
 ### 3.0 Kebijakan Caching Redis & Ketahanan Upstream (Tiket MJ-079)
-
-Untuk mengoptimalkan performa respons pencarian di bawah 300 ms, menghemat kuota gratis Upstash (maksimal 500.000 perintah/bulan), dan melindungi sistem saat provider Tenrai mengalami gangguan, Catalog Service menerapkan arsitektur Redis Caching:
-1. **Header Respons `X-Cache`:**
-   * `HIT`: Data diambil langsung dari memori Redis cache (waktu respons instan < 15 ms).
-   * `MISS`: Data belum tersedia di cache, Catalog Service mengambil dari Tenrai API dan menyimpannya ke Redis.
-   * `STALE`: Upstream Tenrai mengalami error (429/502/504/timeout), Catalog Service mengembalikan salinan cadangan stale dari Redis agar pengguna tetap mendapatkan data tanpa mengalami server error.
-2. **Durasi Penyimpanan (Time To Live / TTL):**
-   * Hasil Pencarian (`/api/catalog/search`): TTL 1 jam (`3600` detik).
-   * Detail Judul (`/api/catalog/:type/:malId`): TTL 24 jam (`86400` detik).
-   * Salinan Stale Cadangan: TTL 7 hari (`604800` detik).
-3. **Prefix Kunci per Lingkungan:**
-   * Menggunakan variabel `REDIS_KEY_PREFIX` (`mojiji_local:`, `stg:`, `prod:`) untuk mengisolasi data antar-lingkungan development, staging, dan production.
-4. **Graceful Degradation:**
-   * Jika koneksi Redis terputus, Catalog Service otomatis melakukan bypass langsung ke Tenrai API tanpa membuat server crash.
-
----
+* **Header `X-Cache`:** Mengembalikan `HIT` (data dari cache memori < 15 ms), `MISS` (data dari Tenrai API), atau `STALE` (fallback salinan lama jika Tenrai 429/502).
+* **TTL:** Search = 1 jam (3600s), Detail = 24 jam (86400s), Backup Stale = 7 hari.
+* **Throttling:** Dibatasi maksimal 4 permintaan per detik ke Tenrai API.
 
 ### 3.1 GET /api/catalog/search?type=anime&q=naruto
 
-* **Status:** Terimplementasi (Tiket `MJ-062`)
-* **Tujuan:** Mencari anime atau manga melalui Catalog Service (data bersumber dari Tenrai API dengan throttling 4 req/detik).
-* **Autentikasi:** Publik (tanpa login).
-* **Base URL:**
-  * Melalui API Gateway: `http://localhost:4000/api/catalog/search`
-  * Direct Service: `http://localhost:4002/api/catalog/search`
-  * Staging / Production: `https://staging.<domain>/api/catalog/search`
+* **Tujuan:** Mencari anime atau manga berdasarkan kata kunci.
+* **Autentikasi:** Publik.
 
 #### Query Parameters
 | Parameter | Tipe | Wajib? | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `type` | `string` | Ya | `anime` atau `manga` |
 | `q` | `string` | Ya | Kata kunci pencarian (minimal 1 karakter) |
-| `page` | `integer` | Tidak | Nomor halaman (default: 1) |
-| `limit` | `integer` | Tidak | Jumlah hasil per halaman (default: 20, max: 25) |
+| `page` | `integer` | Tidak | Halaman hasil (default: 1) |
+| `limit` | `integer` | Tidak | Hasil per halaman (default: 20, max: 25) |
 
 #### Status HTTP & Response
-
-* **`200 OK`** — Pencarian berhasil. Mengembalikan daftar judul yang telah dinormalisasi. Jika tidak ada hasil yang cocok, mengembalikan array kosong `[]` (bukan error).
+* **`200 OK`** — Daftar hasil (array kosong `[]` jika tidak ada judul cocok):
 ```json
 {
   "success": true,
@@ -343,8 +317,7 @@ Untuk mengoptimalkan performa respons pencarian di bawah 300 ms, menghemat kuota
   }
 }
 ```
-
-* **`400 Bad Request`** — Parameter tidak valid (misal: `type` bukan anime/manga, atau `q` kosong).
+* **`400 Bad Request`** (`VALIDATION_ERROR`):
 ```json
 {
   "success": false,
@@ -357,59 +330,33 @@ Untuk mengoptimalkan performa respons pencarian di bawah 300 ms, menghemat kuota
   }
 }
 ```
-
-* **`429 Too Many Requests`** — Pembatasan request provider Tenrai tercapai. Server menyertakan header `Retry-After`.
+* **`429 Too Many Requests`** (`RATE_LIMITED`):
 ```json
 {
   "success": false,
   "error": {
     "code": "RATE_LIMITED",
-    "message": "Batas permintaan ke provider katalog tercapai. Silakan coba sebentar lagi."
+    "message": "Batas permintaan ke provider katalog tercapai. Silakan coba sebentar lagi.",
+    "details": []
   }
 }
 ```
 
-* **`502 Bad Gateway`** — Provider katalog eksternal gagal memberikan respons yang valid.
-```json
-{
-  "success": false,
-  "error": {
-    "code": "BAD_GATEWAY",
-    "message": "Provider katalog gagal memberikan respons yang valid."
-  }
-}
-```
-
-* **`504 Gateway Timeout`** — Provider katalog mengalami timeout.
-```json
-{
-  "success": false,
-  "error": {
-    "code": "GATEWAY_TIMEOUT",
-    "message": "Provider katalog mengalami timeout. Silakan coba beberapa saat lagi."
-  }
-}
-```
+---
 
 ### 3.2 GET /api/catalog/:type/:malId
 
-* **Status:** Terimplementasi (Tiket `MJ-063`)
-* **Tujuan:** Mengambil detail satu judul anime atau manga berdasarkan MAL ID.
-* **Autentikasi:** Publik (tanpa login).
-* **Base URL:**
-  * Melalui API Gateway: `http://localhost:4000/api/catalog/:type/:malId`
-  * Direct Service: `http://localhost:4002/api/catalog/:type/:malId`
-  * Staging / Production: `https://staging.<domain>/api/catalog/:type/:malId`
+* **Tujuan:** Mengambil detail satu anime atau manga berdasarkan MAL ID.
+* **Autentikasi:** Publik.
 
 #### Path Parameters
 | Parameter | Tipe | Wajib? | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `type` | `string` | Ya | `anime` atau `manga` |
-| `malId` | `integer` | Ya | ID unik anime/manga pada MyAnimeList / Tenrai (bilangan bulat positif) |
+| `malId` | `integer` | Ya | Bilangan bulat positif |
 
 #### Status HTTP & Response
-
-* **`200 OK` (Anime)** — Detail anime berhasil diambil dan dinormalisasi.
+* **`200 OK`**:
 ```json
 {
   "success": true,
@@ -426,133 +373,49 @@ Untuk mengoptimalkan performa respons pencarian di bawah 300 ms, menghemat kuota
   }
 }
 ```
-
-* **`200 OK` (Manga)** — Detail manga berhasil diambil dan dinormalisasi.
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "malId": 1,
-    "type": "manga",
-    "title": "Monster",
-    "image": "https://cdn.myanimelist.net/images/manga/3/258224l.jpg",
-    "score": 9.16,
-    "synopsis": "Kenzou Tenma, a renowned Japanese neurosurgeon...",
-    "status": "Finished",
-    "totalChapters": 162
-  }
-}
-```
-
-* **`400 Bad Request`** — Parameter path tidak valid (misal: `type` bukan `anime` atau `manga`, atau `malId` bukan angka positif).
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Parameter detail katalog tidak valid",
-    "details": [
-      "Invalid option: expected one of \"anime\"|\"manga\""
-    ]
-  }
-}
-```
-
-* **`404 Not Found`** — Judul anime atau manga dengan ID tersebut tidak ditemukan pada database penyedia katalog.
+* **`404 Not Found`** (`NOT_FOUND`):
 ```json
 {
   "success": false,
   "error": {
     "code": "NOT_FOUND",
-    "message": "Anime dengan ID 99999999 tidak ditemukan"
-  }
-}
-```
-
-* **`429 Too Many Requests`** — Batas kuota permintaan ke penyedia katalog (Tenrai API) terlampaui. Server menyertakan header `Retry-After`.
-```json
-{
-  "success": false,
-  "error": {
-    "code": "RATE_LIMITED",
-    "message": "Batas permintaan ke provider katalog tercapai. Silakan coba sebentar lagi."
-  }
-}
-```
-
-* **`502 Bad Gateway`** — Penyedia katalog eksternal gagal memberikan respons yang valid.
-```json
-{
-  "success": false,
-  "error": {
-    "code": "BAD_GATEWAY",
-    "message": "Provider katalog gagal memberikan respons yang valid."
-  }
-}
-```
-
-* **`504 Gateway Timeout`** — Permintaan ke penyedia katalog eksternal mengalami timeout.
-```json
-{
-  "success": false,
-  "error": {
-    "code": "GATEWAY_TIMEOUT",
-    "message": "Provider katalog mengalami timeout. Silakan coba beberapa saat lagi."
+    "message": "Anime dengan ID 99999999 tidak ditemukan di katalog.",
+    "details": []
   }
 }
 ```
 
 ---
 
-### 3.3 GET /internal/catalog/:type/:malId (Internal Microservice)
+### 3.3 GET /internal/catalog/:type/:malId (Internal Microservice Endpoint)
 
-* **Status:** Terimplementasi (Tiket `MJ-063`)
-* **Tujuan:** Mengambil detail item katalog untuk validasi dan penarikan metadata oleh Tracker Service saat pengguna menambahkan item ke daftar pelacakan (`POST /api/tracker`).
-* **Autentikasi:** Header Internal `X-Internal-Key` (hanya dapat diakses jaringan privat antar-kontainer, tidak dibuka lewat API Gateway).
-* **Base URL:** `http://catalog-service:4002/internal/catalog/:type/:malId`
-
-#### Request Headers
-| Header | Nilai | Keterangan |
-| :--- | :--- | :--- |
-| `X-Internal-Key` | String | Kunci rahasia komunikasi antar-layanan (dicocokkan dengan `process.env.INTERNAL_KEY`) |
-
-#### Status HTTP & Response
-* Mengikuti skema respons yang sama dengan `3.2` di atas (`200 OK`, `400 Bad Request`, `404 Not Found`).
-* **`403 Forbidden`** — Jika header `X-Internal-Key` tidak valid atau tidak disertakan (ketika `INTERNAL_KEY` diaktifkan).
-```json
-{
-  "success": false,
-  "error": {
-    "code": "FORBIDDEN",
-    "message": "Akses internal ditolak. Kunci internal tidak valid atau tidak disertakan."
-  }
-}
-```
+* **Tujuan:** Digunakan oleh Tracker Service untuk memverifikasi dan menarik metadata judul secara otomatis saat `POST /api/tracker`.
+* **Autentikasi:** Header `X-Internal-Key` (`process.env.INTERNAL_KEY`).
+* **Proteksi:** Ditolak dengan `403 Forbidden` jika `X-Internal-Key` tidak cocok.
 
 ---
 
-## 4. Tracker
+## 4. Tracker Service
 
-Seluruh endpoint tracker hanya boleh mengakses data milik pengguna yang sedang login. Pemeriksaan kepemilikan dan autentikasi wajib ditegakkan (didukung oleh pemeriksaan sesi terpusat di API Gateway tiket `MJ-064`).
+Base URL:
+* Melalui API Gateway: `http://localhost:4000/api/tracker`
+* Direct Service: `http://localhost:4003/api/tracker`
+* Staging / Production: `https://staging.<domain>/api/tracker` / `https://<domain>/api/tracker`
+
+Pemberlakuan Keamanan: Seluruh endpoint pelacakan wajib membawa cookie sesi `mojiji_session` atau header `Authorization: Bearer <token>`. Gateway memverifikasi sesi dan menyuntikkan header `X-User-Id` ke Tracker Service.
 
 ### 4.1 GET /api/tracker?status=watching
 
-* **Status:** Terimplementasi (Tiket `MJ-065`)
-* **Tujuan:** Mengambil seluruh daftar judul anime/manga yang sedang dilacak oleh pengguna yang sedang login (dapat disaring berdasarkan status).
-* **Autentikasi:** Wajib (Sesi login `mojiji_session` atau header `X-User-Id` dari Gateway).
-* **Base URL:**
-  * Melalui API Gateway: `http://localhost:4000/api/tracker`
-  * Direct Service: `http://localhost:4003/api/tracker`
+* **Tujuan:** Mengambil daftar anime/manga yang dilacak pengguna (dapat disaring berdasarkan status).
+* **Autentikasi:** Wajib.
 
 #### Query Parameters
 | Parameter | Tipe | Wajib? | Keterangan |
 | :--- | :--- | :--- | :--- |
-| `status` | `string` | Tidak | Filter status: `plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped` |
+| `status` | `string` | Tidak | Pilihan: `plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped` |
 
 #### Status HTTP & Response
-
-* **`200 OK`** — Daftar pelacakan berhasil diambil. Hanya mengembalikan item milik pengguna yang terautentikasi (isolasi data antar-pengguna terjamin).
+* **`200 OK`**:
 ```json
 {
   "success": true,
@@ -568,13 +431,12 @@ Seluruh endpoint tracker hanya boleh mengakses data milik pengguna yang sedang l
       "status": "watching",
       "progress": 5,
       "createdAt": "2026-11-01T10:00:00.000Z",
-      "updatedAt": "2026-11-01T10:00:00.000Z"
+      "updatedAt": "2026-11-03T11:00:00.000Z"
     }
   ]
 }
 ```
-
-* **`400 Bad Request`** — Parameter filter status tidak valid.
+* **`400 Bad Request`** (`VALIDATION_ERROR`):
 ```json
 {
   "success": false,
@@ -587,14 +449,14 @@ Seluruh endpoint tracker hanya boleh mengakses data milik pengguna yang sedang l
   }
 }
 ```
-
-* **`401 Unauthorized`** — Permintaan tanpa sesi login yang valid.
+* **`401 Unauthorized`** (`UNAUTHORIZED`):
 ```json
 {
   "success": false,
   "error": {
     "code": "UNAUTHORIZED",
-    "message": "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali."
+    "message": "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+    "details": []
   }
 }
 ```
@@ -603,27 +465,18 @@ Seluruh endpoint tracker hanya boleh mengakses data milik pengguna yang sedang l
 
 ### 4.2 POST /api/tracker
 
-* **Status:** Terimplementasi (Tiket `MJ-065`)
-* **Tujuan:** Menambahkan anime atau manga ke daftar pelacakan pengguna. Metadata judul, poster, dan total episode divalidasi dan diambil secara otomatis dari Catalog Service.
-* **Autentikasi:** Wajib (Sesi login `mojiji_session` atau header `X-User-Id` dari Gateway).
-* **Base URL:**
-  * Melalui API Gateway: `http://localhost:4000/api/tracker`
-  * Direct Service: `http://localhost:4003/api/tracker`
-
-#### Request Headers
-| Header | Nilai | Keterangan |
-| :--- | :--- | :--- |
-| `Content-Type` | `application/json` | Wajib |
+* **Tujuan:** Menambahkan anime atau manga ke daftar pelacakan pengguna. Metadata judul, gambar, dan total episode/chapter ditarik otomatis dari Catalog Service.
+* **Autentikasi:** Wajib.
 
 #### Request Body Schema (JSON)
 | Field | Tipe | Wajib? | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `mediaType` / `type` | `string` | Ya | `anime` atau `manga` |
-| `malId` / `mal_id` | `integer` | Ya | ID unik anime/manga pada MyAnimeList / Catalog Service |
-| `status` | `string` | Tidak | Status awal: `plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped` (default: `plan`) |
-| `progress` | `integer` | Tidak | Progres awal (default: `0`, tidak boleh melebihi total episode/chapter yang diketahui) |
+| `malId` / `mal_id` | `integer` | Ya | MAL ID bilangan bulat positif |
+| `status` | `string` | Tidak | Pilihan: `plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped` (default: `plan`) |
+| `progress` | `integer` | Tidak | Progres awal (default: `0`, maksimal sebesar total episode/chapter) |
 
-Contoh request:
+Contoh Request:
 ```json
 {
   "mediaType": "anime",
@@ -634,8 +487,7 @@ Contoh request:
 ```
 
 #### Status HTTP & Response
-
-* **`201 Created`** — Item berhasil ditambahkan ke tracker pengguna.
+* **`201 Created`**:
 ```json
 {
   "success": true,
@@ -649,202 +501,239 @@ Contoh request:
     "total": 220,
     "status": "watching",
     "progress": 5,
-    "createdAt": "2026-11-01T10:00:00.000Z",
-    "updatedAt": "2026-11-01T10:00:00.000Z"
+    "createdAt": "2026-11-03T11:00:00.000Z",
+    "updatedAt": "2026-11-03T11:00:00.000Z"
   }
 }
 ```
-
-* **`400 Bad Request`** — Input tidak valid (misal `mediaType` bukan anime/manga, atau `progress` melebihi total yang diketahui).
-```json
-{
-  "success": false,
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Data tracker tidak valid",
-    "details": [
-      "Parameter 'mediaType' atau 'type' wajib bernilai 'anime' atau 'manga'"
-    ]
-  }
-}
-```
-
-* **`401 Unauthorized`** — Permintaan tanpa sesi login yang valid.
-```json
-{
-  "success": false,
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali."
-  }
-}
-```
-
-* **`404 Not Found`** — Item anime/manga dengan ID tersebut tidak ditemukan pada database penyedia katalog.
-```json
-{
-  "success": false,
-  "error": {
-    "code": "NOT_FOUND",
-    "message": "Item anime dengan ID 99999999 tidak ditemukan di katalog."
-  }
-}
-```
-
-* **`409 Conflict`** — Judul anime atau manga tersebut sudah ada di daftar pelacakan pengguna (pelanggaran unique constraint `unique_user_media_mal`).
+* **`409 Conflict`** (`CONFLICT`):
 ```json
 {
   "success": false,
   "error": {
     "code": "CONFLICT",
-    "message": "Item ini sudah ada di daftar pelacakan kamu."
+    "message": "Item ini sudah ada di daftar pelacakan kamu.",
+    "details": [
+      "Item dengan mediaType dan malId tersebut sudah tersimpan di daftar pelacakan Anda."
+    ]
   }
 }
 ```
-
-* **`502 Bad Gateway`** — Tracker Service gagal menghubungi Catalog Service internal.
-```json
-{
-  "success": false,
-  "error": {
-    "code": "BAD_GATEWAY",
-    "message": "Gagal menghubungi Catalog Service untuk memverifikasi item."
-  }
-}
-```
+* **`404 Not Found`** (`NOT_FOUND`): Item tidak ada di katalog eksternal.
+* **`502 Bad Gateway`** (`BAD_GATEWAY`): Gagal menghubungi Catalog Service internal.
 
 ---
 
-### 4.3 PATCH /api/tracker/:id/status (atau PATCH /api/tracker/:id)
+### 4.3 PATCH /api/tracker/:id/status (dan alias PATCH /api/tracker/:id)
 
-* **Status:** Terimplementasi (Tiket MJ-080)
+* **Tujuan:** Mengubah status pelacakan item (misal dari `watching` menjadi `completed`).
+* **Autentikasi:** Wajib.
 
-**Tujuan:** Mengubah status tracker.
+#### Path Parameters
+| Parameter | Tipe | Wajib? | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Ya | UUID item tracker |
 
-Contoh request:
+#### Request Body Schema (JSON)
+| Field | Tipe | Wajib? | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `status` | `string` | Ya | `plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped` |
 
+Contoh Request:
 ```json
 {
   "status": "completed"
 }
 ```
 
-Nilai status yang diperbolehkan harus disamakan dengan enum database dan kebutuhan UI.
+#### Status HTTP & Response
+* **`200 OK`** — Status berhasil diperbarui (jika status diubah ke `completed` dan total diketahui serta progress 0, progress otomatis disamakan dengan total):
+```json
+{
+  "success": true,
+  "data": {
+    "id": "c1f7a8b2-5e4d-4e2b-9a8c-7f6e5d4c3b2a",
+    "userId": "e4b2d56a-1f87-4948-a0c5-343219488a01",
+    "mediaType": "anime",
+    "malId": 20,
+    "title": "Naruto",
+    "imageUrl": "https://cdn.myanimelist.net/images/anime/1141/142503l.jpg",
+    "total": 220,
+    "status": "completed",
+    "progress": 220,
+    "createdAt": "2026-11-01T10:00:00.000Z",
+    "updatedAt": "2026-11-03T11:15:00.000Z"
+  }
+}
+```
+* **`400 Bad Request`** (`VALIDATION_ERROR`): Status tidak valid atau ID bukan UUID.
+* **`401 Unauthorized`** (`UNAUTHORIZED`): Belum login.
+* **`404 Not Found`** (`NOT_FOUND`): Item tracker tidak ditemukan atau milik pengguna lain.
 
-Usulan status HTTP:
-
-* `200 OK` — status berhasil diperbarui.
-* `400 Bad Request` — status tidak valid.
-* `401 Unauthorized` — belum login.
-* `404 Not Found` — tracker tidak ditemukan atau tidak dapat diakses pengguna.
-* `500 Internal Server Error` — kesalahan internal.
+---
 
 ### 4.4 POST /api/tracker/:id/increment
 
-* **Status:** Terimplementasi (Tiket MJ-080)
+* **Tujuan:** Menambah progres tontonan (episode) atau bacaan (chapter) sebesar +1 (mendukung tombol quick +1).
+* **Autentikasi:** Wajib.
 
-**Tujuan:** Menambah progres tracker sebesar satu.
+#### Path Parameters
+| Parameter | Tipe | Wajib? | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Ya | UUID item tracker |
 
-Aturan awal:
+#### Aturan Bisnis & Auto-Status Transition
+1. Nilai `progress` bertambah 1.
+2. Jika total episode/chapter diketahui (`total > 0`) dan progres sudah mencapai total, penambahan ditolak dengan HTTP `400 Bad Request`.
+3. Jika penambahan progres mencapai total, status otomatis beralih menjadi `completed`.
+4. Jika status sebelumnya `plan`, penambahan progres otomatis mengalihkan status menjadi `watching` (anime) atau `reading` (manga).
 
-* Progres bertambah satu jika request valid.
-* Jika total episode atau chapter diketahui, validasi batas progres.
-* Periksa kepemilikan tracker sebelum mengubah data.
+#### Status HTTP & Response
+* **`200 OK`**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "c1f7a8b2-5e4d-4e2b-9a8c-7f6e5d4c3b2a",
+    "userId": "e4b2d56a-1f87-4948-a0c5-343219488a01",
+    "mediaType": "anime",
+    "malId": 20,
+    "title": "Naruto",
+    "imageUrl": "https://cdn.myanimelist.net/images/anime/1141/142503l.jpg",
+    "total": 220,
+    "status": "watching",
+    "progress": 6,
+    "createdAt": "2026-11-01T10:00:00.000Z",
+    "updatedAt": "2026-11-03T11:20:00.000Z"
+  }
+}
+```
+* **`400 Bad Request`** (`VALIDATION_ERROR`):
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Progres sudah mencapai batas maksimal total episode (220).",
+    "details": [
+      "Progres tidak dapat ditambah karena sudah mencapai batas maksimal (220)"
+    ]
+  }
+}
+```
+* **`404 Not Found`** (`NOT_FOUND`): ID tidak ditemukan atau milik akun lain.
 
-Usulan status HTTP:
-
-* `200 OK` — progres berhasil diperbarui.
-* `400 Bad Request` — progres tidak valid atau melewati batas yang diketahui.
-* `401 Unauthorized` — belum login.
-* `404 Not Found` — tracker tidak ditemukan atau tidak dapat diakses pengguna.
-* `500 Internal Server Error` — kesalahan internal.
+---
 
 ### 4.5 DELETE /api/tracker/:id
 
-* **Status:** Terimplementasi (Tiket MJ-080)
+* **Tujuan:** Menghapus item dari daftar pelacakan pengguna.
+* **Autentikasi:** Wajib.
 
-**Tujuan:** Menghapus tracker milik pengguna.
+#### Path Parameters
+| Parameter | Tipe | Wajib? | Keterangan |
+| :--- | :--- | :--- | :--- |
+| `id` | `string` | Ya | UUID item tracker |
 
-Usulan status HTTP:
+#### Status HTTP & Response
+* **`204 No Content`** — Berhasil dihapus. Tidak ada response body.
+* **`401 Unauthorized`** (`UNAUTHORIZED`): Belum login.
+* **`404 Not Found`** (`NOT_FOUND`): Item tracker tidak ditemukan atau bukan milik pengguna yang sedang login.
 
-* `204 No Content` — tracker berhasil dihapus.
-* `401 Unauthorized` — belum login.
-* `404 Not Found` — tracker tidak ditemukan atau tidak dapat diakses pengguna.
-* `500 Internal Server Error` — kesalahan internal.
+---
 
-## 5. Keamanan dan Keandalan
+### 4.6 GET /health & GET /api/health
 
-* Hash password sebelum disimpan.
-* Validasi seluruh input.
-* Periksa sesi untuk endpoint personal.
-* Periksa kepemilikan sebelum mengubah atau menghapus tracker.
-* Jangan mencatat password, cookie sesi, atau secret ke log.
-* Simpan konfigurasi rahasia di environment atau secret store, bukan di repository.
-* Tangani timeout, network error, HTTP 429, dan downtime provider katalog.
-* Terapkan HTTPS pada URL publik.
-* Verifikasi kembali rate limit provider saat implementasi karena dapat berubah.
+* **Tujuan:** Endpoint pemantauan kesehatan layanan (*health check*) untuk Caddy, Docker Compose, dan deployment pipeline.
+* **Autentikasi:** Publik.
 
-## 6. Di Luar Scope Kontrak MVP Ini
+#### Status HTTP & Response
+* **`200 OK`**:
+```json
+{
+  "status": "ok",
+  "service": "api-gateway",
+  "message": "API Gateway is running"
+}
+```
 
-Endpoint komentar dan notifikasi/reminder belum dirinci dalam dokumen ini. Kontrak keduanya perlu ditetapkan sebelum implementasi apabila fitur tersebut masuk ke scope MVP yang disepakati.
+---
 
-## 7. Hal yang Perlu Disepakati Sebelum Implementasi
+## 5. Ringkasan Pengamanan dan Arsitektur
 
-* [x] Format final response sukses dan error.
-* [x] Status HTTP final untuk tiap kondisi.
-* [x] Mekanisme autentikasi, sesi, dan cookie.
-* [x] Field final request dan response sesuai skema database.
-* [x] Enum status tracker.
-* [x] Aturan duplikasi judul pada tracker.
-* [x] Aturan pagination dan batas `limit`.
-* [x] Pemetaan error provider katalog ke response internal.
-* [x] Review kontrak bersama Frontend dan QA.
+Dokumentasi audit keamanan lengkap tersedia pada [docs/api/keamanan.md](file:///s:/kuliah/mojiji-animelist/docs/api/keamanan.md). Poin-poin utama:
+1. **Header Anti-Spoofing:** Klien eksternal tidak dapat menyuntikkan `X-User-Id` palsu; Gateway memfilter semua header identitas sebelum meneruskan request ke microservices.
+2. **Kunci Internal Antar-Layanan:** Seluruh komunikasi privat dilindungi header `X-Internal-Key` (`process.env.INTERNAL_KEY`).
+3. **Cookie Sesi Aman:** Menggunakan `HttpOnly`, `SameSite=Lax`, dan `Secure` pada koneksi produksi HTTPS.
+4. **Rate Limiting:** Proteksi login aktif (15x percobaan per 15 menit per IP).
+5. **Bidirectional Status Adapter:** Tracker Service secara otomatis menyinkronkan format status API Contract (`plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped`) dengan PostgreSQL Check Constraint (`PLAN_TO_WATCH`, `WATCHING`, `COMPLETED`, `DROPPED`, `PAUSED`).
 
-## 8. Keputusan Autentikasi, Sesi Cookie, dan CORS
+---
 
-**Status:** Disepakati untuk implementasi.
+## 6. Koleksi Postman & Panduan Pengujian
 
-### 8.1. Mekanisme Autentikasi
+Koleksi Postman resmi untuk seluruh endpoint MVP tersimpan pada:
+`tests/api/MOJIJI-MVP.postman_collection.json`
 
-- Autentikasi menggunakan sesi yang dikelola oleh Backend.
-- Browser menggunakan cookie untuk mengirimkan sesi pada request yang memerlukan autentikasi.
-- Frontend tidak menyimpan session ID atau token autentikasi di `localStorage`.
-- Endpoint `GET /api/users/me` digunakan untuk memperoleh informasi pengguna yang sedang login.
-- Endpoint `POST /api/auth/logout` mengakhiri sesi dan menghapus atau menonaktifkan cookie sesi.
-- Detail penyimpanan, masa berlaku, dan invalidasi sesi perlu ditetapkan oleh Backend.
+Environment Postman:
+* `tests/api/MOJIJI-local.postman_environment.json` (`baseUrl`: `http://localhost:4000`)
+* `tests/api/MOJIJI-staging.postman_environment.json` (`baseUrl`: `https://staging.<domain>`)
+* `tests/api/MOJIJI-production.postman_environment.json` (`baseUrl`: `https://<domain>`)
 
-### 8.2. Konfigurasi Cookie
+### Contoh Perintah cURL untuk Pengujian Cepat
 
-Usulan konfigurasi cookie sesi:
+#### 1. Registrasi Akun
+```bash
+curl -X POST http://localhost:4000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"syafii_dev","email":"syafii@example.com","password":"Password123!"}'
+```
 
-- `HttpOnly`: aktif agar JavaScript di browser tidak dapat membaca cookie sesi.
-- `Secure`: aktif pada lingkungan HTTPS.
-- `SameSite`: Lax sebagai pilihan awal, dengan keputusan akhir berdasarkan arsitektur deployment.
-- `Path`: `/`.
-- Masa berlaku dan kebijakan kedaluwarsa sesi: ditetapkan sesuai kebijakan Backend.
+#### 2. Login dan Simpan Cookie
+```bash
+curl -X POST http://localhost:4000/api/auth/login \
+  -c cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{"email":"syafii@example.com","password":"Password123!"}'
+```
 
-Cookie sesi tidak boleh memuat kata sandi atau informasi rahasia pengguna secara langsung. Nilai cookie sesi tidak boleh dicatat ke log.
+#### 3. Cek Profil (Menggunakan Cookie)
+```bash
+curl -X GET http://localhost:4000/api/users/me \
+  -b cookies.txt
+```
 
-### 8.3. API Gateway dan Base URL
+#### 4. Cari Judul Anime
+```bash
+curl -X GET "http://localhost:4000/api/catalog/search?type=anime&q=naruto"
+```
 
-- Frontend berkomunikasi melalui API Gateway, bukan langsung ke layanan internal.
-- Prefix endpoint API yang digunakan dalam kontrak ini adalah `/api`.
-- Path `/api` melalui domain frontend dengan reverse proxy digunakan sebagai pendekatan arsitektur.
-- Base URL development, staging, dan production harus dikonfirmasi bersama Backend dan DevOps.
+#### 5. Tambah Judul ke Tracker
+```bash
+curl -X POST http://localhost:4000/api/tracker \
+  -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -d '{"mediaType":"anime","malId":20,"status":"watching","progress":1}'
+```
 
-### 8.4. CORS dan CSRF
+#### 6. Tambah Progres +1
+```bash
+curl -X POST http://localhost:4000/api/tracker/<TRACKER_UUID>/increment \
+  -b cookies.txt
+```
 
-- Jika API diakses melalui same-origin reverse proxy, konfigurasi CORS untuk request browser tersebut umumnya tidak diperlukan.
-- Jika Frontend dan API menggunakan origin berbeda, Backend harus menentukan origin yang diizinkan serta konfigurasi credentials secara eksplisit.
-- Jangan menggunakan wildcard origin (`*`) untuk request credentialed.
-- Backend perlu mengevaluasi dan menetapkan perlindungan CSRF untuk endpoint yang mengubah data dan menggunakan autentikasi berbasis cookie.
+#### 7. Hapus Tracker
+```bash
+curl -X DELETE http://localhost:4000/api/tracker/<TRACKER_UUID> \
+  -b cookies.txt
+```
 
-### 8.5. Hal yang Perlu Dikonfirmasi
+---
 
-- [x] Backend menetapkan penyimpanan sesi, masa berlaku, dan mekanisme invalidasi sesi.
-- [x] Backend dan DevOps menetapkan base URL API Gateway untuk setiap environment.
-- [x] Frontend mengonfirmasi cara mengirim request dengan cookie sesi.
-- [x] Backend menetapkan strategi CORS dan CSRF sesuai arsitektur akhir.
-- [x] QA meninjau skenario login, logout, sesi kedaluwarsa, akses tanpa autentikasi, dan akses lintas origin jika digunakan.
+## 7. Status Sign-Off dan Persetujuan Tim
 
-**Catatan:** Bagian ini adalah usulan kontrak. Tandai sebagai final hanya setelah keputusan terkait dikonfirmasi oleh pihak yang bertanggung jawab.
+* [x] **Format Respons & Kode Error:** Disepakati seragam di seluruh service (MJ-081 & MJ-098).
+* [x] **Mekanisme Autentikasi & Cookie:** JWT dalam cookie HTTP-Only terverifikasi (MJ-042 & MJ-044).
+* [x] **Isolasi Data & Anti-Spoofing:** Diuji dan lulus verifikasi (MJ-064 & MJ-097).
+* [x] **Caching Redis & Upstream:** Diuji dan lulus verifikasi (MJ-079).
+* [x] **Koleksi Postman:** Tersedia dan tervalidasi pada `tests/api/` (MJ-098).
