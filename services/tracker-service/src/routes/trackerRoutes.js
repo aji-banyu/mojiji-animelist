@@ -6,8 +6,12 @@ const {
   incrementTrackerProgress,
   deleteTracker,
 } = require("../controllers/trackerController");
+const { verifyInternalAccess } = require("../middlewares/internalAuthMiddleware");
 
 const router = express.Router();
+
+// Lindungi seluruh endpoint tracker dengan verifikasi kunci internal (Tiket MJ-097)
+router.use(verifyInternalAccess);
 
 // GET /api/tracker?status=...
 router.get("/", getTrackers);
