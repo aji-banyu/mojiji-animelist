@@ -1,0 +1,15 @@
+$kind: http-request
+url: "{{baseUrl}}/api/tracker/{{trackerId}}/status"
+method: PATCH
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "status": "completed"
+    }
+order: 3000
+description: "TC-011b: Mengubah status tracker menjadi completed."
+
