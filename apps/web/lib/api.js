@@ -66,7 +66,7 @@ export const apiClient = axios.create({
  */
 apiClient.interceptors.response.use(
   (response) => {
-    return response.data;
+    return response.data ?? { success: true };
   },
   (error) => {
     const isOffline =
@@ -295,7 +295,7 @@ export async function getCatalogDetailApi(type, malId) {
 }
 
 // ============================================================
-// 3. PROGRESS TRACKER
+// 3. PROGRESS TRACKER (WATCHLIST & ACTIVITY)
 // ============================================================
 
 /**
@@ -316,9 +316,28 @@ export async function getTrackerListApi(status = "") {
   }
 
   const endpoint = status ? `/api/tracker?status=${encodeURIComponent(status)}` : "/api/tracker";
-  return realFetch(endpoint, {
-    method: "GET",
-  });
+  return await apiClient.get(endpoint);
+}
+
+/**
+ * Cek apakah item katalog (type, malId) sudah ada di tracker user
+ */
+export async function getTrackerItemApi(type, malId) {
+  try {
+    const res = await getTrackerListApi();
+    if (res && res.success && Array.isArray(res.data)) {
+      const numericId = Number(malId);
+      const found = res.data.find((item) => {
+        const itemMalId = Number(item.malId || item.mal_id);
+        const itemType = (item.mediaType || item.media_type || "").toLowerCase();
+        return itemMalId === numericId && (!itemType || itemType === String(type).toLowerCase());
+      });
+      return found || null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 /**
@@ -335,14 +354,16 @@ export async function addTrackerApi({ type, malId, status = "plan", progress = 0
         media_type: type,
         mal_id: Number(malId),
         status,
-        progress,
+        progress: Number(progress) || 0,
       },
     };
   }
 
-  return realFetch("/api/tracker", {
-    method: "POST",
-    body: JSON.stringify({ type, malId: Number(malId), status, progress }),
+  return await apiClient.post("/api/tracker", {
+    mediaType: type,
+    malId: Number(malId),
+    status,
+    progress: Number(progress) || 0,
   });
 }
 
@@ -363,10 +384,7 @@ export async function updateTrackerStatusApi(id, status) {
     };
   }
 
-  return realFetch(`/api/tracker/${id}/status`, {
-    method: "PATCH",
-    body: JSON.stringify({ status }),
-  });
+  return await apiClient.patch(`/api/tracker/${id}/status`, { status });
 }
 
 /**
@@ -385,9 +403,7 @@ export async function incrementProgressApi(id) {
     };
   }
 
-  return realFetch(`/api/tracker/${id}/increment`, {
-    method: "POST",
-  });
+  return await apiClient.post(`/api/tracker/${id}/increment`);
 }
 
 /**
@@ -400,7 +416,5 @@ export async function deleteTrackerApi(id) {
     return mockTrackerDeleteSuccess;
   }
 
-  return realFetch(`/api/tracker/${id}`, {
-    method: "DELETE",
-  });
+  return await apiClient.delete(`/api/tracker/${id}`);
 }

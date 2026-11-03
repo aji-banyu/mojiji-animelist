@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Star,
@@ -13,9 +13,44 @@ import {
   SearchX,
   Layers,
   Sparkles,
+  ChevronDown,
+  CheckCircle2,
+  Check,
+  Loader2,
+  X,
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
-import { getCatalogDetailApi } from "@/lib/api";
+import {
+  getCatalogDetailApi,
+  getTrackerItemApi,
+  addTrackerApi,
+  updateTrackerStatusApi,
+} from "@/lib/api";
+
+/**
+ * Pilihan 5 status standar untuk anime dan manga
+ */
+const STATUS_OPTIONS_ANIME = [
+  { value: "watching", label: "Sedang Menonton" },
+  { value: "plan", label: "Rencana Nonton" },
+  { value: "completed", label: "Selesai Ditonton" },
+  { value: "on_hold", label: "Ditunda (On-Hold)" },
+  { value: "dropped", label: "Dibatalkan (Dropped)" },
+];
+
+const STATUS_OPTIONS_MANGA = [
+  { value: "reading", label: "Sedang Membaca" },
+  { value: "plan", label: "Rencana Baca" },
+  { value: "completed", label: "Selesai Dibaca" },
+  { value: "on_hold", label: "Ditunda (On-Hold)" },
+  { value: "dropped", label: "Dibatalkan (Dropped)" },
+];
+
+function getStatusLabel(status, type) {
+  const options = type === "manga" ? STATUS_OPTIONS_MANGA : STATUS_OPTIONS_ANIME;
+  const found = options.find((opt) => opt.value === status);
+  return found ? found.label : status;
+}
 
 /**
  * DetailContent — Membaca query parameter ?type=&id= dan menyajikan detail lengkap.
@@ -23,6 +58,7 @@ import { getCatalogDetailApi } from "@/lib/api";
  */
 function DetailContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const type = searchParams.get("type") || "anime"; // "anime" | "manga"
   const id = searchParams.get("id"); // MAL ID (integer)
 
@@ -31,8 +67,24 @@ function DetailContent() {
   const [error, setError] = useState(null);
   const [isNotFound, setIsNotFound] = useState(false);
 
+  // State Pelacakan Tracker (Tiket MJ-061)
+  const defaultStatus = type === "manga" ? "reading" : "watching";
+  const [selectedStatus, setSelectedStatus] = useState(defaultStatus);
+  const [trackedItem, setTrackedItem] = useState(null);
+  const [isSavingTracker, setIsSavingTracker] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const statusOptions = type === "manga" ? STATUS_OPTIONS_MANGA : STATUS_OPTIONS_ANIME;
+
+  // Auto-dismiss toast setelah 4 detik
   useEffect(() => {
-    // Validasi parameter ID
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  // Ambil detail katalog dan status tracker saat ini
+  useEffect(() => {
     if (!id) {
       setError("Parameter ID katalog tidak ditemukan pada URL.");
       setIsLoading(false);
@@ -59,13 +111,24 @@ function DetailContent() {
         }
       } catch (err) {
         if (isMounted) {
-          // Langkah 3: Penanganan kode status HTTP spesifik (404, 429, 502/503/Offline)
           if (err?.status === 404 || err?.error?.code === "NOT_FOUND") {
             setIsNotFound(true);
-          } else if (err?.status === 429 || err?.error?.code === "RATE_LIMIT_EXCEEDED" || err?.error?.code === "RATE_LIMITED") {
-            setError("Batas kuota permintaan ke penyedia katalog tercapai. Harap tunggu beberapa detik lalu coba lagi.");
-          } else if (err?.isOffline || err?.status === 503 || err?.error?.code === "SERVER_OFFLINE") {
-            setError("Tidak dapat terhubung ke server Catalog. Pastikan service API Gateway dan Docker backend aktif.");
+          } else if (
+            err?.status === 429 ||
+            err?.error?.code === "RATE_LIMIT_EXCEEDED" ||
+            err?.error?.code === "RATE_LIMITED"
+          ) {
+            setError(
+              "Batas kuota permintaan ke penyedia katalog tercapai. Harap tunggu beberapa detik lalu coba lagi."
+            );
+          } else if (
+            err?.isOffline ||
+            err?.status === 503 ||
+            err?.error?.code === "SERVER_OFFLINE"
+          ) {
+            setError(
+              "Tidak dapat terhubung ke server Catalog. Pastikan service API Gateway dan Docker backend aktif."
+            );
           } else {
             setError(err?.error?.message || "Terjadi kesalahan saat mengambil detail anime/manga.");
           }
@@ -79,10 +142,83 @@ function DetailContent() {
 
     fetchDetail();
 
+    // Langkah 5: Periksa apakah judul ini sudah ada di tracker user
+    getTrackerItemApi(type, id)
+      .then((item) => {
+        if (isMounted && item) {
+          setTrackedItem(item);
+          if (item.status) {
+            setSelectedStatus(item.status);
+          }
+        }
+      })
+      .catch(() => {});
+
     return () => {
       isMounted = false;
     };
   }, [type, id]);
+
+  // Handler simpan/perbarui status ke tracker (Langkah 2, 3, 4, 5 Tiket MJ-061)
+  const handleSaveTracker = async () => {
+    setIsSavingTracker(true);
+    try {
+      if (trackedItem) {
+        // Jika sudah ada di tracker: Ubah status (Opsi A)
+        await updateTrackerStatusApi(trackedItem.id, selectedStatus);
+        setTrackedItem((prev) => ({ ...prev, status: selectedStatus }));
+        setToast({
+          type: "success",
+          message: `Status berhasil diperbarui menjadi ${getStatusLabel(selectedStatus, type)}!`,
+        });
+      } else {
+        // Jika belum ada di tracker: Tambahkan item baru (POST /api/tracker)
+        const res = await addTrackerApi({
+          type,
+          malId: id,
+          status: selectedStatus,
+          progress: 0,
+        });
+
+        if (res && res.data) {
+          setTrackedItem(res.data);
+        } else {
+          const item = await getTrackerItemApi(type, id);
+          setTrackedItem(item || { malId: id, mediaType: type, status: selectedStatus });
+        }
+
+        setToast({
+          type: "success",
+          message: `Berhasil menambahkan "${data?.title || "Judul"}" ke tracker!`,
+        });
+      }
+    } catch (err) {
+      // Langkah 3: Bila belum login atau sesi habis (401), arahkan ke /login
+      if (err?.status === 401 || err?.error?.code === "UNAUTHORIZED") {
+        router.push("/login");
+        return;
+      }
+
+      // Penanganan 409 Conflict: item sudah ada di tracker
+      if (err?.status === 409 || err?.error?.code === "CONFLICT") {
+        setToast({
+          type: "info",
+          message: "Judul ini sudah tersimpan di daftar tracker Anda.",
+        });
+        const item = await getTrackerItemApi(type, id);
+        if (item) setTrackedItem(item);
+        return;
+      }
+
+      // Langkah 4: Tampilkan notifikasi gagal
+      setToast({
+        type: "error",
+        message: err?.error?.message || "Gagal menyimpan item ke tracker.",
+      });
+    } finally {
+      setIsSavingTracker(false);
+    }
+  };
 
   const poster = data?.image || data?.imageUrl || data?.image_url;
   const malId = data?.malId || data?.mal_id || data?.id || id;
@@ -96,7 +232,36 @@ function DetailContent() {
       : "TBA";
 
   return (
-    <div className="min-h-[calc(100vh-3.5rem)] bg-[#0F1015] px-4 py-8 text-white sm:px-6 lg:px-8">
+    <div className="relative min-h-[calc(100vh-3.5rem)] bg-[#0F1015] px-4 py-8 text-white sm:px-6 lg:px-8">
+      {/* Toast Notification Floating Feedback */}
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border px-4 py-3 text-xs font-semibold shadow-2xl backdrop-blur-md transition-all sm:text-sm ${
+            toast.type === "success"
+              ? "border-emerald-500/40 bg-emerald-950/90 text-emerald-200"
+              : toast.type === "info"
+              ? "border-amber-500/40 bg-amber-950/90 text-amber-200"
+              : "border-red-500/40 bg-red-950/90 text-red-200"
+          }`}
+        >
+          {toast.type === "success" ? (
+            <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+          ) : (
+            <AlertCircle size={18} className="shrink-0" />
+          )}
+          <span className="max-w-xs sm:max-w-sm">{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="ml-2 rounded-lg p-1 text-neutral-400 hover:bg-white/10 hover:text-white"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <div className="mx-auto max-w-5xl space-y-8">
         {/* Tombol Navigasi Kembali */}
         <div>
@@ -112,13 +277,11 @@ function DetailContent() {
         {/* === KONDISI 1: Loading Skeleton Shimmer === */}
         {isLoading && (
           <div className="flex flex-col gap-8 md:flex-row animate-pulse">
-            {/* Skeleton Poster */}
             <div className="w-full md:w-[300px] shrink-0">
               <div className="aspect-[3/4] w-full rounded-2xl bg-neutral-800/60 border border-white/10" />
-              <div className="mt-4 h-12 w-full rounded-xl bg-neutral-800/40" />
+              <div className="mt-4 h-24 w-full rounded-xl bg-neutral-800/40" />
             </div>
 
-            {/* Skeleton Info */}
             <div className="flex-1 space-y-4">
               <div className="flex gap-2">
                 <div className="h-6 w-20 rounded-full bg-neutral-800/70" />
@@ -141,7 +304,7 @@ function DetailContent() {
           </div>
         )}
 
-        {/* === KONDISI 2: 404 Not Found (Judul Tidak Ditemukan - Langkah 3) === */}
+        {/* === KONDISI 2: 404 Not Found === */}
         {!isLoading && isNotFound && (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12141A] px-6 py-16 text-center shadow-xl">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
@@ -164,7 +327,7 @@ function DetailContent() {
           </div>
         )}
 
-        {/* === KONDISI 3: Upstream Error (429 / 502 / Offline - Langkah 3) === */}
+        {/* === KONDISI 3: Upstream Error === */}
         {!isLoading && !isNotFound && error && (
           <div className="flex items-start gap-3.5 rounded-2xl border border-red-500/40 bg-red-950/40 p-6 text-sm text-red-200 shadow-xl">
             <AlertCircle size={22} className="mt-0.5 shrink-0 text-red-400" />
@@ -184,10 +347,10 @@ function DetailContent() {
           </div>
         )}
 
-        {/* === KONDISI 4: Data Berhasil Dimuat (Langkah 2 & AC US-008) === */}
+        {/* === KONDISI 4: Data Berhasil Dimuat (Tiket MJ-060 & MJ-061) === */}
         {!isLoading && !isNotFound && !error && data && (
           <div className="flex flex-col gap-8 md:flex-row md:items-start">
-            {/* Kolom Kiri: Poster Gambar & Tombol Tambah ke Tracker */}
+            {/* Kolom Kiri: Poster Gambar & Kontrol Tracker */}
             <div className="w-full md:w-[300px] shrink-0">
               <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#181A20] shadow-2xl">
                 {poster ? (
@@ -210,21 +373,81 @@ function DetailContent() {
                 </div>
               </div>
 
-              {/* Langkah 4: Siapkan Tempat Tombol Tambah ke Tracker (Opsi B: Diaktifkan di MJ-061) */}
-              <div className="mt-5 space-y-2">
+              {/* Kontrol Tracker (Tiket MJ-061: Opsi A - Dropdown 5 Status & Tombol Simpan) */}
+              <div className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-[#181A20] p-4 shadow-lg">
+                <div className="space-y-1.5">
+                  <label
+                    htmlFor="tracker-status-select"
+                    className="block text-xs font-semibold text-neutral-300"
+                  >
+                    Pilihan Status Tracker
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="tracker-status-select"
+                      value={selectedStatus}
+                      onChange={(e) => setSelectedStatus(e.target.value)}
+                      disabled={isSavingTracker}
+                      className="w-full appearance-none rounded-xl border border-white/15 bg-[#12141A] px-3.5 py-2.5 text-xs font-medium text-white shadow-inner focus:border-[#FF4655] focus:outline-none focus:ring-1 focus:ring-[#FF4655] transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {statusOptions.map((opt) => (
+                        <option
+                          key={opt.value}
+                          value={opt.value}
+                          className="bg-[#181A20] text-white"
+                        >
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-neutral-400">
+                      <ChevronDown size={14} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tombol Simpan / Perbarui Tracker */}
                 <button
                   type="button"
-                  disabled
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#FF4655]/40 bg-[#FF4655]/15 py-3 text-sm font-bold text-neutral-300 shadow-md cursor-not-allowed opacity-85 transition-all"
-                  title="Fitur simpan progres watchlist akan segera aktif pada tiket MJ-061"
+                  onClick={handleSaveTracker}
+                  disabled={isSavingTracker}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#FF4655] py-2.5 text-xs font-bold text-white shadow-lg shadow-[#FF4655]/20 transition-all hover:bg-[#e03d4a] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  <PlusCircle size={18} className="text-[#FF4655]" />
-                  <span>+ Tambah ke Tracker</span>
+                  {isSavingTracker ? (
+                    <>
+                      <Loader2 size={15} className="animate-spin" />
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : trackedItem ? (
+                    <>
+                      <CheckCircle2 size={15} />
+                      <span>Perbarui Status</span>
+                    </>
+                  ) : (
+                    <>
+                      <PlusCircle size={15} />
+                      <span>+ Tambah ke Tracker</span>
+                    </>
+                  )}
                 </button>
-                <p className="text-center text-[11px] font-medium text-neutral-400">
-                  🔒 Fitur pelacakan akan diaktifkan pada tiket{" "}
-                  <strong className="text-white">MJ-061</strong>
-                </p>
+
+                {/* Indikator Status Saat Ini (Langkah 5) */}
+                {trackedItem && (
+                  <div className="flex items-center justify-between rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-[11px] font-medium text-emerald-300">
+                    <span className="flex items-center gap-1.5 truncate">
+                      <Check size={13} className="text-emerald-400 shrink-0" />
+                      <span className="truncate">
+                        Status: <strong>{getStatusLabel(trackedItem.status, type)}</strong>
+                      </span>
+                    </span>
+                    <Link
+                      href="/tracker"
+                      className="ml-2 font-bold text-emerald-400 underline hover:text-emerald-200 shrink-0"
+                    >
+                      Buka Tracker →
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
 
