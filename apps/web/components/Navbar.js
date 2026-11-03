@@ -3,13 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, BookMarked, LogIn, UserPlus, Menu, X, User, LogOut } from "lucide-react";
+import { BookMarked, LogIn, UserPlus, Menu, X, User, LogOut } from "lucide-react";
 import { useState, useEffect } from "react";
 import useAuthStore from "@/store/authStore";
 import { logoutApi } from "@/lib/api";
 
 const navLinks = [
-  { href: "/search", label: "Cari", icon: Search },
   { href: "/tracker", label: "Tracker", icon: BookMarked },
 ];
 
@@ -55,12 +54,12 @@ export default function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#0F1015]/95 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
         {/* Logo Mojiji */}
         <Link
-          href="/"
-          className="flex items-center gap-2.5 font-bold text-foreground transition-opacity hover:opacity-85"
+          href="/dashboard"
+          className="flex items-center gap-2.5 font-bold text-white transition-opacity hover:opacity-85"
         >
           <Image
             src="/images/logo_mojiji.png"
@@ -70,7 +69,7 @@ export default function Navbar() {
             className="h-6 w-auto"
             priority
           />
-          <span className="text-base font-bold tracking-tight">Mojiji</span>
+          <span className="text-base font-bold tracking-tight text-white">Mojiji</span>
         </Link>
 
         {/* Desktop Nav */}
@@ -79,10 +78,10 @@ export default function Navbar() {
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                 isActive(href)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  ? "bg-[#FF4655] text-white shadow-md shadow-[#FF4655]/20"
+                  : "text-neutral-400 hover:bg-white/5 hover:text-white"
               }`}
             >
               <Icon size={15} />
@@ -98,10 +97,10 @@ export default function Navbar() {
             <div className="flex items-center gap-2">
               <Link
                 href="/dashboard"
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                   isActive("/dashboard")
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-white/10 text-white border border-white/15"
+                    : "text-neutral-300 hover:bg-white/5 hover:text-white"
                 }`}
                 title="Dashboard Saya"
               >
@@ -111,10 +110,10 @@ export default function Navbar() {
 
               <Link
                 href="/profile"
-                className={`flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
                   isActive("/profile")
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-white/10 text-white"
+                    : "text-neutral-400 hover:bg-white/5 hover:text-white"
                 }`}
                 title="Profil Pengguna"
               >
@@ -123,7 +122,7 @@ export default function Navbar() {
 
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
+                className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-medium text-neutral-300 transition-colors hover:border-red-500/50 hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
                 title="Keluar dari akun"
               >
                 <LogOut size={13} />
@@ -137,8 +136,8 @@ export default function Navbar() {
                 href="/login"
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                   isActive("/login")
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-[#FF4655] text-white"
+                    : "text-neutral-400 hover:text-white"
                 }`}
               >
                 <LogIn size={15} />
@@ -146,7 +145,7 @@ export default function Navbar() {
               </Link>
               <Link
                 href="/register"
-                className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+                className="flex items-center gap-1.5 rounded-md bg-[#FF4655] px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
               >
                 <UserPlus size={15} />
                 Daftar
@@ -157,7 +156,7 @@ export default function Navbar() {
 
         {/* Mobile Hamburger */}
         <button
-          className="flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-accent hover:text-accent-foreground md:hidden cursor-pointer"
+          className="flex items-center justify-center rounded-md p-2 text-neutral-400 hover:bg-white/5 hover:text-white md:hidden cursor-pointer"
           onClick={() => setMobileOpen((prev) => !prev)}
           aria-label="Toggle menu"
         >
@@ -167,7 +166,7 @@ export default function Navbar() {
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="border-b border-border bg-background px-4 py-3 md:hidden">
+        <div className="border-b border-white/10 bg-[#0F1015] px-4 py-3 md:hidden">
           <nav className="flex flex-col gap-1">
             {navLinks.map(({ href, label, icon: Icon }) => (
               <Link
@@ -176,8 +175,8 @@ export default function Navbar() {
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
                   isActive(href)
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                    ? "bg-[#FF4655] text-white"
+                    : "text-neutral-400 hover:bg-white/5 hover:text-white"
                 }`}
               >
                 <Icon size={16} />
@@ -185,14 +184,14 @@ export default function Navbar() {
               </Link>
             ))}
 
-            <div className="my-2 border-t border-border" />
+            <div className="my-2 border-t border-white/10" />
 
             {mounted && user ? (
               <>
                 <Link
                   href="/dashboard"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-foreground"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-semibold text-white"
                 >
                   <User size={16} className="text-[#FF4655]" />
                   <span>{user.username} (Dashboard)</span>
@@ -200,7 +199,7 @@ export default function Navbar() {
                 <Link
                   href="/profile"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-neutral-400 hover:text-white"
                 >
                   <span>Profil Pengguna</span>
                 </Link>
@@ -217,7 +216,7 @@ export default function Navbar() {
                 <Link
                   href="/login"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-center gap-1.5 rounded-md border border-border py-2 text-sm font-medium"
+                  className="flex items-center justify-center gap-1.5 rounded-md border border-white/10 py-2 text-sm font-medium text-white"
                 >
                   <LogIn size={15} />
                   Masuk
@@ -225,7 +224,7 @@ export default function Navbar() {
                 <Link
                   href="/register"
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center justify-center gap-1.5 rounded-md bg-primary py-2 text-sm font-medium text-primary-foreground"
+                  className="flex items-center justify-center gap-1.5 rounded-md bg-[#FF4655] py-2 text-sm font-medium text-white"
                 >
                   <UserPlus size={15} />
                   Daftar

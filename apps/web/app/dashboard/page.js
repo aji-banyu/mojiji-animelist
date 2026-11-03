@@ -4,6 +4,7 @@ import Link from "next/link";
 import { User, Film, Bookmark, Sparkles, Compass } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import useAuthStore from "@/store/authStore";
+import CatalogSearch from "@/components/CatalogSearch";
 
 export default function DashboardPage() {
   const user = useAuthStore((s) => s.user);
@@ -12,7 +13,7 @@ export default function DashboardPage() {
     <AuthGuard>
       <div className="min-h-[calc(100vh-3.5rem)] bg-[#0F1015] px-4 py-8 text-white">
         <div className="mx-auto max-w-5xl space-y-8">
-          {/* Header Card Profil (Tombol Logout sekarang dipusatkan di Navbar atas) */}
+          {/* Header Card Profil */}
           <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-[#181A20] p-6 sm:flex-row sm:items-center sm:justify-between shadow-lg">
             <div className="flex items-center gap-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FF4655]/10 text-[#FF4655] border border-[#FF4655]/30">
@@ -32,6 +33,14 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
+
+            <Link
+              href="/tracker"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-semibold text-neutral-300 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <span>Buka Tracker Saya</span>
+              <span className="text-[#FF4655]">→</span>
+            </Link>
           </div>
 
           {/* Statistik Cepat */}
@@ -64,29 +73,21 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Navigasi / Aksi Cepat */}
-          <div className="rounded-xl border border-white/10 bg-[#181A20] p-6 shadow-sm">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              <Compass size={18} className="text-[#FF4655]" />
-              Aksi Cepat
-            </h2>
-            <p className="mt-1 text-xs text-neutral-400">
-              Jelajahi anime dan manga favorit atau kelola progres tontonan Anda.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-3">
-              <Link
-                href="/search"
-                className="rounded-lg bg-[#FF4655] px-4 py-2.5 text-xs font-bold text-white transition-opacity hover:opacity-90"
-              >
-                Cari Anime & Manga
-              </Link>
-              <Link
-                href="/tracker"
-                className="rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-white/10"
-              >
-                Buka Tracker Saya
-              </Link>
+          {/* Section Fitur Pencarian Terintegrasi (Pilihan 1 - Tiket MJ-059) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                  <Compass size={20} className="text-[#FF4655]" />
+                  <span>Jelajahi & Cari Katalog</span>
+                </h2>
+                <p className="mt-0.5 text-xs text-neutral-400">
+                  Cari anime atau manga favoritmu untuk ditambahkan ke daftar tontonan
+                </p>
+              </div>
             </div>
+
+            <CatalogSearch />
           </div>
         </div>
       </div>
