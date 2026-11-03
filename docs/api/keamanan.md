@@ -88,7 +88,7 @@ Dokumen ini mencatat hasil audit keamanan, penguatan pertahanan akses data pengg
   * Tracker Service telah mengimplementasikan fungsi adapter dua arah (`toDbStatus` dan `toApiStatus`):
     * Saat data masuk dari API: Dikonversi ke nilai enum PostgreSQL yang valid (`plan` -> `PLAN_TO_WATCH`, `watching`/`reading` -> `WATCHING`, `completed` -> `COMPLETED`, `on_hold` -> `PAUSED`, `dropped` -> `DROPPED`).
     * Saat data dikembalikan ke API: Dikonversi kembali ke format kontrak publik (`PLAN_TO_WATCH` -> `plan`, `WATCHING` -> `watching`/`reading` sesuai `media_type`, `PAUSED` -> `on_hold`, dst.).
-    * Kueri filter `GET /api/tracker?status=...` mendukung pencocokan terhadap kedua format tersebut tanpa memicu error.
+    * Kueri filter `GET /api/tracker—status=...` mendukung pencocokan terhadap kedua format tersebut tanpa memicu error.
 
 ---
 

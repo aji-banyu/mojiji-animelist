@@ -17,7 +17,7 @@
 | 3 | **TC-012** | Ubah/Akses tracker tanpa login | `GET / POST /api/tracker` (No Session) | HTTP 401 Unauthorized, diarahkan ke Login | *Belum diuji* | *Not Run* |
 | 4 | **TC-013** | Tambah progres +1 | `POST /api/tracker/:id/increment` | HTTP 200 OK, progres bertambah `progress: progress + 1` | *Belum diuji* | *Not Run* |
 | 5 | **TC-014** | Progres +1 saat melebihi total | `POST /api/tracker/:id/increment` | HTTP 400 Bad Request, progres tidak melebihi `totalEpisodes` | *Belum diuji* | *Not Run* |
-| 6 | **TC-015** | Dashboard tracker & filter status | `GET /api/tracker?status=watching` | HTTP 200 OK, mengembalikan array judul sesuai status milik user | *Belum diuji* | *Not Run* |
+| 6 | **TC-015** | Dashboard tracker & filter status | `GET /api/tracker—status=watching` | HTTP 200 OK, mengembalikan array judul sesuai status milik user | *Belum diuji* | *Not Run* |
 | 7 | **TC-016** | Akses tracker milik user lain | `GET /api/tracker/:foreignId` | HTTP 404 Not Found, data pengguna lain tidak bocor | *Belum diuji* | *Not Run* |
 
 ---

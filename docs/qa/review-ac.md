@@ -39,7 +39,7 @@ Keterangan: **Dapat diuji** = hasil AC sudah bisa ditentukan benar/salah. **Dapa
 
 | ID | Fitur | Saran/pertanyaan yang perlu diputuskan penulis AC | Tujuan QA | Status |
 |---|---|---|---|---|
-| Q-031-01 | US-007 Register | Pastikan aturan validasi username, format email, input kosong, dan username duplikat. Apakah perlu AC tambahan? | Menentukan input valid/tidak valid secara konsisten | Menunggu tanggapan |
+| Q-031-01 | US-007 Register | Pastikan aturan validasi username, format email, input kosong, dan username duplikat. Apakah perlu AC tambahan— | Menentukan input valid/tidak valid secara konsisten | Menunggu tanggapan |
 | Q-031-02 | US-002 Login/Logout | Tambahkan/rumuskan AC logout jika masuk dalam target Sprint 1; konfirmasi tujuan navigasi dan kondisi sesi setelah logout. | Agar logout yang termasuk scope dapat diuji | Menunggu tanggapan |
 | Q-031-03 | US-001 Pencarian | Tegaskan perilaku ketika kata kunci kosong, sumber cache fallback, dan bentuk pesan saat Tenrai gagal. | Menghindari perbedaan interpretasi hasil | Menunggu tanggapan |
 | Q-031-04 | US-008 Detail | Tentukan tampilan ketika field Tenrai kosong atau gambar gagal dan apakah ada tindakan retry. | Menguji kasus data yang tidak lengkap secara objektif | Menunggu tanggapan |

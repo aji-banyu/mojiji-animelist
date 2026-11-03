@@ -26,7 +26,7 @@
 ## 2. Rincian Pengujian API (Postman)
 
 ### TC-005a — Search Anime Naruto
-* **Method & URL:** `GET {{baseUrl}}/api/catalog/search?type=anime&q=Naruto`
+* **Method & URL:** `GET {{baseUrl}}/api/catalog/search—type=anime&q=Naruto`
 * **Headers:** `No Auth` (Publik)
 * **Hasil Pengujian:**
   * Request 1: HTTP 200 OK, Response Time 2.700 ms.
@@ -36,7 +36,7 @@
 * **Status:** PASS (Functional API).
 
 ### TC-005b — Search Manga Naruto
-* **Method & URL:** `GET {{baseUrl}}/api/catalog/search?type=manga&q=Naruto`
+* **Method & URL:** `GET {{baseUrl}}/api/catalog/search—type=manga&q=Naruto`
 * **Headers:** `No Auth`
 * **Hasil Pengujian:**
   * Request 1: HTTP 200 OK, Response Time 1.350 ms.
@@ -46,7 +46,7 @@
 * **Status:** PASS (Functional API).
 
 ### TC-006 — Search No Results
-* **Method & URL:** `GET {{baseUrl}}/api/catalog/search?type=anime&q=zzzxxyyqq123456`
+* **Method & URL:** `GET {{baseUrl}}/api/catalog/search—type=anime&q=zzzxxyyqq123456`
 * **Hasil Pengujian:**
   * HTTP Status: 200 OK, Response Time: 602 ms.
   * Body: `{"success": true, "data": [], "pagination": {}}`.

@@ -12,7 +12,7 @@ Dokumen ini merupakan panduan operasional standar (*Standard Operating Procedure
 
 ## 1. Arsitektur Peladen (Server VPS) & Tata Letak Direktori
 
-Peladen VPS Mojiji menggunakan sistem operasi **Ubuntu 22.04 LTS (x86_64)** dengan spesifikasi **2 vCPU Cores, 2 GB RAM fisik, dan 2 GB Swap**. Seluruh beban kerja aplikasi dijalankan di dalam kontainer Docker yang diisolasi per lingkungan (*staging* dan *production*).
+Peladen VPS Mojiji menggunakan sistem operasi **Ubuntu 24.04 LTS (x86_64)** pada kluster **Xeon Shared (NAT VPS)** dengan spesifikasi **2 vCPU Cores, 2 GB RAM fisik, 2 GB Swap, dan 20 GB NVMe Disk**. Seluruh beban kerja aplikasi dijalankan di dalam kontainer Docker yang diisolasi per lingkungan (*staging* dan *production*).
 
 ### A. Kebijakan Keamanan Port Jaringan (Firewall UFW)
 * **Port Publik Terbuka:** Hanya port **22** (SSH), **80** (HTTP), dan **443** (HTTPS).
@@ -207,7 +207,9 @@ flowchart TD
 ### A. Prosedur Rollback Cepat via Skrip VPS
 1. Masuk ke terminal VPS via SSH:
    ```bash
-   ssh deploy@mojiji.web.id
+   ssh -p 20125 deploy@103.147.32.27
+   # atau via domain:
+   ssh -p 20125 deploy@mojiji.web.id
    ```
 2. Jalankan skrip pemulihan darurat:
    ```bash

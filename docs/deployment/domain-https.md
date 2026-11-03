@@ -1,12 +1,12 @@
 ---
 title: "Konfigurasi Domain, Caddy & HTTPS Otomatis (MJ-054)"
 sidebar_position: 4
-tags: [infrastruktur, devops, caddy, dns, ssl, domain, https, reverse-proxy]
+tags: [infrastruktur, devops, caddy, dns, ssl, domain, https, reverse-proxy, shared-hosting]
 ---
 
 # Konfigurasi Domain, Caddy & HTTPS Otomatis (MJ-054)
 
-Dokumen ini mencatat konfigurasi domain publik, integrasi DNS Management, arsitektur *Reverse Proxy* berbasis Caddy, serta otomatisasi sertifikat SSL/TLS menggunakan Let's Encrypt / ZeroSSL untuk proyek **Mojiji AnimeList** sesuai tiket **MJ-054**.
+Dokumen ini mencatat konfigurasi domain publik, integrasi DNS Management, mekanisme *SNI Edge Ingress* pada peladen NAT VPS Xeon Shared, arsitektur *Reverse Proxy* berbasis Caddy, serta otomatisasi sertifikat SSL/TLS menggunakan Let's Encrypt / ZeroSSL untuk proyek **Mojiji AnimeList** sesuai tiket **MJ-054**.
 
 ---
 
@@ -21,7 +21,12 @@ flowchart TD
         ApiUser["Klien Aplikasi Mobile / Postman"]
     end
 
-    subgraph CADDY_EDGE ["Caddy Web Server (Container :443 / :80)"]
+    subgraph PROVIDER_EDGE ["Router Edge Provider NAT VPS (103.147.32.27)"]
+        EDGE_ROUTER{"SNI Domain Ingress Router\n(Port 80/443)"}
+        IP_BLOCK["Akses Raw IP 80/443 -> DIBLOKIR"]
+    end
+
+    subgraph CADDY_EDGE ["Caddy Web Server (Container :443 / :80 di VPS #1966)"]
         TLS["Auto TLS Termination\n(Let's Encrypt / ZeroSSL)"]
         GZIP["Kompresi Gzip Dinamis"]
         ROUTER{"Evaluasi Jalur Path URL"}
@@ -32,11 +37,18 @@ flowchart TD
         STATIC["File Statis Hasil Ekspor Next.js (/srv)"]
     end
 
-    WebUser -->|HTTPS :443| TLS
-    ApiUser -->|HTTPS :443| TLS
+    WebUser -->|HTTPS staging.mojiji.web.id| EDGE_ROUTER
+    ApiUser -->|HTTPS mojiji.web.id/api/*| EDGE_ROUTER
+    EDGE_ROUTER -->|Teruskan Traffic Domain ke VPS| TLS
+    
+    WebUser -.->|Akses Langsung http://103.147.32.27| IP_BLOCK
+    
     TLS --> GZIP --> ROUTER
     ROUTER -->|Jika Awalan /api/*| GATEWAY
     ROUTER -->|Jalur Lainnya (/*)| STATIC
+
+    style PROVIDER_EDGE fill:#fff3cd,stroke:#ffc107,color:#856404
+    style CADDY_EDGE fill:#e8f4f8,stroke:#17a2b8,color:#0c5460
 ```
 
 ---
@@ -45,16 +57,24 @@ flowchart TD
 
 Proyek Mojiji menggunakan domain lokal Indonesia tingkat dua (**`.web.id`**), yaitu **`mojiji.web.id`**, yang terdaftar di bawah regulasi PANDI (*Pengelola Nama Domain Internet Indonesia*).
 
-### Konfigurasi DNS A-Record (DomaiNesia DNS Management)
-Dua buah A-Record diarahkan ke alamat IP Publik VPS peladen (`103.147.32.27`):
+### A. Konfigurasi DNS A-Record (DomaiNesia DNS Management)
+Dua buah A-Record diarahkan ke alamat IP Publik bersama VPS peladen (`103.147.32.27`):
 
 | Host / Subdomain | Tipe Record | Alamat Tujuan (IP VPS) | TTL | Peruntukan Lingkungan |
 | :--- | :---: | :---: | :---: | :--- |
 | **`@` (Root Domain)** | `A` | `103.147.32.27` | 3600 | Domain Utama Production (`mojiji.web.id`) |
 | **`staging`** | `A` | `103.147.32.27` | 3600 | Lingkungan Staging (`staging.mojiji.web.id`) |
 
-> [!NOTE]
+> [!NOTE] Strategi Single-Origin Path Routing:
 > Pada perancangan awal sempat dipertimbangkan subdomain terpisah `api.mojiji.web.id`. Namun, untuk mengeliminasi kendala **CORS (*Cross-Origin Resource Sharing*)** serta pembatasan pemblokiran *Third-Party Cookies* pada peramban modern (Safari, Chrome), tim memutuskan strategi **Single-Origin Path-Based Routing**: `/api/*` diteruskan ke API Gateway pada domain yang sama.
+
+### B. Registrasi Domain di Panel Provider NAT VPS (Port 80/443 Routing)
+Karena peladen berjalan di atas arsitektur **Xeon Shared NAT VPS**, akses web port 80 dan 443 via raw IP dinonaktifkan oleh provider. Sebagai gantinya, provider menyediakan fitur panel **"Domain & Website (port 80/443)"**:
+
+1. **Entri Terdaftar di Panel Provider:**
+   * `mojiji.web.id` dan `*.mojiji.web.id` (Production)
+   * `staging.mojiji.web.id` dan `*.staging.mojiji.web.id` (Staging)
+2. **Cara Kerja:** Router edge provider membaca header HTTP `Host:` dan ekstensi TLS *Server Name Indication (SNI)* pada setiap paket data masuk. Jika paket ditujukan untuk domain di atas, router edge seketika meneruskannya ke port 80/443 pada instance VPS kita, di mana Caddy telah siap menyambutnya.
 
 ---
 

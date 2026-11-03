@@ -90,7 +90,7 @@ Not Run (diisi setelah fix tersedia).
 - **Ditujukan kepada:** Frontend/Backend (atau role terkait berdasarkan bug).
 - **Artefak:** Tautan GitHub Issue, bukti tersensor, dan catatan MJ-068/MJ-069.
 - **Diminta:** Konfirmasi penanggung jawab, rencana perbaikan, referensi PR/commit fix, dan pemberitahuan ketika build baru siap diuji ulang.
-- **Memblokir?:** Tentukan berdasarkan severity, dampak user flow, dan keputusan tim; jangan otomatis menyebut semua bug blocker.
+- **Memblokir—:** Tentukan berdasarkan severity, dampak user flow, dan keputusan tim; jangan otomatis menyebut semua bug blocker.
 
 ## 7. Definition of Done untuk MJ-070
 

@@ -142,7 +142,7 @@ Untuk menjaga akuntabilitas, setiap direktori dalam repositori memiliki penanggu
 | Direktori Repositori | Pemilik Utama | Anggota Tim | Tanggung Jawab Review |
 | :--- | :--- | :--- | :--- |
 | `apps/web/` | Frontend Developer | Rian | Review perubahan antarmuka, komponen React, styling Tailwind, dan performa client. |
-| `services/` | Backend Engineers | Syafii & Dika | Review logika bisnis Fastify, keamanan routing, enkripsi, dan integrasi API pihak ketiga. |
+| `services/` | Backend Engineers | Syafii & Dika | Review logika bisnis Express.js, keamanan routing, enkripsi, dan integrasi API pihak ketiga. |
 | `database/` | Database Administrator | Ryan | Review integritas DDL migrasi Dbmate, query indexing, dan backward-compatibility. |
 | `tests/`, `docs/qa/` | Quality Assurance (QA) | Nadia | Review cakupan skenario pengujian, koleksi Postman/Newman, dan verifikasi bug fix. |
 | `infra/`, `.github/`, `docs/deployment/` | DevOps Engineer | Aji | Review konfigurasi Docker, Caddyfile, alur CI/CD, alokasi memori, dan keamanan server. |

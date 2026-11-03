@@ -1,12 +1,12 @@
 ---
 title: "Pengukuran RAM & Kebijakan Alokasi Memori (MJ-089)"
 sidebar_position: 5
-tags: [infrastruktur, devops, memory, ram, vps, staging, always-on]
+tags: [infrastruktur, devops, memory, ram, vps, staging, always-on, shared-hosting]
 ---
 
 # Laporan Pengukuran RAM & Kebijakan Alokasi Memori (MJ-089)
 
-Dokumen ini mencatat metodologi, hasil pengukuran empiris *live* di server VPS, perbandingan anggaran teoritis versus data riil, penetapan batas (*resource limits*) per kontainer Docker, serta keputusan resmi operasional lingkungan Staging (**Mode A: Always-On**) untuk proyek **Mojiji AnimeList** sesuai tiket **MJ-089**.
+Dokumen ini mencatat metodologi, hasil pengukuran empiris *live* di peladen NAT VPS Xeon Shared, perbandingan anggaran teoritis versus data riil, penetapan batas (*resource limits*) per kontainer Docker, analisis perbedaan pembacaan RAM panel provider (87%) versus metrik internal Linux, serta keputusan resmi operasional lingkungan Staging (**Mode A: Always-On**) untuk proyek **Mojiji AnimeList** sesuai tiket **MJ-089**.
 
 ---
 
@@ -14,10 +14,13 @@ Dokumen ini mencatat metodologi, hasil pengukuran empiris *live* di server VPS, 
 
 Pengukuran memori dilakukan langsung pada peladen VPS (*Virtual Private Server*) Ubuntu yang dipersiapkan untuk menjalankan seluruh ekosistem backend Mojiji AnimeList:
 
-* **Sistem Operasi:** Ubuntu 22.04 LTS (x86_64)
-* **Processor (vCPU):** 2 vCPU Cores
+* **Identitas Peladen:** `mojiji` (`#1966`) - Cluster Xeon Shared Indonesia (Jakarta)
+* **Sistem Operasi:** Ubuntu 24.04 LTS (Noble Numbat - x86_64)
+* **Processor (vCPU):** 2 Cores vCPU (Intel Xeon Shared)
 * **Total RAM Fisik:** 2.048 MB (2.0 GB / terdeteksi 1.967 MB oleh kernel Linux)
 * **Partisi Virtual Memory (Swap):** 2.048 MB (2.0 GB) aktif dengan parameter kernel `vm.swappiness=10`
+* **Penyimpanan:** 20 GB NVMe Disk
+* **Alamat IP & Port:** Shared IP `103.147.32.27` dengan SSH Port NAT `20125`
 * **Docker Runtime:** Docker Engine Community v27+ dengan driver isolasi memori *cgroups v2*
 
 ---
@@ -26,25 +29,26 @@ Pengukuran memori dilakukan langsung pada peladen VPS (*Virtual Private Server*)
 
 ```mermaid
 flowchart TD
-    subgraph HostVPS["Peladen Host VPS (Total RAM Fisik: 2.048 MB)"]
+    subgraph HostVPS["Peladen NAT VPS Xeon Shared (Total RAM Fisik: 2.048 MB)"]
         direction TB
-        subgraph MemAvailable["Kapasitas Tersedia (Headroom)"]
-            FreeRAM["Memori Tersedia: ~945 MB (48%)"]
-            BuffCache["Page Buff/Cache OS: ~830 MB (Dapat Didaur Ulang)"]
+        subgraph HypervisorView["Pembacaan Dashboard Provider: 87%"]
+            Allocated["Total Alokasi Host (Used + Buffer/Cache OS): ~1.022 MB + Buffers"]
+        end
+
+        subgraph InGuestLinux["Realita Metrik Linux Host (free -m)"]
+            FreeRAM["Memori Tersedia Bebas (Available): ~945 MB (48%)"]
+            BuffCache["Page Buff/Cache Kernel: ~830 MB (Siap Didaur Ulang)"]
         end
         
-        subgraph StagingContainers["Kontainer Staging Aktif (~91.6 MB)"]
-            GW["API Gateway (13.75 MiB / Plafon 96 MiB)"]
-            USR["User Service (19.43 MiB / Plafon 96 MiB)"]
-            CAT["Catalog Service (19.73 MiB / Plafon 96 MiB)"]
-            TRK["Tracker Service (20.48 MiB / Plafon 96 MiB)"]
+        subgraph StagingContainers["Beban Riil 5 Kontainer Docker: ~91.6 MB (4.6%)"]
+            GW["API Gateway Express (13.75 MiB / Plafon 96 MiB)"]
+            USR["User Service Express (19.43 MiB / Plafon 96 MiB)"]
+            CAT["Catalog Service Express (19.73 MiB / Plafon 96 MiB)"]
+            TRK["Tracker Service Express (20.48 MiB / Plafon 96 MiB)"]
+            CAD["Caddy Reverse Proxy (18.20 MiB / Plafon 64 MiB)"]
         end
 
-        subgraph EdgeLayer["Web & Reverse Proxy"]
-            CAD["Caddy Server (18.20 MiB / Plafon 64 MiB)"]
-        end
-
-        subgraph CoreOS["Sistem Operasi & Daemons"]
+        subgraph CoreOS["Sistem Operasi & Daemons Dasar"]
             OS["Linux Kernel, systemd, Docker Daemon, SSH: ~100-150 MB"]
         end
 
@@ -87,11 +91,19 @@ Hasil inspeksi langsung terhadap kontainer yang sedang berjalan di VPS:
 | `mojiji_caddy_server_staging` | **18.20 MiB** | 64 MiB | 28.44% | 0.01% |
 | **TOTAL SEMUA KONTAINER** | **91.59 MiB** | **448 MiB** | **20.44% (Rata-rata)** | - |
 
-> [!TIP] Efisiensi Fastify & Zero-Build:
+> [!TIP] Efisiensi Node.js Express & Zero-Build:
 > Konsumsi memori 4 microservices backend hanya menyentuh **~73 MiB**, jauh lebih hemat dibanding estimasi awal. Hal ini disebabkan oleh:
-> 1. Framework **Fastify** yang sangat ringan dengan overhead memori minimal.
+> 1. Framework **Express.js v5** yang teroptimasi secara modular dengan overhead memori minimal.
 > 2. Skrip migrasi Dbmate hanya berjalan sebagai kontainer sesaat (*ephemeral run --rm*) dan langsung mati setelah migrasi selesai.
 > 3. Frontend Next.js disajikan berupa berkas statis oleh Caddy tanpa runtime Node.js Next SSR di VPS.
+
+### C. Klarifikasi Indikator RAM Panel Provider (87%) vs Realita Kontainer
+Saat membuka panel kontrol VPS (`mojiji #1966`), indikator visual menampilkan angka **RAM 87%**. Fenomena ini sering menimbulkan kekhawatiran semu (*false alarm*).
+
+**Penyebab & Penjelasan Teknis:**
+1. **Perilaku Hypervisor Host:** Dashboard web provider mengukur memori fisik yang dialokasikan dari sisi luar virtual machine (KVM/Proxmox). Di Linux, prinsip dasarnya adalah *"Unused RAM is wasted RAM"*, sehingga kernel secara agresif menggunakan sisa memori sebagai cache disk (*page cache*) untuk mempercepat I/O (tercatat 830 MB buffer/cache).
+2. **Kapasitas Bebas Riil:** Dari sudut pandang sistem operasi, ruang memori yang dapat langsung diberikan ke aplikasi baru adalah **945 MB (48%)**.
+3. **Beban Kontainer Hanya 4.6%:** Seluruh 5 kontainer backend dan web server Mojiji hanya menghabiskan **91.59 MiB** (~4.6% dari kapasitas 2 GB). Server berada dalam kondisi sangat sehat, stabil, dan dingin.
 
 ---
 
@@ -99,7 +111,7 @@ Hasil inspeksi langsung terhadap kontainer yang sedang berjalan di VPS:
 
 | Komponen | Anggaran Teori Awal | Pengukuran Riil Live | Deviasi / Selisih | Keterangan |
 | :--- | :---: | :---: | :---: | :--- |
-| **4 Microservices Staging** | 235 MB | 73.39 MB | -161.61 MB (Lebih hemat 68%) | Node heap Fastify idle sangat efisien |
+| **4 Microservices Staging** | 235 MB | 73.39 MB | -161.61 MB (Lebih hemat 68%) | Node heap Express idle sangat efisien |
 | **Caddy Reverse Proxy** | 35 MB | 18.20 MB | -16.80 MB (Lebih hemat 48%) | Single binary Go sangat efisien menangani routing |
 | **Total Beban Kontainer** | 270 MB | 91.59 MB | -178.41 MB (Lebih hemat 66%) | Sangat aman untuk multi-environment |
 
@@ -172,13 +184,13 @@ graph TD
 2. **Node.js Heap Management (`NODE_OPTIONS="--max-old-space-size=64"`):** Memaksa mesin V8 melakukan garbage collection agresif sebelum memori heap melampaui 64 MB.
 3. **Database Connection Pool Limiting (`max: 3`):** Membatasi alokasi koneksi PostgreSQL ke Supabase maksimal 3 koneksi per microservice guna menghemat alokasi memori buffer socket di sisi backend.
 4. **Buffer Swap Aktif (`2 GB`, swappiness 10):** Menjaga server tetap responsif dan memberi waktu bagi DevOps untuk melakukan investigasi jika terjadi lonjakan memori tak terduga.
-5. **Docker Log Rotation (`max-size: 10m`, `max-file: 3`):** Mencegah berkas log JSON kontainer memenuhi ruang RAM dan disk penyimpanan host.
+5. **Docker Log Rotation (`max-size: 10m`, `max-file: 3`):** Mencegah berkas log JSON kontainer memenuhi ruang RAM dan disk NVMe 20 GB host.
 
 ---
 
 ## 8. Panduan Perintah Pemantauan Harian DevOps
 
-Untuk memantau stabilitas memori di server VPS:
+Untuk memantau stabilitas memori di server VPS via SSH Port `20125`:
 
 ```bash
 # 1. Cek ringkasan penggunaan RAM dan Swap fisik server

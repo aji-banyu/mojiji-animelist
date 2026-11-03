@@ -61,7 +61,7 @@ flowchart TD
 
 | Aspek Pembeda | `deploy.sh` (Auto-Rollback) | `rollback.sh` (Manual Rollback) |
 | :--- | :--- | :--- |
-| **Kapan Dijalankan?** | Berjalan otomatis saat proses deployment rilis baru sedang berlangsung di pipeline. | Dijalankan kapan saja secara manual oleh DevOps ketika aplikasi rilis terbaru lolos healthcheck namun ternyata memiliki bug fungsional kritis (misal: halaman putih, tombol tidak berfungsi). |
+| **Kapan Dijalankan—** | Berjalan otomatis saat proses deployment rilis baru sedang berlangsung di pipeline. | Dijalankan kapan saja secara manual oleh DevOps ketika aplikasi rilis terbaru lolos healthcheck namun ternyata memiliki bug fungsional kritis (misal: halaman putih, tombol tidak berfungsi). |
 | **Pemicu Kegagalan** | Endpoint `/api/health` mengembalikan error `500`, koneksi crash, atau *timeout* setelah 10 kali percobaan verifikasi. | Keputusan insinyur DevOps / permintaan darurat dari QA Lead dan Project Manager. |
 | **Intervensi Manusia** | **Nol (100% Otomatis).** Pipeline langsung membatalkan deployment dan memulihkan kontainer lama tanpa menunggu manusia bangun di malam hari. | **Manual.** DevOps harus masuk ke VPS via SSH dan menjalankan satu baris perintah. |
 | **Penyimpanan State** | Jika sukses, memperbarui isi berkas `.last_good_tag`. Jika gagal, membaca `.last_good_tag` untuk rollback. | Hanya membaca `.last_good_tag` lama dan mengembalikan kontainer ke versi stabil tersebut. |
@@ -75,7 +75,9 @@ Jika terjadi insiden darurat di mana aplikasi rilis terbaru harus segera dikemba
 ### Langkah 1: Hubungkan Diri ke Server VPS via SSH
 Gunakan kunci SSH privat yang terdaftar pada akun `deploy`:
 ```bash
-ssh deploy@mojiji.web.id
+ssh -p 20125 deploy@103.147.32.27
+# atau via domain:
+ssh -p 20125 deploy@mojiji.web.id
 ```
 
 ### Langkah 2: Masuk ke Direktori Kerja Proyek
@@ -103,7 +105,7 @@ Skrip `rollback.sh` akan otomatis menampilkan log pergantian kontainer dan melak
 
 ---
 
-## 4. ⚠️ Filosofi Penanganan Database: Mengapa Dilarang Rollback Skema Otomatis?
+## 4. ⚠️ Filosofi Penanganan Database: Mengapa Dilarang Rollback Skema Otomatis—
 
 > [!CAUTION] Prinsip Perlindungan Data (Zero Data Loss Policy)
 > Baik `deploy.sh` maupun `rollback.sh` **TIDAK PERNAH** menjalankan perintah `dbmate down` atau membatalkan migrasi database secara otomatis.
@@ -154,7 +156,7 @@ sequenceDiagram
      * Pilih **`DOWN`** untuk menonaktifkan backend staging saat ingin menghemat RAM server.
 5. Klik tombol hijau **Run workflow**. Dalam 10-15 detik, status lingkungan akan langsung berubah di VPS.
 
-> [!NOTE] Mengapa Muncul Pilihan Branch ("Use workflow from")?
+> [!NOTE] Mengapa Muncul Pilihan Branch ("Use workflow from")—
 > Pilihan branch pada tombol *Run workflow* adalah mekanisme bawaan GitHub Actions untuk menentukan dari branch mana file definisi YAML alur kerja akan dibaca. Selalu pilih branch **`develop`** (atau `main`) untuk memastikan parameter dan konfigurasi SSH yang digunakan adalah versi resmi terbaru.
 
 ---

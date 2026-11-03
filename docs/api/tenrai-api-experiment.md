@@ -31,7 +31,7 @@ Pengujian difokuskan pada:
 **Endpoint**
 
 ```http
-GET https://api.tenrai.org/v1/anime?q=naruto&limit=5&sfw
+GET https://api.tenrai.org/v1/anime—q=naruto&limit=5&sfw
 ```
 
 **Parameter**

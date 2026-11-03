@@ -67,11 +67,11 @@ ID `REG-01` s.d. `REG-07` di bawah merupakan ID pelaporan MJ-086, **bukan** peru
 
 | Skenario | Endpoint ringkas | Hasil baseline | Durasi teramati |
 |---|---|---|---|
-| Search Anime Naruto — permintaan pertama | `GET /api/catalog/search?type=anime&q=Naruto` | 200; `success: true`; Naruto (`malId=20`) | **2.700 ms** |
+| Search Anime Naruto — permintaan pertama | `GET /api/catalog/search—type=anime&q=Naruto` | 200; `success: true`; Naruto (`malId=20`) | **2.700 ms** |
 | Search Anime Naruto — permintaan kedua | Request sama | 200; data tersedia | **209,91 ms** |
-| Search Manga Naruto — permintaan pertama | `GET /api/catalog/search?type=manga&q=Naruto` | 200; Naruto (`malId=11`) | **1.350 ms** |
+| Search Manga Naruto — permintaan pertama | `GET /api/catalog/search—type=manga&q=Naruto` | 200; Naruto (`malId=11`) | **1.350 ms** |
 | Search Manga Naruto — permintaan kedua | Request sama | 200; data tersedia | **1.710 ms** |
-| Search tanpa hasil | `GET /api/catalog/search?type=anime&q=zzzxxyyqq123456` | 200; `data: []` | **602 ms** |
+| Search tanpa hasil | `GET /api/catalog/search—type=anime&q=zzzxxyyqq123456` | 200; `data: []` | **602 ms** |
 | Detail Anime Naruto | `GET /api/catalog/anime/20` | 200; data judul/sinopsis/gambar/skor | **1.070 ms** |
 | Detail Manga Naruto | `GET /api/catalog/manga/11` | 200; data judul/sinopsis/gambar/skor | **958 ms** |
 | Detail ID tidak ditemukan | `GET /api/catalog/anime/999999999` | 404; `NOT_FOUND` (**sesuai expected negative test**) | **2.250 ms** |
@@ -94,7 +94,7 @@ ID `REG-01` s.d. `REG-07` di bawah merupakan ID pelaporan MJ-086, **bukan** peru
 
 **Acuan Backend:** `X-Cache: MISS` berarti cache belum menyediakan respons aktif; `HIT` berarti respons dilayani Redis; `STALE` berarti fallback saat upstream bermasalah. Target NFR < 300 ms berlaku untuk **cache HIT yang telah diverifikasi**.
 
-1. Gunakan Staging dan satu endpoint Search, misalnya `GET {{baseUrl}}/api/catalog/search?type=anime&q=Naruto`.
+1. Gunakan Staging dan satu endpoint Search, misalnya `GET {{baseUrl}}/api/catalog/search—type=anime&q=Naruto`.
 2. Klik **Send**; catat HTTP status, Response Time, dan **Response → Headers → X-Cache**. Jangan otomatis menyebut permintaan pertama MISS; query mungkin sudah pernah di-cache.
 3. Klik **Send** sekali lagi dengan parameter dan environment **identik**; catat parameter yang sama. Jangan otomatis menyebut permintaan kedua HIT tanpa header.
 4. Bila header `HIT` muncul, periksa apakah waktu respons Postman < 300 ms; bila melampaui target, periksa **Timing** dan koordinasikan pengukuran sisi server/Redis dengan Backend agar efek jaringan tidak keliru dianggap latensi cache.

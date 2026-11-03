@@ -173,7 +173,7 @@ Menyimpan state hasil pencarian anime/manga.
 | `results` | `array` | Daftar hasil dari Catalog Service |
 | `isLoading` | `boolean` | Saat request pencarian berlangsung |
 | `error` | `string \| null` | Pesan error jika pencarian gagal |
-| `search(query, type)` | `function` | Fetch ke `GET /api/catalog/search?q=...&type=...` |
+| `search(query, type)` | `function` | Fetch ke `GET /api/catalog/search—q=...&type=...` |
 | `clearResults()` | `function` | Reset results ke array kosong |
 
 ---
@@ -204,7 +204,7 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 | `POST` | `/api/auth/login` | `/login` |
 | `POST` | `/api/auth/logout` | Navbar |
 | `GET` | `/api/users/me` | Root layout (cek sesi saat load) |
-| `GET` | `/api/catalog/search?q=...&type=...` | `/search` |
+| `GET` | `/api/catalog/search—q=...&type=...` | `/search` |
 | `GET` | `/api/catalog/:type/:malId` | `/anime/[malId]`, `/manga/[malId]` |
 | `GET` | `/api/tracker` | `/tracker` |
 | `POST` | `/api/tracker` | Halaman detail |

@@ -5,7 +5,7 @@
 > **Sumber aturan:** Mini PRD MOJIJI Revisi 4 (v1.4 — Docker/Migration Update), **poin 4: Team & Development → Development Workflow → Definition of Done**.  
 > **Status:** Draft untuk disepakati tim; checklist ini tidak mengubah PRD.
 
-## 1. Apa itu Definition of Done?
+## 1. Apa itu Definition of Done—
 
 **Definition of Done** adalah standar bersama untuk memutuskan apakah sebuah tiket/fitur benar-benar **selesai**, bukan hanya karena seseorang sudah menulis kode, membuat dokumen, atau membuka Pull Request.
 

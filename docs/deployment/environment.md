@@ -23,13 +23,13 @@ flowchart LR
     end
 
     subgraph STAGING ["2. Lingkungan Staging (develop)"]
-        B1["VPS Host (Ubuntu 22.04)"] --> B2["Supabase DB (mojiji-staging)"]
+        B1["VPS Host (Ubuntu 24.04 - Xeon Shared)"] --> B2["Supabase DB (mojiji-staging)"]
         B1 --> B3["Upstash Redis (mojiji_staging:)"]
         B1 --> B4["Caddy -> staging.mojiji.web.id"]
     end
 
     subgraph PROD ["3. Lingkungan Production (main)"]
-        C1["VPS Host (Ubuntu 22.04)"] --> C2["Supabase DB (mojiji-production)"]
+        C1["VPS Host (Ubuntu 24.04 - Xeon Shared)"] --> C2["Supabase DB (mojiji-production)"]
         C1 --> C3["Upstash Redis (mojiji_prod:)"]
         C1 --> C4["Caddy -> mojiji.web.id"]
     end
@@ -77,7 +77,7 @@ PORT_CATALOG=4002
 PORT_TRACKER=4003
 
 # URL Layanan Database PostgreSQL (Multi-Schema)
-# Format: postgresql://[user]:[password]@[host]:[port]/[database]?sslmode=require
+# Format: postgresql://[user]:[password]@[host]:[port]/[database]—sslmode=require
 DATABASE_URL=postgresql://postgres:password@localhost:5432/mojiji_dev
 
 # URL Cache & Penyimpanan Sesi Redis (Upstash Serverless)
