@@ -1,0 +1,3 @@
+$kind: collection
+description: Auth requests to be added after final contract and implementation.
+order: 1000

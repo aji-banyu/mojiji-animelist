@@ -1,0 +1,4 @@
+$kind: http-request
+url: "{{baseUrl}}/api/catalog/anime/999999999"
+method: GET
+order: 7000

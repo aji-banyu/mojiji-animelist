@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/catalog/anime/0"
+method: GET
+order: 7500
+description: "Skenario Negatif: Simulasi penanganan saat provider Tenrai mengalami gangguan pada halaman detail."
+

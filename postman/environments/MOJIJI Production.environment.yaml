@@ -1,0 +1,4 @@
+name: MOJIJI Production
+values:
+  - key: baseUrl
+    value: ''

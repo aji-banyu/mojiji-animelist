@@ -1,0 +1,9 @@
+$kind: http-request
+url: "{{baseUrl}}/api/catalog/search?type=anime&q=simulasierror502"
+method: GET
+queryParams:
+  type: anime
+  q: simulasierror502
+order: 4500
+description: "Skenario Negatif: Simulasi penanganan saat provider Tenrai mengalami gangguan/timeout."
+

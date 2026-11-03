@@ -1,0 +1,4 @@
+name: MOJIJI Local
+values:
+  - key: baseUrl
+    value: 'http://localhost:4000'
