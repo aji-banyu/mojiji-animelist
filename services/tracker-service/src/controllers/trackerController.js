@@ -1,5 +1,10 @@
 const pool = require("../config/db");
-const { validateCreateTracker, validateGetTrackerQuery } = require("../validators/trackerValidator");
+const {
+  validateCreateTracker,
+  validateGetTrackerQuery,
+  validateUpdateStatus,
+  validateTrackerId,
+} = require("../validators/trackerValidator");
 const { fetchCatalogMetadata } = require("../services/catalogClient");
 
 /**
@@ -225,8 +230,275 @@ async function getTrackers(req, res) {
   }
 }
 
+/**
+ * PATCH /api/tracker/:id dan PATCH /api/tracker/:id/status
+ * Mengubah status item pelacakan milik pengguna
+ */
+async function updateTrackerStatus(req, res) {
+  try {
+    // 1. Verifikasi autentikasi dari header Gateway
+    const userId = req.headers["x-user-id"];
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+        },
+      });
+    }
+
+    // 2. Validasi parameter ID tracker (UUID)
+    const idResult = validateTrackerId(req.params.id);
+    if (!idResult.success) {
+      const details = (idResult.error.issues || []).map((i) => i.message);
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Parameter ID tracker tidak valid",
+          details: details,
+        },
+      });
+    }
+    const trackerId = idResult.data;
+
+    // 3. Validasi body status
+    const bodyResult = validateUpdateStatus(req.body);
+    if (!bodyResult.success) {
+      const details = (bodyResult.error.issues || []).map((i) => i.message);
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Data status tidak valid",
+          details: details,
+        },
+      });
+    }
+    const newStatus = bodyResult.data.status;
+
+    // 4. Verifikasi keberadaan dan kepemilikan data (Owner Verification)
+    const checkQuery = `
+      SELECT id, user_id, total, status, progress 
+      FROM tracker_service.trackers 
+      WHERE id = $1
+    `;
+    const checkResult = await pool.query(checkQuery, [trackerId]);
+    if (checkResult.rows.length === 0 || checkResult.rows[0].user_id !== userId) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Item tracker tidak ditemukan atau bukan milik Anda.",
+        },
+      });
+    }
+
+    const currentTracker = checkResult.rows[0];
+    let newProgress = currentTracker.progress;
+
+    // Jika status diubah menjadi 'completed' dan total diketahui (> 0) serta progress masih 0,
+    // otomatis samakan progres ke total
+    if (newStatus === "completed" && currentTracker.total > 0 && currentTracker.progress === 0) {
+      newProgress = currentTracker.total;
+    }
+
+    // 5. Update status di database
+    const updateQuery = `
+      UPDATE tracker_service.trackers
+      SET status = $1, progress = $2, updated_at = NOW()
+      WHERE id = $3 AND user_id = $4
+      RETURNING id, user_id, media_type, mal_id, title, image_url, total, status, progress, created_at, updated_at;
+    `;
+    const updateResult = await pool.query(updateQuery, [newStatus, newProgress, trackerId, userId]);
+
+    return res.status(200).json({
+      success: true,
+      data: formatTrackerItem(updateResult.rows[0]),
+    });
+  } catch (error) {
+    console.error("[Tracker Service] Error updateTrackerStatus:", error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Terjadi kesalahan internal saat memperbarui status tracker.",
+      },
+    });
+  }
+}
+
+/**
+ * POST /api/tracker/:id/increment
+ * Menambah progres tontonan/bacaan sebesar +1
+ */
+async function incrementTrackerProgress(req, res) {
+  try {
+    // 1. Verifikasi autentikasi dari header Gateway
+    const userId = req.headers["x-user-id"];
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+        },
+      });
+    }
+
+    // 2. Validasi parameter ID tracker (UUID)
+    const idResult = validateTrackerId(req.params.id);
+    if (!idResult.success) {
+      const details = (idResult.error.issues || []).map((i) => i.message);
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Parameter ID tracker tidak valid",
+          details: details,
+        },
+      });
+    }
+    const trackerId = idResult.data;
+
+    // 3. Verifikasi keberadaan dan kepemilikan data (Owner Verification)
+    const checkQuery = `
+      SELECT id, user_id, media_type, total, status, progress 
+      FROM tracker_service.trackers 
+      WHERE id = $1
+    `;
+    const checkResult = await pool.query(checkQuery, [trackerId]);
+    if (checkResult.rows.length === 0 || checkResult.rows[0].user_id !== userId) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Item tracker tidak ditemukan atau bukan milik Anda.",
+        },
+      });
+    }
+
+    const currentTracker = checkResult.rows[0];
+    const total = currentTracker.total || 0;
+
+    // 4. Validasi batas progres jika total diketahui (> 0)
+    if (total > 0 && currentTracker.progress >= total) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: `Progres sudah mencapai batas maksimal total ${currentTracker.media_type === "manga" ? "chapter" : "episode"} (${total}).`,
+        },
+      });
+    }
+
+    const nextProgress = currentTracker.progress + 1;
+    let nextStatus = currentTracker.status;
+
+    // Jika progres mencapai total episode/chapter, otomatis ubah status ke 'completed'
+    if (total > 0 && nextProgress >= total) {
+      nextStatus = "completed";
+    } else if (currentTracker.status === "plan") {
+      // Jika sebelumnya 'plan' dan progres mulai diisi, ubah ke watching/reading
+      nextStatus = currentTracker.media_type === "manga" ? "reading" : "watching";
+    }
+
+    // 5. Update progres ke database
+    const updateQuery = `
+      UPDATE tracker_service.trackers
+      SET progress = $1, status = $2, updated_at = NOW()
+      WHERE id = $3 AND user_id = $4
+      RETURNING id, user_id, media_type, mal_id, title, image_url, total, status, progress, created_at, updated_at;
+    `;
+    const updateResult = await pool.query(updateQuery, [nextProgress, nextStatus, trackerId, userId]);
+
+    return res.status(200).json({
+      success: true,
+      data: formatTrackerItem(updateResult.rows[0]),
+    });
+  } catch (error) {
+    console.error("[Tracker Service] Error incrementTrackerProgress:", error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Terjadi kesalahan internal saat menambah progres tracker.",
+      },
+    });
+  }
+}
+
+/**
+ * DELETE /api/tracker/:id
+ * Menghapus item pelacakan milik pengguna
+ */
+async function deleteTracker(req, res) {
+  try {
+    // 1. Verifikasi autentikasi dari header Gateway
+    const userId = req.headers["x-user-id"];
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: {
+          code: "UNAUTHORIZED",
+          message: "Sesi tidak ditemukan atau telah berakhir. Silakan login kembali.",
+        },
+      });
+    }
+
+    // 2. Validasi parameter ID tracker (UUID)
+    const idResult = validateTrackerId(req.params.id);
+    if (!idResult.success) {
+      const details = (idResult.error.issues || []).map((i) => i.message);
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Parameter ID tracker tidak valid",
+          details: details,
+        },
+      });
+    }
+    const trackerId = idResult.data;
+
+    // 3. Eksekusi DELETE hanya jika id dan user_id cocok (Owner Enforcement)
+    const deleteQuery = `
+      DELETE FROM tracker_service.trackers
+      WHERE id = $1 AND user_id = $2
+      RETURNING id;
+    `;
+    const result = await pool.query(deleteQuery, [trackerId, userId]);
+
+    // Jika tidak ada baris yang terhapus (ID tidak ada atau milik user lain)
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: {
+          code: "NOT_FOUND",
+          message: "Item tracker tidak ditemukan atau bukan milik Anda.",
+        },
+      });
+    }
+
+    // 4. Sesuai API Contract: 204 No Content saat sukses menghapus
+    return res.status(204).send();
+  } catch (error) {
+    console.error("[Tracker Service] Error deleteTracker:", error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Terjadi kesalahan internal saat menghapus item tracker.",
+      },
+    });
+  }
+}
+
 module.exports = {
   createTracker,
   getTrackers,
+  updateTrackerStatus,
+  incrementTrackerProgress,
+  deleteTracker,
 };
-

@@ -39,6 +39,21 @@ const getTrackerQuerySchema = z.object({
     .optional(),
 });
 
+const updateTrackerStatusSchema = z.object({
+  status: z.enum(ALLOWED_STATUSES, {
+    errorMap: () => ({
+      message: "Status tidak valid. Pilihan status: plan, watching, reading, completed, on_hold, dropped",
+    }),
+  }),
+});
+
+const uuidParamSchema = z
+  .string({
+    required_error: "ID tracker wajib diberikan",
+    invalid_type_error: "ID tracker harus berupa string UUID",
+  })
+  .uuid("Format ID tracker tidak valid (harus berupa UUID)");
+
 /**
  * Normalisasi dan validasi body untuk pembuatan tracker
  */
@@ -69,9 +84,33 @@ function validateGetTrackerQuery(query) {
   return getTrackerQuerySchema.safeParse(query);
 }
 
+/**
+ * Validasi body untuk update status tracker (PATCH /api/tracker/:id)
+ */
+function validateUpdateStatus(body) {
+  if (!body || typeof body !== "object") {
+    return {
+      success: false,
+      error: {
+        issues: [{ message: "Request body tidak boleh kosong dan harus memuat properti 'status'" }],
+      },
+    };
+  }
+
+  return updateTrackerStatusSchema.safeParse(body);
+}
+
+/**
+ * Validasi parameter ID tracker pada path URL (:id)
+ */
+function validateTrackerId(id) {
+  return uuidParamSchema.safeParse(id);
+}
+
 module.exports = {
   validateCreateTracker,
   validateGetTrackerQuery,
+  validateUpdateStatus,
+  validateTrackerId,
   ALLOWED_STATUSES,
 };
-
