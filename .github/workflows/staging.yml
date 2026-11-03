@@ -26,6 +26,7 @@ jobs:
         env:
           NEXT_PUBLIC_TENRAI_BASE_URL: https://api.tenrai.org/v1
           NEXT_PUBLIC_APP_ENV: staging
+          NEXT_PUBLIC_USE_MOCK: "false"
         run: |
           npm ci
           npm run build
