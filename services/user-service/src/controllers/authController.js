@@ -33,7 +33,7 @@ async function register(req, res) {
       return res.status(409).json({
         success: false,
         error: {
-          code: "CONFLICT_ERROR",
+          code: "CONFLICT",
           message: "Email atau username sudah digunakan",
           details: conflictDetails,
         },
@@ -67,7 +67,7 @@ async function register(req, res) {
       return res.status(409).json({
         success: false,
         error: {
-          code: "CONFLICT_ERROR",
+          code: "CONFLICT",
           message: "Email atau username sudah digunakan",
           details: ["Data akun dengan username atau email tersebut sudah terdaftar."],
         },
@@ -80,6 +80,7 @@ async function register(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan pada server saat memproses registrasi",
+        details: [],
       },
     });
   }
@@ -109,6 +110,7 @@ async function login(req, res) {
         error: {
           code: "UNAUTHORIZED",
           message: "Email atau password salah",
+          details: [],
         },
       });
     }
@@ -123,6 +125,7 @@ async function login(req, res) {
         error: {
           code: "UNAUTHORIZED",
           message: "Email atau password salah",
+          details: [],
         },
       });
     }
@@ -135,6 +138,7 @@ async function login(req, res) {
         error: {
           code: "INTERNAL_SERVER_ERROR",
           message: "Konfigurasi keamanan server belum lengkap.",
+          details: [],
         },
       });
     }
@@ -178,6 +182,7 @@ async function login(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan pada server saat memproses login",
+        details: [],
       },
     });
   }
@@ -213,6 +218,7 @@ async function logout(req, res) {
       error: {
         code: "INTERNAL_SERVER_ERROR",
         message: "Terjadi kesalahan pada server saat memproses logout",
+        details: [],
       },
     });
   }
@@ -232,6 +238,7 @@ async function getCurrentUser(req, res) {
         error: {
           code: "UNAUTHORIZED",
           message: "Sesi tidak ditemukan atau tidak valid.",
+          details: [],
         },
       });
     }
@@ -249,7 +256,8 @@ async function getCurrentUser(req, res) {
         success: false,
         error: {
           code: "NOT_FOUND",
-          message: "Pengguna tidak ditemukan",
+          message: "Data profil pengguna tidak ditemukan.",
+          details: [],
         },
       });
     }
@@ -271,7 +279,8 @@ async function getCurrentUser(req, res) {
       success: false,
       error: {
         code: "INTERNAL_SERVER_ERROR",
-        message: "Terjadi kesalahan pada server saat mengambil data profil",
+        message: "Terjadi kesalahan pada server saat mengambil data profil pengguna",
+        details: [],
       },
     });
   }

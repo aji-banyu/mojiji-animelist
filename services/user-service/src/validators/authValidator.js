@@ -31,6 +31,17 @@ const loginSchema = z.object({
 
 // Middleware helper untuk validasi register
 function validateRegister(req, res, next) {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Format request body tidak valid",
+        details: ["Body wajib berupa JSON object dan tidak boleh kosong"],
+      },
+    });
+  }
+
   const result = registerSchema.safeParse(req.body);
 
   if (!result.success) {
@@ -40,7 +51,7 @@ function validateRegister(req, res, next) {
       success: false,
       error: {
         code: "VALIDATION_ERROR",
-        message: "Validasi input gagal",
+        message: "Validasi input registrasi gagal",
         details: details,
       },
     });
@@ -52,6 +63,17 @@ function validateRegister(req, res, next) {
 
 // Middleware helper untuk validasi login
 function validateLogin(req, res, next) {
+  if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: "Format request body tidak valid",
+        details: ["Body wajib berupa JSON object dan tidak boleh kosong"],
+      },
+    });
+  }
+
   const result = loginSchema.safeParse(req.body);
 
   if (!result.success) {
@@ -61,7 +83,7 @@ function validateLogin(req, res, next) {
       success: false,
       error: {
         code: "VALIDATION_ERROR",
-        message: "Validasi input gagal",
+        message: "Validasi input login gagal",
         details: details,
       },
     });
