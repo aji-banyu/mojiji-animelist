@@ -1,0 +1,2 @@
+$kind: collection
+description: MJ-049 — Starter Postman collection. Health test is executable once API Gateway is running. Auth, Catalog and Tracker folders are placeholders for later tickets. Service-specific health URLs must be confirmed with Backend/DevOps.
