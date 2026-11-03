@@ -96,7 +96,7 @@ NODE_ENV=production
 
 # Database Supabase Production (Session Pooler IPv4)
 # Diperoleh dari DBA Ryan (Tiket MJ-101)
-DATABASE_URL=postgres://postgres.<project-ref-prod>:<PASSWORD_PROD>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
+DATABASE_URL=postgres://postgres.<project-ref-prod>:<PASSWORD_PROD>@aws-0-<region>.pooler.supabase.com:5432/postgres—sslmode=require
 
 # Upstash Redis Cache Production (Isolasi Prefix prod:)
 REDIS_URL=rediss://default:<UPSTASH_PASSWORD_PROD>@<UPSTASH_ENDPOINT_PROD>.upstash.io:6379

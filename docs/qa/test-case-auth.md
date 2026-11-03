@@ -341,7 +341,7 @@ Menyiapkan test case rinci untuk **US-007 Register** dan **US-002 Login/Logout**
 | Ketentuan validasi password 7 karakter dan tempat validasinya | AC US-007 / Frontend / Backend | Perlu konfirmasi detail respons |
 | Keputusan perilaku Logout (pengakhiran sesi, redirect, pengujian sesi setelah Logout) | US-002 / MJ-014 / MJ-042 | Belum disepakati pada PRD yang tersedia |
 | Jenis dan nama session cookie, `HttpOnly`, `Secure`, `SameSite`, domain, CORS, subdomain/proxy | MJ-042 | Belum diverifikasi |
-| Deployment terbaru: PRD menjelaskan VPS/Caddy, tetapi tiket MJ-042 GitHub membahas Vercel/Render | DevOps + Backend | **Decision needed:** dokumen mana yang terbaru? |
+| Deployment terbaru: PRD menjelaskan VPS/Caddy, tetapi tiket MJ-042 GitHub membahas Vercel/Render | DevOps + Backend | **Decision needed:** dokumen mana yang terbaru— |
 | Persiapan akun dan URL staging | MJ-032 / DevOps / DBA | Belum dikonfirmasi |
 
 **Aturan penting:** Jangan menetapkan angka HTTP status (misalnya 200/201/400/409), teks error persis, path halaman Login/Logout, nama cookie, atau format JSON sebelum ada kontrak final. Jika tim sudah menyepakati spesifikasi terbaru, revisi test case ini berdasarkan keputusan tersebut.

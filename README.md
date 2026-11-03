@@ -13,7 +13,7 @@
   <br />
 
   <!-- Backend & Database Stack -->
-  <a href="https://fastify.dev/" target="_blank"><img src="https://img.shields.io/badge/Fastify%20v5-000000?style=for-the-badge&logo=fastify&logoColor=white" alt="Fastify" /></a>
+  <a href="https://expressjs.com/" target="_blank"><img src="https://img.shields.io/badge/Express.js%20v5-000000?style=for-the-badge&logo=express&logoColor=white" alt="Express.js" /></a>
   <a href="https://nodejs.org/docs/latest-v20.x/api/" target="_blank"><img src="https://img.shields.io/badge/Node.js%2020-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js" /></a>
   <a href="https://www.postgresql.org/docs/15/" target="_blank"><img src="https://img.shields.io/badge/PostgreSQL%2015-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" /></a>
   <a href="https://supabase.com/docs" target="_blank"><img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" /></a>
@@ -26,16 +26,16 @@
   <a href="https://docs.docker.com/" target="_blank"><img src="https://img.shields.io/badge/Docker%20Engine-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
   <a href="https://docs.github.com/en/actions" target="_blank"><img src="https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=githubactions&logoColor=white" alt="GitHub Actions" /></a>
   <a href="https://github.com/amacneil/dbmate" target="_blank"><img src="https://img.shields.io/badge/Dbmate-111111?style=for-the-badge&logo=databricks&logoColor=white" alt="Dbmate" /></a>
-  <a href="https://ubuntu.com/server/docs" target="_blank"><img src="https://img.shields.io/badge/Ubuntu%2022.04%20LTS-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Ubuntu" /></a>
+  <a href="https://ubuntu.com/server/docs" target="_blank"><img src="https://img.shields.io/badge/Ubuntu%2024.04%20LTS-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Ubuntu" /></a>
 </div>
 
 ---
 
-## Tentang Proyek (Deskripsi Detail)
+## Tentang Proyek
 
 Mojiji AnimeList adalah aplikasi web full-stack modern yang dibangun untuk memenuhi standar rekayasa perangkat lunak pada mata kuliah Pemrograman Web Framework. Proyek ini mengimplementasikan pola arsitektur **microservices terdistribusi** yang berjalan di atas infrastruktur awan berbasis biaya nol (*zero-cost cloud infrastructure*).
 
-Sistem ini memisahkan secara tegas tanggung jawab antarmuka pengguna, gerbang routing (*API gateway*), dan layanan mikro domain bisnis. Dengan menerapkan optimasi runtime Node.js dan kompilasi statis Next.js, seluruh ekosistem aplikasi dapat beroperasi secara simultan di atas server VPS berkapasitas 2 GB RAM dengan tingkat stabilitas tinggi dan konsumsi memori fisik kontainer di bawah 100 MB.
+Sistem ini memisahkan secara tegas tanggung jawab antarmuka pengguna, gerbang routing (*API gateway*), dan layanan mikro domain bisnis. Dengan menerapkan optimasi runtime Node.js dan kompilasi statis Next.js, seluruh ekosistem aplikasi dapat beroperasi secara simultan di atas server VPS Xeon Shared berkapasitas 2 GB RAM dan 20 GB NVMe dengan tingkat stabilitas tinggi dan konsumsi memori fisik kontainer di bawah 100 MB.
 
 *Pernyataan Kepatuhan Konten:* Mojiji berfokus sepenuhnya pada fungsi manajemen katalog, pencatatan progres daftar pantau (*watchlist tracker*), dan interaksi personal penggemar. Platform ini **tidak menyediakan fasilitas penayangan video streaming maupun pembacaan manga secara ilegal**, melainkan memanfaatkan metadata legal dari Tenrai API v1.
 
@@ -59,10 +59,10 @@ Aplikasi mengadopsi pola arsitektur **API Gateway Microservices** dengan pemisah
 flowchart TD
     Client[Browser Klien / Web Client] -->|HTTPS Port 443| Caddy[Caddy Reverse Proxy & Edge Server]
     
-    subgraph HostVPS["Peladen Ubuntu 22.04 LTS (2 vCPU, 2 GB RAM)"]
+    subgraph HostVPS["Peladen Ubuntu 24.04 LTS (Xeon Shared - 2 vCPU, 2 GB RAM, 20 GB NVMe)"]
         direction TB
         Caddy -->|Path /| StaticWeb["Frontend Next.js (Static Export di /srv)"]
-        Caddy -->|Path /api/*| APIGateway["API Gateway (Fastify - Port 4000)"]
+        Caddy -->|Path /api/*| APIGateway["API Gateway (Express - Port 4000)"]
         
         subgraph InternalNetwork["Jaringan Docker Internal (mojiji_internal)"]
             APIGateway -->|Routing Auth & Profil| UserService["User Service (Port 4001)"]
@@ -111,7 +111,7 @@ flowchart TD
 | **Styling Engine** | [Tailwind CSS](https://tailwindcss.com/docs) | 3.4.x | Utilitas CSS modern untuk desain antarmuka dark glow. |
 | **UI Components** | [shadcn/ui](https://ui.shadcn.com/) | Radix UI | Komponen antarmuka modular, aksesibel, dan konsisten. |
 | **Client State** | [Zustand](https://zustand.docs.pmnd.rs/) | 5.x | State management client-side ringan tanpa overhead render ulang. |
-| **Backend Microservices** | [Fastify](https://fastify.dev/) | 5.x | Framework backend berkecepatan tinggi dengan alokasi memori sangat rendah (~15 MB/service). |
+| **Backend Microservices** | [Express.js](https://expressjs.com/) | 5.x | Framework backend minimalis dan andal dengan alokasi memori sangat rendah (~15-20 MB/service). |
 | **Runtime Engine** | [Node.js](https://nodejs.org/) | 20 LTS | Lingkungan eksekusi backend berbasis image ringan `node:20-alpine`. |
 | **Relational Database** | [PostgreSQL](https://www.postgresql.org/docs/15/) | 15.x | Basis data relasional dengan isolasi skema per service (*Multi-Schema*). |
 | **Database Cloud Provider** | [Supabase](https://supabase.com/docs) | Hosted | Penyedia PostgreSQL cloud terkelola dengan session pooler IPv4. |
@@ -120,7 +120,7 @@ flowchart TD
 | **Database Migrations** | [Dbmate](https://github.com/amacneil/dbmate) | 2.x | Manajemen migrasi DDL skema database yang independen dari ORM. |
 | **Kontainerisasi** | [Docker](https://docs.docker.com/) | 27.x | Isolasi lingkungan pengembangan lokal dan server produksi. |
 | **Otomatisasi CI/CD** | [GitHub Actions](https://docs.github.com/en/actions) | Cloud | Pipeline pengujian unit, linter, Newman API test, dan deploy otomatis. |
-| **Sistem Operasi Server** | [Ubuntu Server](https://ubuntu.com/server/docs) | 22.04 LTS | Host VPS dengan spesifikasi 2 vCPU, 2 GB RAM, dan 2 GB Swap aktif. |
+| **Sistem Operasi Server** | [Ubuntu Server](https://ubuntu.com/server/docs) | 24.04 LTS | Host VPS Xeon Shared (2 vCPU, 2 GB RAM, 2 GB Swap, 20 GB NVMe, SSH NAT Port 20125). |
 
 ---
 
@@ -130,7 +130,7 @@ flowchart TD
 mojiji-animelist/
 ├── apps/
 │   └── web/                     # Aplikasi Frontend Next.js 15
-├── services/                    # Kumpulan Microservices Backend (Fastify)
+├── services/                    # Kumpulan Microservices Backend (Express.js v5)
 │   ├── api-gateway/             # Resepsionis, verifikasi cookie, & routing
 │   ├── user-service/            # Registrasi, autentikasi, & profil user
 │   ├── catalog-service/         # Integrasi Tenrai API & Upstash cache
@@ -236,7 +236,7 @@ Proyek ini dikembangkan secara kolaboratif oleh tim mahasiswa mata kuliah Pemrog
 | Nama Pengembang | Peran Utama | Tanggung Jawab Inti |
 | :--- | :--- | :--- |
 | **Aji Banyu Rizqi** | DevOps Engineer & Admin | Provisioning VPS, CI/CD pipeline, keamanan jaringan, mitigasi kuota hosting, serta secondary testing. |
-| **Syafii Nurradha** | Backend Lead | Arsitektur microservices Fastify, autentikasi sesi cookie, dan koordinasi rilis backend. |
+| **Syafii Nurradha** | Backend Lead | Arsitektur microservices Express.js, autentikasi sesi cookie, dan koordinasi rilis backend. |
 | **Andika Abdilah Said** | Backend Developer | Integrasi Tenrai API, logika katalog, caching Upstash Redis, dan endpoint tracker. |
 | **Ryan** | Database Administrator | Perancangan skema database multi-schema, migrasi Dbmate, indexing query, dan Supabase pooler. |
 | **Rian** | Frontend Developer | Antarmuka web Next.js 15, integrasi UI komponen Shadcn, dan konsumsi API client-side. |

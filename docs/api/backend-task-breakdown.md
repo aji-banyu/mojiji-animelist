@@ -38,9 +38,9 @@ Endpoint berikut mengikuti gambaran umum API proyek dan dokumen Kontrak API MVP.
 | Auth | `POST /api/auth/login` | Mengautentikasi pengguna menggunakan mekanisme sesi/token yang telah disepakati |
 | Auth | `POST /api/auth/logout` | Mengakhiri sesi/token yang sedang digunakan, sesuai mekanisme autentikasi |
 | User | `GET /api/users/me` | Mengembalikan profil pengguna yang sedang terautentikasi |
-| Catalog | `GET /api/catalog/search?type=anime\|manga&q=...` | Mencari katalog anime/manga |
+| Catalog | `GET /api/catalog/search—type=anime\|manga&q=...` | Mencari katalog anime/manga |
 | Catalog | `GET /api/catalog/:type/:malId` | Mengembalikan detail satu anime atau manga |
-| Tracker | `GET /api/tracker?status=...` | Menampilkan daftar item yang dilacak pengguna, dengan filter status jika diperlukan |
+| Tracker | `GET /api/tracker—status=...` | Menampilkan daftar item yang dilacak pengguna, dengan filter status jika diperlukan |
 | Tracker | `POST /api/tracker` | Menambahkan item ke daftar pelacakan pengguna |
 | Tracker | `PATCH /api/tracker/:id/status` | Mengubah status pelacakan suatu item |
 | Tracker | `POST /api/tracker/:id/increment` | Menambah progres sesuai aturan pelacakan yang telah disepakati |

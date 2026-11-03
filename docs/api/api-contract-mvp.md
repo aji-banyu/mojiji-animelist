@@ -101,7 +101,7 @@ Base URL:
 | `Content-Type` | `application/json` | Wajib |
 
 #### Request Body Schema (JSON)
-| Field | Tipe | Wajib? | Aturan Validasi |
+| Field | Tipe | Wajib— | Aturan Validasi |
 | :--- | :--- | :--- | :--- |
 | `username` | `string` | Ya | 3–50 karakter, alfanumerik dan underscore |
 | `email` | `string` | Ya | Format email valid, maksimal 255 karakter |
@@ -165,7 +165,7 @@ Contoh Request:
 * **Proteksi:** Rate limited maksimal 15 percobaan per 15 menit per IP.
 
 #### Request Body Schema (JSON)
-| Field | Tipe | Wajib? | Aturan Validasi |
+| Field | Tipe | Wajib— | Aturan Validasi |
 | :--- | :--- | :--- | :--- |
 | `email` | `string` | Ya | Format email valid |
 | `password` | `string` | Ya | Minimal 1 karakter |
@@ -279,13 +279,13 @@ Base URL:
 * **TTL:** Search = 1 jam (3600s), Detail = 24 jam (86400s), Backup Stale = 7 hari.
 * **Throttling:** Dibatasi maksimal 4 permintaan per detik ke Tenrai API.
 
-### 3.1 GET /api/catalog/search?type=anime&q=naruto
+### 3.1 GET /api/catalog/search—type=anime&q=naruto
 
 * **Tujuan:** Mencari anime atau manga berdasarkan kata kunci.
 * **Autentikasi:** Publik.
 
 #### Query Parameters
-| Parameter | Tipe | Wajib? | Keterangan |
+| Parameter | Tipe | Wajib— | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `type` | `string` | Ya | `anime` atau `manga` |
 | `q` | `string` | Ya | Kata kunci pencarian (minimal 1 karakter) |
@@ -350,7 +350,7 @@ Base URL:
 * **Autentikasi:** Publik.
 
 #### Path Parameters
-| Parameter | Tipe | Wajib? | Keterangan |
+| Parameter | Tipe | Wajib— | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `type` | `string` | Ya | `anime` atau `manga` |
 | `malId` | `integer` | Ya | Bilangan bulat positif |
@@ -404,13 +404,13 @@ Base URL:
 
 Pemberlakuan Keamanan: Seluruh endpoint pelacakan wajib membawa cookie sesi `mojiji_session` atau header `Authorization: Bearer <token>`. Gateway memverifikasi sesi dan menyuntikkan header `X-User-Id` ke Tracker Service.
 
-### 4.1 GET /api/tracker?status=watching
+### 4.1 GET /api/tracker—status=watching
 
 * **Tujuan:** Mengambil daftar anime/manga yang dilacak pengguna (dapat disaring berdasarkan status).
 * **Autentikasi:** Wajib.
 
 #### Query Parameters
-| Parameter | Tipe | Wajib? | Keterangan |
+| Parameter | Tipe | Wajib— | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `status` | `string` | Tidak | Pilihan: `plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped` |
 
@@ -469,7 +469,7 @@ Pemberlakuan Keamanan: Seluruh endpoint pelacakan wajib membawa cookie sesi `moj
 * **Autentikasi:** Wajib.
 
 #### Request Body Schema (JSON)
-| Field | Tipe | Wajib? | Keterangan |
+| Field | Tipe | Wajib— | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `mediaType` / `type` | `string` | Ya | `anime` atau `manga` |
 | `malId` / `mal_id` | `integer` | Ya | MAL ID bilangan bulat positif |
@@ -530,12 +530,12 @@ Contoh Request:
 * **Autentikasi:** Wajib.
 
 #### Path Parameters
-| Parameter | Tipe | Wajib? | Keterangan |
+| Parameter | Tipe | Wajib— | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `id` | `string` | Ya | UUID item tracker |
 
 #### Request Body Schema (JSON)
-| Field | Tipe | Wajib? | Keterangan |
+| Field | Tipe | Wajib— | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `status` | `string` | Ya | `plan`, `watching`, `reading`, `completed`, `on_hold`, `dropped` |
 
@@ -578,7 +578,7 @@ Contoh Request:
 * **Autentikasi:** Wajib.
 
 #### Path Parameters
-| Parameter | Tipe | Wajib? | Keterangan |
+| Parameter | Tipe | Wajib— | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `id` | `string` | Ya | UUID item tracker |
 
@@ -631,7 +631,7 @@ Contoh Request:
 * **Autentikasi:** Wajib.
 
 #### Path Parameters
-| Parameter | Tipe | Wajib? | Keterangan |
+| Parameter | Tipe | Wajib— | Keterangan |
 | :--- | :--- | :--- | :--- |
 | `id` | `string` | Ya | UUID item tracker |
 
@@ -705,7 +705,7 @@ curl -X GET http://localhost:4000/api/users/me \
 
 #### 4. Cari Judul Anime
 ```bash
-curl -X GET "http://localhost:4000/api/catalog/search?type=anime&q=naruto"
+curl -X GET "http://localhost:4000/api/catalog/search—type=anime&q=naruto"
 ```
 
 #### 5. Tambah Judul ke Tracker
