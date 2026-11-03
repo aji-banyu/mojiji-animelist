@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/tracker/{{trackerId}}/increment"
+method: POST
+order: 5000
+description: "TC-013: Menambah progres nonton/baca +1 secara instan."
+
