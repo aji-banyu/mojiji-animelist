@@ -76,3 +76,11 @@ Tiket baru dianggap Done setelah Acceptance Criteria diverifikasi, dokumen diper
 Gunakan label berikut agar tidak ada asumsi tersembunyi: CONFIRMED, ASSUMPTION, PROPOSAL, BLOCKED, DECISION NEEDED.
 
 Jika pekerjaan Anda membuat role lain bergantung, tulis HANDOFF: dari siapa, untuk siapa, tiket, apa yang sudah siap, apa yang diminta, artefak, catatan penting, dan apakah memblokir.
+
+## 10. Pengujian Otomatis (CI & Testing)
+
+Setiap Pull Request (PR) yang diajukan menuju branch `develop` wajib lulus serangkaian pengujian otomatis pada GitHub Actions (`ci.yml`):
+1. **Lint, Build, & Unit Test Check:** Menjalankan `npm run lint --if-present`, `npm test --if-present`, dan `npm run build --if-present` pada seluruh microservices backend dan frontend web.
+2. **API Health & Contract Test (Newman):** Menjalankan pengujian endpoint API secara otomatis menggunakan Newman terhadap koleksi Postman di `tests/api/MOJIJI-MVP.postman_collection.json`.
+3. **Artifact Laporan:** Laporan hasil pengujian Newman (`newman-report.html`) diunggah secara otomatis sebagai workflow artifact (`postman-api-test-report`) pada halaman detail run GitHub Actions.
+4. **Enforcement:** Jika salah satu langkah pengujian menghasilkan kegagalan (exit code bukan 0), status check CI akan gagal dan PR dilarang untuk di-merge ke branch `develop`.

@@ -1,4 +1,4 @@
-name: CI Dasar (Lint & Build)
+name: CI (Lint, Build & Test)
 
 on:
   pull_request:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-and-lint:
-    name: Lint and Build Check
+    name: Lint, Build, and Unit Test Check
     runs-on: ubuntu-latest
 
     strategy:
@@ -30,6 +30,7 @@ jobs:
         run: |
           npm ci
           npm run lint --if-present
+          npm test --if-present
           npm run build --if-present
 
       - name: Check Backend (User Service)
@@ -37,6 +38,7 @@ jobs:
         run: |
           npm ci
           npm run lint --if-present
+          npm test --if-present
           npm run build --if-present
 
       - name: Check Backend (Catalog Service)
@@ -44,6 +46,7 @@ jobs:
         run: |
           npm ci
           npm run lint --if-present
+          npm test --if-present
           npm run build --if-present
 
       - name: Check Backend (Tracker Service)
@@ -51,6 +54,7 @@ jobs:
         run: |
           npm ci
           npm run lint --if-present
+          npm test --if-present
           npm run build --if-present
 
       - name: Check Frontend (Web)
@@ -58,4 +62,53 @@ jobs:
         run: |
           npm ci
           npm run lint --if-present
+          npm test --if-present
           npm run build --if-present
+
+  api-test:
+    name: API Health & Contract Test (Postman/Newman)
+    runs-on: ubuntu-latest
+    needs: build-and-lint
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Environment File
+        run: |
+          cp .env.example .env
+
+      - name: Start Services via Docker Compose
+        run: |
+          docker compose --env-file .env -f infra/compose/docker-compose.dev.yml up -d --build api-gateway
+          timeout 60s bash -c 'until curl -s http://localhost:4000/health | grep -q "ok"; do sleep 2; done'
+
+      - name: Install Newman & HTML Reporter
+        run: |
+          npm install -g newman newman-reporter-htmlextra
+
+      - name: Run Postman Tests (Health Check)
+        run: |
+          mkdir -p test-reports
+          newman run tests/api/MOJIJI-MVP.postman_collection.json \
+            --folder "Health" \
+            -e tests/api/MOJIJI-local.postman_environment.json \
+            -r cli,htmlextra \
+            --reporter-htmlextra-export test-reports/newman-report.html
+
+      - name: Upload Test Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-api-test-report
+          path: test-reports/newman-report.html
+
+      - name: Teardown Services
+        if: always()
+        run: |
+          docker compose --env-file .env -f infra/compose/docker-compose.dev.yml down
