@@ -32,18 +32,18 @@ sequenceDiagram
     actor BE as Syafii (Backend)
     actor DBA as Ryan (DBA)
     actor DevOps as Aji (DevOps)
-    participant VPS as Peladen VPS (/opt/mojiji/production)
+    participant VPS as Peladen VPS (/home/aji/mojiji-production)
     participant GH as GitHub CI/CD
 
     BE->>DevOps: Serahkan Dokumentasi & Template Variabel Produksi (MJ-099)
     DBA->>DevOps: Siapkan Database Supabase Prod & Connection String (MJ-101)
     
     activate DevOps
-    DevOps->>VPS: Buat direktori /opt/mojiji/production/ (MJ-106)
+    DevOps->>VPS: Buat direktori /home/aji/mojiji-production/ (MJ-106)
     DevOps->>VPS: Generate JWT_SECRET & INTERNAL_KEY (openssl rand -hex 32)
     DevOps->>VPS: Tulis file .env produksi & amankan dengan chmod 600
-    DevOps->>VPS: Salin docker-compose.server.yml ke folder production
-    DevOps->>GH: Siapkan Pipeline deploy-production.yml (MJ-107)
+    DevOps->>VPS: Siapkan docker-compose.prod.yml untuk microservices production (Port 5000)
+    DevOps->>GH: Siapkan Pipeline production.yml (MJ-107)
     deactivate DevOps
 
     Note over DevOps,GH: Kesiapan Rilis MVP Live ke mojiji.web.id (MJ-108)
@@ -70,23 +70,23 @@ Untuk memastikan isolasi total antara lingkungan staging dan produksi yang berba
 
 ---
 
-## 4. Format Lengkap `/opt/mojiji/production/.env` di VPS
+## 4. Format Lengkap `/home/aji/mojiji-production/.env` di VPS
 
 DevOps dapat membuat berkas rahasia ini di peladen VPS menggunakan akun `deploy`:
 
 ```bash
 # 1. Buat direktori kerja production
-sudo mkdir -p /opt/mojiji/production
+sudo mkdir -p /home/aji/mojiji-production
 
 # 2. Tulis berkas konfigurasi rahasia
-sudo nano /opt/mojiji/production/.env
+sudo nano /home/aji/mojiji-production/.env
 
 # 3. Kunci hak akses keamanan ketat (hanya deploy yang dapat membaca)
-sudo chown deploy:deploy /opt/mojiji/production/.env
-sudo chmod 600 /opt/mojiji/production/.env
+sudo chown deploy:deploy /home/aji/mojiji-production/.env
+sudo chmod 600 /home/aji/mojiji-production/.env
 ```
 
-### Isi File Konfigurasi Produksi (`/opt/mojiji/production/.env`):
+### Isi File Konfigurasi Produksi (`/home/aji/mojiji-production/.env`):
 ```ini
 # ==========================================
 # PRODUCTION ENVIRONMENT - MOJIJI ANIMELIST
@@ -113,15 +113,15 @@ COOKIE_NAME=mj_session
 INTERNAL_KEY=f5e4d3c2b1a09876543210fedcba9876543210fedcba9876543210fedcba9876
 
 # Port Microservices Internal (Jaringan Docker internal)
-PORT_GATEWAY=4000
-PORT_USER=4001
-PORT_CATALOG=4002
-PORT_TRACKER=4003
+PORT_GATEWAY=5000
+PORT_USER=5001
+PORT_CATALOG=5002
+PORT_TRACKER=5003
 
 # Internal Service Routing URLs
-USER_SERVICE_URL=http://user-service:4001
-CATALOG_SERVICE_URL=http://catalog-service:4002
-TRACKER_SERVICE_URL=http://tracker-service:4003
+USER_SERVICE_URL=http://user-service:5001
+CATALOG_SERVICE_URL=http://catalog-service:5002
+TRACKER_SERVICE_URL=http://tracker-service:5003
 
 # Batasan Memori Node.js Heap
 NODE_OPTIONS=--max-old-space-size=64
@@ -150,13 +150,13 @@ Sesuai ketentuan **PRD Bagian 19 (Resource RAM)** dan dokumen hasil pengukuran e
 
 Setelah DevOps menjalankan container production via Docker Compose:
 ```bash
-docker compose -p mojiji-production --env-file /opt/mojiji/production/.env -f /opt/mojiji/production/docker-compose.server.yml up -d
+docker compose -p mojiji-production --env-file /home/aji/mojiji-production/.env -f /home/aji/mojiji-production/docker-compose.prod.yml up -d
 ```
 
 Lakukan verifikasi kesehatan seluruh service:
 ```bash
 # 1. API Gateway Health
-curl -s http://localhost:4000/health | jq .
+curl -s http://localhost:5000/health | jq .
 # Expected: {"status":"ok","service":"api-gateway","message":"API Gateway is running"}
 
 # 2. User Service Health

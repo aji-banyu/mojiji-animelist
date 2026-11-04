@@ -18,31 +18,29 @@ Peladen VPS Mojiji menggunakan sistem operasi **Ubuntu 24.04 LTS (x86_64)** pada
 * **Port Publik Terbuka:** Hanya port **22** (SSH), **80** (HTTP), dan **443** (HTTPS).
 * **Port Internal (Tertutup dari Internet):** Port microservices (`4000`, `4001`, `4002`, `4003`) **DILARANG KERAS** dipublikasikan ke internet (*no host binding*). Seluruh trafik luar wajib melewati **Caddy Reverse Proxy** melalui Docker network bridge internal (`mojiji_internal`).
 
-### B. Struktur Direktori Server di Host VPS (`/opt/mojiji`)
+### B. Struktur Direktori Server di Host VPS (`/home/<user>/`)
 
 ```text
-/opt/mojiji/
-├── staging/                           # Lingkungan Staging (staging.mojiji.web.id)
-│   ├── .env                           # Konfigurasi secret staging (chmod 600)
-│   ├── docker-compose.server.yml      # Orkestrasi container staging
-│   ├── web/                           # Berkas statis ekspor Next.js staging (/srv)
-│   └── .last_good_tag                 # Catatan tag image stabil terakhir untuk rollback
+/home/aji/
+├── mojiji-staging/                    # Lingkungan Staging (staging.mojiji.web.id)
+│   ├── .env                           # Konfigurasi secret staging (chmod 600, port 4000-4003)
+│   ├── infra/
+│   │   ├── compose/
+│   │   │   └── docker-compose.server.yml  # Kontainer microservices staging & Ingress Caddy
+│   │   └── caddy/
+│   │       └── Caddyfile              # Konfigurasi dual-ingress reverse proxy & auto SSL
+│   └── frontend-build/                # Direktori mount /srv untuk Caddy
+│       ├── (file statis staging)      # HTML/JS/CSS staging (staging.mojiji.web.id)
+│       └── production/                # Mount /srv/production untuk mojiji.web.id
 │
-├── production/                        # Lingkungan Production (mojiji.web.id)
-│   ├── .env                           # Konfigurasi secret production (chmod 600)
-│   ├── docker-compose.server.yml      # Orkestrasi container production
-│   ├── web/                           # Berkas statis ekspor Next.js production (/srv)
-│   └── .last_good_tag                 # Catatan tag image rilis stabil terakhir
-│
-├── backups/                           # Repositori Backup Otomatis Database
-│   ├── mojiji_prod_backup_YYYYMMDD_HHMMSS.sql
-│   └── (Folder di luar repo git dengan hak akses ketat deploy:deploy)
-│
-└── caddy/
-    ├── Caddyfile                      # Konfigurasi reverse proxy & SSL otomatis
-    └── volumes/
-        └── caddy_data/                # Volume persistent sertifikat SSL Let's Encrypt
-                                       # (PERINGATAN: Dilarang menghapus volume ini!)
+└── mojiji-production/                 # Lingkungan Production (mojiji.web.id - MJ-106)
+    ├── .env                           # Konfigurasi secret production (chmod 600, port 5000-5003)
+    ├── infra/
+    │   └── compose/
+    │       └── docker-compose.prod.yml # Microservices backend production (tanpa Caddy duplikat)
+    ├── frontend-build-prod/           # Berkas statis ekspor Next.js produksi dari CI/CD
+    └── backups/                       # Repositori Backup Otomatis Database Pre-Migration
+        └── mojiji_prod_backup_YYYYMMDD_HHMMSS.sql
 ```
 
 ---
@@ -108,7 +106,7 @@ sequenceDiagram
      ```
    * Jika migrasi berhasil, container aplikasi diperbarui:
      ```bash
-     docker compose -p mojiji-staging --env-file /opt/mojiji/staging/.env -f /opt/mojiji/staging/docker-compose.server.yml up -d --remove-orphans
+     docker compose -p mojiji-staging --env-file /home/aji/mojiji-staging/.env -f /home/aji/mojiji-staging/infra/compose/docker-compose.server.yml up -d --remove-orphans
      ```
    * Penukaran file web statis di folder `/srv/staging`.
    * Memuat ulang konfigurasi web server Caddy:
@@ -117,13 +115,21 @@ sequenceDiagram
      ```
    * Verifikasi kesehatan layanan (*healthcheck*) `/api/health`.
 
-### B. Deployment Lingkungan Production (`mojiji.web.id`)
-1. **Pemicu (Trigger):** Setelah seluruh Acceptance Criteria diverifikasi oleh QA (Nadia) di Staging, dibuat Pull Request resmi dari `develop` ke **`main`**. Merge ke `main` memicu `deploy-production.yml`.
-2. **Prosedur Pengamanan Tambahan Production:**
-   * **Backup Otomatis Wajib (`pg_dump`):** Sebelum migrasi dieksekusi, pipeline secara otomatis melakukan dump database production ke `/opt/mojiji/backups/mojiji_prod_backup_YYYYMMDD_HHMMSS.sql`. Jika proses backup gagal atau ukuran file kosong (0 byte), deploy langsung dibatalkan demi keamanan integritas data.
-   * Eksekusi migrasi database `migrate up` pada database production.
-   * Kontainer aplikasi beralih ke tag rilis baru secara bertahap (*zero-downtime*).
-   * Verifikasi kesehatan layanan publik di `https://mojiji.web.id/api/health`.
+### B. Deployment Lingkungan Production (`mojiji.web.id` - Tiket MJ-106 & MJ-107)
+1. **Pemicu (Trigger):** Setelah seluruh Acceptance Criteria diverifikasi oleh QA (Nadia) di Staging, dibuat Pull Request rilis resmi dari `develop` ke **`main`**. Merge ke `main` (atau pemicu manual `workflow_dispatch`) menjalankan pipeline **`.github/workflows/production.yml`**.
+2. **Tahapan CI/CD Production:**
+   * **Build Frontend:** Kompilasi Next.js static export dengan target API publik `NEXT_PUBLIC_API_URL=https://mojiji.web.id`.
+   * **Build Backend:** Kompilasi Docker images microservices dan push ke GitHub Container Registry (`ghcr.io`).
+   * **Transfer Berkas:** SCP artefak rilis ke direktori peladen `/home/<user>/mojiji-production`.
+3. **Prosedur Pengamanan & Eksekusi di Peladen VPS:**
+   * **Isolasi Port Jaringan:** Layanan backend production berjalan pada rentang port terpisah (**5000** Gateway, **5001** User, **5002** Catalog, **5003** Tracker) melalui `docker-compose.prod.yml` untuk mencegah bentrokan dengan staging (port 4000-4003).
+   * **Backup Otomatis Wajib (`pg_dump`):** Sebelum migrasi skema dieksekusi, runner secara otomatis melakukan backup database ke `backups/mojiji_prod_backup_YYYYMMDD_HHMMSS.sql`.
+   * **Migrasi Skema Otomatis:** Menjalankan container ephemeral `dbmate up` pada database Supabase Production (`PROD_DATABASE_URL`).
+   * **Zero-Downtime Static Sync & Caddy Reload:** Berkas frontend produksi disinkronkan ke direktori `/home/<user>/mojiji-staging/frontend-build/production` (terbaca oleh Caddy sebagai `/srv/production`), lalu Caddy dimuat ulang secara zero-downtime:
+     ```bash
+     docker exec mojiji_caddy_server_staging caddy reload --config /etc/caddy/Caddyfile
+     ```
+   * **Healthcheck:** Verifikasi otomatis respons API Gateway production di `http://localhost:5000/health` dan `https://mojiji.web.id/api/health`.
 
 ---
 
