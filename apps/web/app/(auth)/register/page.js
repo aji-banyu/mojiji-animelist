@@ -3,15 +3,19 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, AlertCircle } from "lucide-react";
+import { User, Mail, Lock, AlertCircle, CheckCircle2 } from "lucide-react";
 import { registerApi } from "@/lib/api";
 import useAuthStore from "@/store/authStore";
+import AuthLayout from "@/components/auth/AuthLayout";
+import InputField from "@/components/auth/InputField";
+import GoogleButton from "@/components/auth/GoogleButton";
+import PrimaryButton from "@/components/auth/PrimaryButton";
 
 export default function RegisterPage() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
 
-  // === State Form ===
+  // === State Form Register ===
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -21,13 +25,12 @@ export default function RegisterPage() {
 
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
-  // Jika sudah login, jangan izinkan buka form register -> alihkan ke /dashboard
+  // Jika sudah login, jangan izinkan buka form register -> alihkan ke /home
   useEffect(() => {
     if (user) {
-      router.replace("/dashboard");
+      router.replace("/home");
     }
   }, [user, router]);
 
@@ -41,13 +44,13 @@ export default function RegisterPage() {
     }
   };
 
-  // === Fungsi Validasi Sisi Klien (Sesuai PRD US-007 & Zod Backend Syafii) ===
+  // === Fungsi Validasi Sisi Klien ===
   const validate = () => {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const usernameRegex = /^[a-zA-Z0-9_]+$/;
 
-    // Validasi Username — 3 hingga 50 karakter, alfanumerik & underscore
+    // 1. Validasi Username
     const trimmedUsername = formData.username.trim();
     if (!trimmedUsername) {
       newErrors.username = "Username wajib diisi";
@@ -59,7 +62,7 @@ export default function RegisterPage() {
       newErrors.username = "Username hanya boleh huruf, angka, dan underscore (_)";
     }
 
-    // Validasi Email — wajib diisi, format valid, maksimal 255 karakter
+    // 2. Validasi Email
     const trimmedEmail = formData.email.trim();
     if (!trimmedEmail) {
       newErrors.email = "Email wajib diisi";
@@ -69,33 +72,33 @@ export default function RegisterPage() {
       newErrors.email = "Email maksimal 255 karakter";
     }
 
-    // Validasi Password — WAJIB minimal 8 karakter (aturan mutlak PRD US-007)
+    // 3. Validasi Password
     if (!formData.password) {
       newErrors.password = "Password wajib diisi";
     } else if (formData.password.length < 8) {
       newErrors.password = "Password minimal 8 karakter";
     }
 
-    // Validasi Konfirmasi Password — harus sama persis dengan password
+    // 4. Validasi Konfirmasi Password
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = "Konfirmasi password wajib diisi";
     } else if (formData.confirmPassword !== formData.password) {
-      newErrors.confirmPassword = "Konfirmasi password tidak cocok";
+      newErrors.confirmPassword = "Konfirmasi password harus sama";
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // === Handler: Saat form di-submit via API Layer ===
+  // === Handler Submit Pendaftaran ke Backend ===
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validate() || isSubmitting) return;
 
     setIsSubmitting(true);
+    setSuccessMessage("");
 
     try {
-      // Memanggil fungsi registerApi via Axios ke API Gateway (atau Mock jika USE_MOCK aktif)
       const result = await registerApi({
         username: formData.username.trim(),
         email: formData.email.trim(),
@@ -103,11 +106,12 @@ export default function RegisterPage() {
       });
 
       if (result.success) {
-        // Registrasi berhasil -> alihkan ke /login sesuai Acceptance Criteria US-007
-        router.push("/login");
+        setSuccessMessage("Akun berhasil dibuat! Mengalihkan ke halaman masuk...");
+        setTimeout(() => {
+          router.push("/login");
+        }, 1500);
       }
     } catch (err) {
-      // Penanganan Kode Respon Error Spesifik
       let errorMessage = "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
 
       if (
@@ -120,7 +124,8 @@ export default function RegisterPage() {
         errorMessage =
           "Tidak dapat terhubung ke server. Periksa koneksi internet Anda atau coba beberapa saat lagi.";
       } else if (err?.status === 409) {
-        errorMessage = err?.error?.message || "Username atau Email sudah terdaftar. Silakan gunakan yang lain.";
+        errorMessage =
+          err?.error?.message || "Username atau Email sudah terdaftar. Silakan gunakan yang lain.";
       } else if (err?.status === 429) {
         errorMessage =
           err?.error?.message ||
@@ -143,193 +148,133 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0A0B0E] px-4 py-12">
-      {/* === Ambient Radial Glow (Latar Belakang Halus) === */}
-      <div className="pointer-events-none absolute -top-40 left-1/2 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-red-600/10 blur-[130px]" />
-      <div className="pointer-events-none absolute -bottom-40 left-1/4 h-[400px] w-[400px] rounded-full bg-purple-600/10 blur-[120px]" />
+    <AuthLayout>
+      <div className="w-full">
+        {/* Header Teks Form: Tengah Presisi (Center) */}
+        <div className="mb-6 text-center">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+            Daftar Akun Baru
+          </h2>
+        </div>
 
-      {/* === Kartu Form Glassmorphism Terpusat (Tanpa Logo MJ Sesuai Preferensi) === */}
-      <div className="relative z-10 w-full max-w-[430px] rounded-2xl border border-white/10 bg-[#12141A]/90 p-8 shadow-2xl backdrop-blur-xl sm:p-10">
-        {/* Judul & Keterangan */}
-        <h1 className="mb-2 text-center text-2xl font-bold tracking-tight text-white sm:text-3xl">
-          Buat Akun Baru
-        </h1>
-        <p className="mb-8 text-center text-xs text-neutral-400 sm:text-sm">
-          Mulai perjalanan pelacakan anime dan manga kamu di Mojiji
-        </p>
+        {/* Form Register 4 Field */}
+        <form noValidate onSubmit={handleSubmit} className="space-y-3.5">
+          {/* Banner Pesan Sukses */}
+          {successMessage && (
+            <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/60 bg-emerald-950/40 p-3 text-xs sm:text-sm text-emerald-300 shadow-md">
+              <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
+              <span className="leading-relaxed font-medium">{successMessage}</span>
+            </div>
+          )}
 
-        {/* Form dengan noValidate agar tooltip bawaan browser tidak mengganggu */}
-        <form noValidate onSubmit={handleSubmit} className="space-y-4">
-          {/* Pesan Error Global / Banner Status Koneksi */}
+          {/* Banner Error Global */}
           {errors.general && (
-            <div className="flex items-start gap-2.5 rounded-lg border border-red-500/60 bg-red-950/50 p-3.5 text-xs text-red-300 shadow-md">
+            <div className="flex items-start gap-2.5 rounded-xl border border-red-500/60 bg-red-950/40 p-3 text-xs sm:text-sm text-red-300 shadow-md">
               <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
               <span className="leading-relaxed font-medium">{errors.general}</span>
             </div>
           )}
 
-          {/* Field: Username */}
-          <div className="space-y-1.5">
-            <label htmlFor="register-username" className="text-sm font-medium text-white">
-              Username
-            </label>
-            <input
-              id="register-username"
-              name="username"
-              type="text"
-              autoComplete="username"
-              placeholder="Masukkan Username..."
-              value={formData.username}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${
-                errors.username
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-white/20 focus:border-[#FF4655]"
-              }`}
-            />
-            {errors.username && (
-              <p className="text-xs text-red-400">{errors.username}</p>
-            )}
-          </div>
+          {/* Field 1: Username (Sebelumnya Nama Lengkap) */}
+          <InputField
+            id="register-username"
+            name="username"
+            type="text"
+            label="Username"
+            placeholder="username kamu"
+            value={formData.username}
+            onChange={handleChange}
+            error={errors.username}
+            icon={User}
+            required
+            autoComplete="username"
+            compact
+          />
 
-          {/* Field: Email Address */}
-          <div className="space-y-1.5">
-            <label htmlFor="register-email" className="text-sm font-medium text-white">
-              Email Address
-            </label>
-            <input
-              id="register-email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              placeholder="Masukkan Email..."
-              value={formData.email}
-              onChange={handleChange}
-              disabled={isSubmitting}
-              className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${
-                errors.email
-                  ? "border-red-500 focus:border-red-500"
-                  : "border-white/20 focus:border-[#FF4655]"
-              }`}
-            />
-            {errors.email && (
-              <p className="text-xs text-red-400">{errors.email}</p>
-            )}
-          </div>
+          {/* Field 2: Email */}
+          <InputField
+            id="register-email"
+            name="email"
+            type="email"
+            label="Email"
+            placeholder="nama@email.com"
+            value={formData.email}
+            onChange={handleChange}
+            error={errors.email}
+            icon={Mail}
+            required
+            autoComplete="email"
+            compact
+          />
 
-          {/* Field: Password (dengan ikon mata) */}
-          <div className="space-y-1.5">
-            <label htmlFor="register-password" className="text-sm font-medium text-white">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="register-password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="Minimal 8 karakter..."
-                value={formData.password}
-                onChange={handleChange}
-                disabled={isSubmitting}
-                className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 pr-12 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${
-                  errors.password
-                    ? "border-red-500 focus:border-red-500"
-                    : "border-white/20 focus:border-[#FF4655]"
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9EA7] hover:text-white cursor-pointer"
-                tabIndex={-1}
-                aria-label={showPassword ? "Sembunyikan password" : "Lihat password"}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            {errors.password && (
-              <p className="text-xs text-red-400">{errors.password}</p>
-            )}
-          </div>
+          {/* Field 3: Password */}
+          <InputField
+            id="register-password"
+            name="password"
+            type="password"
+            label="Password"
+            placeholder="••••••••"
+            value={formData.password}
+            onChange={handleChange}
+            error={errors.password}
+            icon={Lock}
+            required
+            autoComplete="new-password"
+            compact
+          />
 
-          {/* Field: Konfirmasi Password (dengan ikon mata) */}
-          <div className="space-y-1.5">
-            <label htmlFor="register-confirm-password" className="text-sm font-medium text-white">
-              Konfirmasi Password
-            </label>
-            <div className="relative">
-              <input
-                id="register-confirm-password"
-                name="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="Ulangi password..."
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                disabled={isSubmitting}
-                className={`w-full rounded-lg border bg-[#181A20] px-4 py-3 pr-12 text-sm font-medium text-white placeholder-[#9E9EA7] outline-none transition-colors ${
-                  errors.confirmPassword
-                    ? "border-red-500 focus:border-red-500"
-                    : "border-white/20 focus:border-[#FF4655]"
-                }`}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword((prev) => !prev)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#9E9EA7] hover:text-white cursor-pointer"
-                tabIndex={-1}
-                aria-label={showConfirmPassword ? "Sembunyikan password" : "Lihat password"}
-              >
-                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-            {errors.confirmPassword && (
-              <p className="text-xs text-red-400">{errors.confirmPassword}</p>
-            )}
-          </div>
+          {/* Field 4: Konfirmasi Password */}
+          <InputField
+            id="register-confirm-password"
+            name="confirmPassword"
+            type="password"
+            label="Konfirmasi Password"
+            placeholder="••••••••"
+            value={formData.confirmPassword}
+            onChange={handleChange}
+            error={errors.confirmPassword}
+            icon={Lock}
+            required
+            autoComplete="new-password"
+            compact
+          />
 
-          {/* Tombol Daftar */}
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-lg bg-[#FF4655] py-3 text-base font-bold text-white shadow-lg transition-all hover:bg-[#e03d4a] active:scale-98 disabled:opacity-50 cursor-pointer"
-          >
-            {isSubmitting ? "Mendaftarkan..." : "Daftar"}
-          </button>
+          {/* Tombol Utama Daftar Sekarang (Teks Center & Tanpa Ikon) */}
+          <div className="pt-2">
+            <PrimaryButton
+              type="submit"
+              isLoading={isSubmitting}
+              compact
+            >
+              Daftar Sekarang
+            </PrimaryButton>
+          </div>
         </form>
 
-        {/* Link ke Login */}
-        <p className="mt-5 text-center text-sm font-medium text-neutral-300">
-          Sudah punya akun?{" "}
-          <Link href="/login" className="font-semibold text-[#FF4655] hover:underline">
-            Login di sini
-          </Link>
-        </p>
-
-        {/* Pemisah "or" */}
-        <div className="my-6 flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-xs uppercase tracking-wider text-neutral-400">or</span>
-          <div className="h-px flex-1 bg-white/10" />
+        {/* Divider Garis Tipis "ATAU" (Opsi A) */}
+        <div className="relative my-5 flex items-center justify-center">
+          <div className="w-full border-t border-[#1E293B]" />
+          <span className="absolute bg-[#0B1220] px-3 text-xs font-semibold uppercase tracking-widest text-slate-400">
+            ATAU
+          </span>
         </div>
 
-        {/* Tombol Daftar dengan Google */}
-        <button
-          type="button"
-          disabled
-          className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/20 bg-[#181A20] px-4 py-3 text-sm font-semibold text-neutral-300 transition-colors hover:border-white/40 hover:text-white disabled:opacity-60 cursor-not-allowed"
-        >
-          <svg width="20" height="20" viewBox="0 0 48 48">
-            <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
-            <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
-            <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238A11.91 11.91 0 0124 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
-            <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 01-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
-          </svg>
-          Daftar dengan Google
-        </button>
+        {/* Tombol Daftar dengan Google Berada di Bawah */}
+        <div>
+          <GoogleButton label="Daftar dengan Google" compact />
+        </div>
+
+        {/* Footer Navigasi ke Login */}
+        <p className="mt-6 text-center text-sm sm:text-base text-slate-300">
+          Sudah punya akun?{" "}
+          <Link
+            href="/login"
+            className="font-bold text-[#DC2626] hover:text-red-400 hover:underline ml-1 cursor-pointer"
+          >
+            Masuk di sini
+          </Link>
+        </p>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

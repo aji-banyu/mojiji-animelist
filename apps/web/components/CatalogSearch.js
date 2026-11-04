@@ -2,18 +2,29 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Search, X, Star, Film, BookOpen, AlertCircle, Loader2, Sparkles, Compass } from "lucide-react";
+import { Search, X, Star, Film, BookOpen, AlertCircle, Loader2 } from "lucide-react";
 import { searchCatalogApi } from "@/lib/api";
 
-export default function CatalogSearch({ initialType = "anime" }) {
+export default function CatalogSearch({ initialType = "anime", initialQuery = "" }) {
   const [type, setType] = useState(initialType); // "anime" | "manga"
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Ref untuk AbortController (Membatalkan permintaan lama jika pengguna mengetik lagi - Langkah 3)
+  // Ref untuk melacak nilai initialQuery agar TIDAK me-reset input saat pengguna sedang mengetik
+  const prevInitialQueryRef = useRef(initialQuery);
+
+  // Hanya update query ketika initialQuery dari luar (URL parameter) benar-benar berubah
+  useEffect(() => {
+    if (initialQuery && initialQuery !== prevInitialQueryRef.current) {
+      prevInitialQueryRef.current = initialQuery;
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
+
+  // Ref untuk AbortController (Membatalkan permintaan lama jika pengguna mengetik lagi)
   const abortControllerRef = useRef(null);
 
   // Fungsi eksekusi pencarian ke Catalog Service
@@ -21,7 +32,7 @@ export default function CatalogSearch({ initialType = "anime" }) {
     async (searchTerm, contentType) => {
       const trimmed = searchTerm.trim();
 
-      // Langkah 2: Syarat minimal 3 huruf sebelum memanggil API
+      // Syarat minimal 3 huruf sebelum memanggil API
       if (trimmed.length < 3) {
         setResults([]);
         setIsLoading(false);
@@ -30,7 +41,7 @@ export default function CatalogSearch({ initialType = "anime" }) {
         return;
       }
 
-      // Langkah 3: Batalkan permintaan sebelumnya yang masih berjalan (in-flight)
+      // Batalkan permintaan sebelumnya yang masih berjalan (in-flight)
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -46,7 +57,6 @@ export default function CatalogSearch({ initialType = "anime" }) {
           {
             q: trimmed,
             type: contentType,
-            page: 1,
             limit: 20,
           },
           controller.signal
@@ -67,7 +77,7 @@ export default function CatalogSearch({ initialType = "anime" }) {
           return;
         }
 
-        // Tangani pesan error spesifik dari backend (Langkah 4: 429 Rate Limit / Server Error)
+        // Tangani pesan error spesifik dari backend
         let errorMsg = "Terjadi kendala saat mencari katalog. Silakan coba beberapa saat lagi.";
         if (err?.status === 429 || err?.error?.code === "RATE_LIMIT_EXCEEDED" || err?.error?.code === "RATE_LIMITED") {
           errorMsg = "Terlalu banyak permintaan (Batas kuota tercapai). Harap tunggu beberapa detik sebelum mencoba kembali.";
@@ -86,7 +96,7 @@ export default function CatalogSearch({ initialType = "anime" }) {
     []
   );
 
-  // Langkah 2: Debounce 400 ms sebelum memanggil API pencarian
+  // Debounce 400 ms sebelum memanggil API pencarian
   useEffect(() => {
     const trimmed = query.trim();
 
@@ -130,6 +140,16 @@ export default function CatalogSearch({ initialType = "anime" }) {
     setHasSearched(false);
   };
 
+  // Handler saat tombol Enter ditekan
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (query.trim().length >= 3) {
+        executeSearch(query, type);
+      }
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
       {/* === 1. Baris Kontrol: Tab Tipe (Anime / Manga) & Kotak Input Pencarian === */}
@@ -141,7 +161,7 @@ export default function CatalogSearch({ initialType = "anime" }) {
             onClick={() => handleTypeChange("anime")}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all cursor-pointer ${
               type === "anime"
-                ? "bg-[#FF4655] text-white shadow-md shadow-[#FF4655]/30"
+                ? "bg-[#DC2626] text-white shadow-md shadow-red-950/50"
                 : "text-neutral-400 hover:text-white"
             }`}
           >
@@ -153,7 +173,7 @@ export default function CatalogSearch({ initialType = "anime" }) {
             onClick={() => handleTypeChange("manga")}
             className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all cursor-pointer ${
               type === "manga"
-                ? "bg-[#FF4655] text-white shadow-md shadow-[#FF4655]/30"
+                ? "bg-[#DC2626] text-white shadow-md shadow-red-950/50"
                 : "text-neutral-400 hover:text-white"
             }`}
           >
@@ -162,41 +182,45 @@ export default function CatalogSearch({ initialType = "anime" }) {
           </button>
         </div>
 
-        {/* Kolom Input Pencarian dengan Jeda Mengetik (Debounce) */}
+        {/* Input Bar Pencarian */}
         <div className="relative flex-1">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-neutral-400">
-            {isLoading ? (
-              <Loader2 size={18} className="animate-spin text-[#FF4655]" />
-            ) : (
-              <Search size={18} />
-            )}
-          </div>
+          <Search
+            size={18}
+            className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400"
+          />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder={
               type === "anime"
-                ? "Cari anime (misal: Naruto, One Piece, Attack on Titan)..."
-                : "Cari manga (misal: Monster, Berserk, One Piece)..."
+                ? "Cari Anime Disini"
+                : "Cari Manga Disini"
             }
-            className="w-full rounded-xl border border-white/15 bg-black/50 py-2.5 pl-10 pr-10 text-sm font-medium text-white placeholder-neutral-500 outline-none transition-all focus:border-[#FF4655] focus:ring-2 focus:ring-[#FF4655]/20"
+            className="w-full rounded-xl border border-white/15 bg-black/50 py-2.5 pl-10 pr-10 text-sm font-medium text-white placeholder-neutral-500 outline-none transition-all focus:border-[#DC2626] focus:ring-2 focus:ring-[#DC2626]/20"
           />
-          {query && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 hover:text-white cursor-pointer"
-              title="Bersihkan pencarian"
-              aria-label="Bersihkan pencarian"
-            >
-              <X size={16} />
-            </button>
-          )}
+
+          {/* Tombol Clear / Indikator Loading */}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            {isLoading && (
+              <Loader2 size={16} className="animate-spin text-neutral-400" />
+            )}
+            {query.length > 0 && !isLoading && (
+              <button
+                type="button"
+                onClick={handleClear}
+                className="text-neutral-400 transition-colors hover:text-white cursor-pointer"
+                aria-label="Bersihkan pencarian"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* === 2. Banner Notifikasi Error (Status 429 Rate Limit / 503 Offline) === */}
+      {/* === 2. State: Pesan Error / Masalah Koneksi === */}
       {error && (
         <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-300 shadow-lg">
           <AlertCircle size={20} className="mt-0.5 shrink-0 text-red-400" />
@@ -259,7 +283,7 @@ export default function CatalogSearch({ initialType = "anime" }) {
                 <Link
                   key={`${type}-${itemId}`}
                   href={`/detail?type=${type}&id=${itemId}`}
-                  className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#181A20] shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-[#FF4655]/60 hover:shadow-xl hover:shadow-[#FF4655]/20"
+                  className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#181A20] shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-[#DC2626]/60 hover:shadow-xl hover:shadow-red-950/30"
                 >
                   {/* Poster Gambar */}
                   <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-900">
@@ -294,7 +318,7 @@ export default function CatalogSearch({ initialType = "anime" }) {
                   {/* Keterangan Judul */}
                   <div className="flex flex-1 flex-col justify-between p-3">
                     <h3
-                      className="line-clamp-2 text-sm font-semibold text-neutral-200 transition-colors group-hover:text-[#FF4655]"
+                      className="line-clamp-2 text-sm font-semibold text-neutral-200 transition-colors group-hover:text-[#DC2626]"
                       title={item.title}
                     >
                       {item.title}
@@ -310,7 +334,7 @@ export default function CatalogSearch({ initialType = "anime" }) {
         </div>
       )}
 
-      {/* === 5. State: 'Tidak ada hasil' (Langkah 4 & AC US-001) === */}
+      {/* === 5. State: 'Tidak ada hasil' === */}
       {!isLoading && !error && hasSearched && results.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12141A]/60 px-6 py-16 text-center shadow-lg">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-neutral-400 border border-white/10">
@@ -324,23 +348,6 @@ export default function CatalogSearch({ initialType = "anime" }) {
           </p>
         </div>
       )}
-
-      {/* === 6. State: Idle / Panduan Awal (Sebelum Mengetik / < 3 Karakter) === */}
-      {!isLoading && !error && !hasSearched && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-[#12141A]/40 px-6 py-14 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FF4655]/10 text-[#FF4655] border border-[#FF4655]/20">
-            <Compass size={26} />
-          </div>
-          <h3 className="mt-3 text-base font-bold text-white flex items-center gap-1.5">
-            <span>Eksplorasi Katalog {type === "anime" ? "Anime" : "Manga"}</span>
-            <Sparkles size={16} className="text-amber-400" />
-          </h3>
-          <p className="mt-1 max-w-sm text-xs leading-relaxed text-neutral-400">
-            Ketik minimal 3 karakter judul di kolom atas untuk mulai mencari dari jutaan database {type}.
-          </p>
-        </div>
-      )}
     </div>
   );
 }
-
