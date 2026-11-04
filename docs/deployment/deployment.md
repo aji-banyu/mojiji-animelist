@@ -118,7 +118,7 @@ sequenceDiagram
    * Verifikasi kesehatan layanan (*healthcheck*) `/api/health`.
 
 ### B. Deployment Lingkungan Production (`mojiji.web.id`)
-1. **Pemicu (Trigger):** Setelah seluruh Acceptance Criteria diverifikasi oleh QA (Nadia) di Staging, dibuat Pull Request resmi dari `develop` ke **`main`**. Merge ke `main` memicu `deploy-production.yml`.
+1. **Pemicu (Trigger):** Setelah seluruh Acceptance Criteria diverifikasi oleh QA (Nadia) di Staging, dibuat Pull Request resmi dari `develop` ke **`main`**. Merge ke `main` memicu `production.yml`.
 2. **Prosedur Pengamanan Tambahan Production:**
    * **Backup Otomatis Wajib (`pg_dump`):** Sebelum migrasi dieksekusi, pipeline secara otomatis melakukan dump database production ke `/opt/mojiji/backups/mojiji_prod_backup_YYYYMMDD_HHMMSS.sql`. Jika proses backup gagal atau ukuran file kosong (0 byte), deploy langsung dibatalkan demi keamanan integritas data.
    * Eksekusi migrasi database `migrate up` pada database production.

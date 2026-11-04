@@ -43,7 +43,7 @@ sequenceDiagram
     DevOps->>VPS: Generate JWT_SECRET & INTERNAL_KEY (openssl rand -hex 32)
     DevOps->>VPS: Tulis file .env produksi & amankan dengan chmod 600
     DevOps->>VPS: Salin docker-compose.server.yml ke folder production
-    DevOps->>GH: Siapkan Pipeline deploy-production.yml (MJ-107)
+    DevOps->>GH: Siapkan Pipeline production.yml (MJ-107)
     deactivate DevOps
 
     Note over DevOps,GH: Kesiapan Rilis MVP Live ke mojiji.web.id (MJ-108)
@@ -113,15 +113,15 @@ COOKIE_NAME=mj_session
 INTERNAL_KEY=f5e4d3c2b1a09876543210fedcba9876543210fedcba9876543210fedcba9876
 
 # Port Microservices Internal (Jaringan Docker internal)
-PORT_GATEWAY=4000
-PORT_USER=4001
-PORT_CATALOG=4002
-PORT_TRACKER=4003
+PORT_GATEWAY=5000
+PORT_USER=5001
+PORT_CATALOG=5002
+PORT_TRACKER=5003
 
 # Internal Service Routing URLs
-USER_SERVICE_URL=http://user-service:4001
-CATALOG_SERVICE_URL=http://catalog-service:4002
-TRACKER_SERVICE_URL=http://tracker-service:4003
+USER_SERVICE_URL=http://user-service:5001
+CATALOG_SERVICE_URL=http://catalog-service:5002
+TRACKER_SERVICE_URL=http://tracker-service:5003
 
 # Batasan Memori Node.js Heap
 NODE_OPTIONS=--max-old-space-size=64
@@ -156,7 +156,7 @@ docker compose -p mojiji-production --env-file /opt/mojiji/production/.env -f /o
 Lakukan verifikasi kesehatan seluruh service:
 ```bash
 # 1. API Gateway Health
-curl -s http://localhost:4000/health | jq .
+curl -s http://localhost:5000/health | jq .
 # Expected: {"status":"ok","service":"api-gateway","message":"API Gateway is running"}
 
 # 2. User Service Health
