@@ -1,4 +1,4 @@
 name: MOJIJI Staging
 values:
-  - key: ''
-    value: ''
+  - key: baseUrl
+    value: 'https://staging.mojiji.web.id'
