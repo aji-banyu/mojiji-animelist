@@ -6,8 +6,6 @@ services:
       - ../../database/migrations:/db/migrations
     environment:
       DATABASE_URL: ${DATABASE_URL}
-    networks:
-      - mojiji_network
 
   api-gateway:
     build:
@@ -33,8 +31,6 @@ services:
       test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
       interval: 30s
       retries: 3
-    networks:
-      - mojiji_network
 
   user-service:
     build:
@@ -57,8 +53,6 @@ services:
       test: ["CMD", "wget", "-qO-", "http://localhost:5001/health"]
       interval: 30s
       retries: 3
-    networks:
-      - mojiji_network
 
   catalog-service:
     build:
@@ -80,8 +74,6 @@ services:
       test: ["CMD", "wget", "-qO-", "http://localhost:5002/health"]
       interval: 30s
       retries: 3
-    networks:
-      - mojiji_network
 
   tracker-service:
     build:
@@ -103,9 +95,8 @@ services:
       test: ["CMD", "wget", "-qO-", "http://localhost:5003/health"]
       interval: 30s
       retries: 3
-    networks:
-      - mojiji_network
 
 networks:
-  mojiji_network:
-    name: mojiji_network
+  default:
+    name: compose_default
+    external: true
