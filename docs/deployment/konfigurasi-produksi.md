@@ -32,17 +32,17 @@ sequenceDiagram
     actor BE as Syafii (Backend)
     actor DBA as Ryan (DBA)
     actor DevOps as Aji (DevOps)
-    participant VPS as Peladen VPS (/opt/mojiji/production)
+    participant VPS as Peladen VPS (/home/aji/mojiji-production)
     participant GH as GitHub CI/CD
 
     BE->>DevOps: Serahkan Dokumentasi & Template Variabel Produksi (MJ-099)
     DBA->>DevOps: Siapkan Database Supabase Prod & Connection String (MJ-101)
     
     activate DevOps
-    DevOps->>VPS: Buat direktori /opt/mojiji/production/ (MJ-106)
+    DevOps->>VPS: Buat direktori /home/aji/mojiji-production/ (MJ-106)
     DevOps->>VPS: Generate JWT_SECRET & INTERNAL_KEY (openssl rand -hex 32)
     DevOps->>VPS: Tulis file .env produksi & amankan dengan chmod 600
-    DevOps->>VPS: Salin docker-compose.server.yml ke folder production
+    DevOps->>VPS: Siapkan docker-compose.prod.yml untuk microservices production (Port 5000)
     DevOps->>GH: Siapkan Pipeline production.yml (MJ-107)
     deactivate DevOps
 
@@ -70,23 +70,23 @@ Untuk memastikan isolasi total antara lingkungan staging dan produksi yang berba
 
 ---
 
-## 4. Format Lengkap `/opt/mojiji/production/.env` di VPS
+## 4. Format Lengkap `/home/aji/mojiji-production/.env` di VPS
 
 DevOps dapat membuat berkas rahasia ini di peladen VPS menggunakan akun `deploy`:
 
 ```bash
 # 1. Buat direktori kerja production
-sudo mkdir -p /opt/mojiji/production
+sudo mkdir -p /home/aji/mojiji-production
 
 # 2. Tulis berkas konfigurasi rahasia
-sudo nano /opt/mojiji/production/.env
+sudo nano /home/aji/mojiji-production/.env
 
 # 3. Kunci hak akses keamanan ketat (hanya deploy yang dapat membaca)
-sudo chown deploy:deploy /opt/mojiji/production/.env
-sudo chmod 600 /opt/mojiji/production/.env
+sudo chown deploy:deploy /home/aji/mojiji-production/.env
+sudo chmod 600 /home/aji/mojiji-production/.env
 ```
 
-### Isi File Konfigurasi Produksi (`/opt/mojiji/production/.env`):
+### Isi File Konfigurasi Produksi (`/home/aji/mojiji-production/.env`):
 ```ini
 # ==========================================
 # PRODUCTION ENVIRONMENT - MOJIJI ANIMELIST
@@ -150,7 +150,7 @@ Sesuai ketentuan **PRD Bagian 19 (Resource RAM)** dan dokumen hasil pengukuran e
 
 Setelah DevOps menjalankan container production via Docker Compose:
 ```bash
-docker compose -p mojiji-production --env-file /opt/mojiji/production/.env -f /opt/mojiji/production/docker-compose.server.yml up -d
+docker compose -p mojiji-production --env-file /home/aji/mojiji-production/.env -f /home/aji/mojiji-production/docker-compose.prod.yml up -d
 ```
 
 Lakukan verifikasi kesehatan seluruh service:
