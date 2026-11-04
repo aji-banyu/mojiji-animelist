@@ -1,0 +1,39 @@
+name: Staging Environment Toggle (ON / OFF)
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Aksi kontrol lingkungan staging'
+        required: true
+        default: 'UP'
+        type: choice
+        options:
+          - UP
+          - DOWN
+
+jobs:
+  toggle-staging:
+    name: Toggle Staging (${{ inputs.action }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute Staging Control via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST_VPS }}
+          username: ${{ secrets.USERNAME_VPS }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 20125
+          script_stop: true
+          script: |
+            cd /home/${{ secrets.USERNAME_VPS }}/mojiji-staging
+            chmod +x infra/scripts/*.sh || true
+
+            if [ "${{ inputs.action }}" = "UP" ]; then
+              echo "Menyalakan seluruh container staging..."
+              ./infra/scripts/staging-up.sh
+            else
+              echo "Mematikan backend staging (menghemat RAM VPS)..."
+              ./infra/scripts/staging-down.sh
+            fi
+

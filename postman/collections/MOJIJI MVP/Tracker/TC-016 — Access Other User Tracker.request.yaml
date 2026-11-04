@@ -1,0 +1,5 @@
+$kind: http-request
+url: "{{baseUrl}}/api/tracker/00000000-0000-0000-0000-000000000000"
+method: GET
+order: 7000
+description: "TC-016: Menolak akses tracker milik pengguna lain (Expected: 404 Not Found / Ditolak tanpa membocorkan data)."

@@ -1,0 +1,54 @@
+# ==============================================================================
+# Mojiji AnimeList - Caddy Reverse Proxy & Static File Server Configuration
+# Lingkungan: Dual-Environment (Staging & Production)
+# Domain: staging.mojiji.web.id & mojiji.web.id
+# ==============================================================================
+
+# Lingkungan Staging (staging.mojiji.web.id)
+staging.mojiji.web.id {
+    encode gzip zstd
+
+    # Header Keamanan
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # 1. Penerusan request API ke Staging API Gateway (Port 4000)
+    handle /api/* {
+        reverse_proxy mojiji_gateway_server_staging:4000 api-gateway:4000
+    }
+
+    # 2. Penyajian berkas statis frontend Next.js ekspor staging (/srv)
+    handle {
+        root * /srv
+        try_files {path} {path}/index.html /index.html
+        file_server
+    }
+}
+
+# Lingkungan Production (mojiji.web.id - Milestone UTS Minggu 8 Tiket MJ-106)
+mojiji.web.id {
+    encode gzip zstd
+
+    # Header Keamanan
+    header {
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+    }
+
+    # 1. Penerusan request API ke Production API Gateway (Port 5000)
+    handle /api/* {
+        reverse_proxy mojiji_gateway_server_production:5000
+    }
+
+    # 2. Penyajian berkas statis frontend Next.js ekspor produksi (/srv/production)
+    handle {
+        root * /srv/production
+        try_files {path} {path}/index.html /index.html
+        file_server
+    }
+}

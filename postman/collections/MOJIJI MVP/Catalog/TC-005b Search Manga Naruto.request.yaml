@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/api/catalog/search?type=manga&q=Naruto"
+method: GET
+queryParams:
+  type: manga
+  q: Naruto
+order: 3000

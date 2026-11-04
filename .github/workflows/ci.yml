@@ -1,0 +1,114 @@
+name: CI (Lint, Build & Test)
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  build-and-lint:
+    name: Lint, Build, and Unit Test Check
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Check Backend (API Gateway)
+        working-directory: ./services/api-gateway
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm test --if-present
+          npm run build --if-present
+
+      - name: Check Backend (User Service)
+        working-directory: ./services/user-service
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm test --if-present
+          npm run build --if-present
+
+      - name: Check Backend (Catalog Service)
+        working-directory: ./services/catalog-service
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm test --if-present
+          npm run build --if-present
+
+      - name: Check Backend (Tracker Service)
+        working-directory: ./services/tracker-service
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm test --if-present
+          npm run build --if-present
+
+      - name: Check Frontend (Web)
+        working-directory: ./apps/web
+        run: |
+          npm ci
+          npm run lint --if-present
+          npm test --if-present
+          npm run build --if-present
+
+  api-test:
+    name: API Health & Contract Test (Postman/Newman)
+    runs-on: ubuntu-latest
+    needs: build-and-lint
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Environment File
+        run: |
+          cp .env.example .env
+
+      - name: Start Services via Docker Compose
+        run: |
+          docker compose --env-file .env -f infra/compose/docker-compose.dev.yml up -d --build api-gateway
+          timeout 60s bash -c 'until curl -s http://localhost:4000/health | grep -q "ok"; do sleep 2; done'
+
+      - name: Install Newman & HTML Reporter
+        run: |
+          npm install -g newman newman-reporter-htmlextra
+
+      - name: Run Postman Tests (Health Check)
+        run: |
+          mkdir -p test-reports
+          newman run tests/api/MOJIJI-MVP.postman_collection.json \
+            --folder "Health" \
+            -e tests/api/MOJIJI-local.postman_environment.json \
+            -r cli,htmlextra \
+            --reporter-htmlextra-export test-reports/newman-report.html
+
+      - name: Upload Test Report Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-api-test-report
+          path: test-reports/newman-report.html
+
+      - name: Teardown Services
+        if: always()
+        run: |
+          docker compose --env-file .env -f infra/compose/docker-compose.dev.yml down

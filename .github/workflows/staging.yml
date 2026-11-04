@@ -1,0 +1,120 @@
+name: Staging Pipeline (Build & Transfer)
+
+on:
+  push:
+    branches:
+      - develop
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build Next.js Static Site
+        working-directory: ./apps/web
+        env:
+          NEXT_PUBLIC_TENRAI_BASE_URL: https://api.tenrai.org/v1
+          NEXT_PUBLIC_APP_ENV: staging
+          NEXT_PUBLIC_USE_MOCK: "false"
+          NEXT_PUBLIC_API_URL: https://staging.mojiji.web.id
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload Frontend Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: ./apps/web/out/
+
+  build-backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry (GHCR)
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Backend Images
+        run: |
+          touch .env
+          docker compose -f infra/compose/docker-compose.server.yml build
+          docker compose -f infra/compose/docker-compose.server.yml push
+
+  transfer-to-vps:
+    needs: [build-frontend, build-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Download Frontend Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend-build/
+
+      - name: Transfer Files to VPS via SCP
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOST_VPS }}
+          username: ${{ secrets.USERNAME_VPS }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 20125
+          source: "infra/, frontend-build/, database/"
+          target: "/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
+
+  deploy:
+    needs: transfer-to-vps
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute Deployment via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST_VPS }}
+          username: ${{ secrets.USERNAME_VPS }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 20125
+          script_stop: true
+          script: |
+            set -e
+            
+            cd /home/${{ secrets.USERNAME_VPS }}/mojiji-staging
+
+            # Tanda kutip ganda ditambahkan pada rahasia agar aman dari karakter khusus
+            cat << 'ENVFILE' > .env
+            APP_ENV=staging
+            DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}"
+            REDIS_URL="${{ secrets.STAGING_REDIS_URL }}"
+            REDIS_KEY_PREFIX=mojiji_staging:
+            TENRAI_BASE_URL=https://api.tenrai.org/v1
+            JWT_SECRET="${{ secrets.STAGING_JWT_SECRET }}"
+            COOKIE_NAME=mojiji_session
+            PORT_GATEWAY=4000
+            PORT_USER=4001
+            PORT_CATALOG=4002
+            PORT_TRACKER=4003
+            ENVFILE
+
+            docker compose --env-file .env -f infra/compose/docker-compose.server.yml pull
+            docker compose --env-file .env -f infra/compose/docker-compose.server.yml run --rm -e DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}" migrate --migrations-dir /db/migrations up
+            docker compose --env-file .env -f infra/compose/docker-compose.server.yml up -d --remove-orphans

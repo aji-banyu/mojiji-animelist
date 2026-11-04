@@ -1,0 +1,7 @@
+$kind: http-request
+url: "{{baseUrl}}/api/tracker?status=watching"
+method: GET
+queryParams:
+  status: watching
+order: 6000
+description: "TC-015: Mengambil seluruh daftar tracker milik user dan menyaring berdasarkan status watching."

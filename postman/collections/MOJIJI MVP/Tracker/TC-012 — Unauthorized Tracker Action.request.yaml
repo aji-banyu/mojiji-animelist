@@ -1,0 +1,6 @@
+$kind: http-request
+url: "{{baseUrl}}/api/tracker"
+method: GET
+order: 4000
+description: "TC-012: Pengujian akses endpoint tracker tanpa sesi login (Expected: 401 Unauthorized)."
+

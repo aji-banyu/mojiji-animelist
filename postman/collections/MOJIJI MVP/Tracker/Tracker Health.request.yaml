@@ -1,0 +1,4 @@
+$kind: http-request
+url: https://r824mh8k-3003.asse.devtunnels.ms/health
+method: GET
+order: 1000

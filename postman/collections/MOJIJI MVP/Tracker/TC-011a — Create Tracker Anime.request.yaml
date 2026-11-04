@@ -1,0 +1,18 @@
+$kind: http-request
+url: "{{baseUrl}}/api/tracker"
+method: POST
+headers:
+  - key: Content-Type
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "mediaType": "anime",
+      "malId": 20,
+      "status": "watching",
+      "progress": 1
+    }
+order: 2000
+description: "TC-011a: Menambahkan anime Naruto (malId 20) ke tracker dengan status watching."
+
