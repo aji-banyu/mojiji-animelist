@@ -97,6 +97,17 @@ function DetailContent() {
     return () => clearTimeout(timer);
   }, [toast]);
 
+  // Pastikan halaman detail anime & manga selalu mulai dari posisi scroll paling atas (Hero Banner & Cover)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      const raf = requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+  }, [type, id, isLoading]);
+
   // Muat rating lokal tersimpan
   useEffect(() => {
     if (!id) return;

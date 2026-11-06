@@ -565,6 +565,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                   {/* Small Thumbnail */}
                   <Link
                     href={`/detail?type=${mediaType}&id=${malId}`}
+                    scroll={true}
                     className="relative h-16 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-neutral-900 shadow-sm"
                   >
                     {poster ? (
@@ -586,6 +587,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                     <div className="flex-1 min-w-0">
                       <Link
                         href={`/detail?type=${mediaType}&id=${malId}`}
+                        scroll={true}
                         className="block truncate text-sm font-bold text-white transition-colors hover:text-[#DC2626]"
                         title={item.title}
                       >
@@ -696,6 +698,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                   {/* Thumbnail Poster */}
                   <Link
                     href={`/detail?type=${mediaType}&id=${malId}`}
+                    scroll={true}
                     className="relative h-32 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 shadow-sm"
                   >
                     {poster ? (
@@ -750,6 +753,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                       {/* Judul Anime/Manga */}
                       <Link
                         href={`/detail?type=${mediaType}&id=${malId}`}
+                        scroll={true}
                         className="block line-clamp-2 text-sm font-bold text-white transition-colors hover:text-[#DC2626]"
                         title={item.title}
                       >
@@ -779,6 +783,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                 <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
                   <Link
                     href={`/detail?type=${mediaType}&id=${malId}`}
+                    scroll={true}
                     className="inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-400 transition-colors hover:text-white"
                   >
                     <span>Detail</span>
