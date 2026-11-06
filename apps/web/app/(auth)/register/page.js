@@ -112,7 +112,7 @@ export default function RegisterPage() {
         }, 1500);
       }
     } catch (err) {
-      let errorMessage = "Terjadi kesalahan saat mendaftar. Silakan coba lagi.";
+      let errorMessage = "Gagal mendaftar. Silakan coba lagi.";
 
       if (
         err?.isOffline ||
@@ -121,15 +121,12 @@ export default function RegisterPage() {
         !err?.status ||
         err?.status === 503
       ) {
-        errorMessage =
-          "Tidak dapat terhubung ke server. Periksa koneksi internet Anda atau coba beberapa saat lagi.";
+        errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
       } else if (err?.status === 409) {
-        errorMessage =
-          err?.error?.message || "Username atau Email sudah terdaftar. Silakan gunakan yang lain.";
+        errorMessage = err?.error?.message || "Username atau email sudah terdaftar.";
       } else if (err?.status === 429) {
         errorMessage =
-          err?.error?.message ||
-          "Terlalu banyak percobaan. Harap tunggu beberapa saat sebelum mencoba kembali.";
+          err?.error?.message || "Terlalu banyak percobaan. Tunggu beberapa saat.";
       } else if (err?.error?.details && Array.isArray(err.error.details)) {
         errorMessage = err.error.details
           .map((d) => (typeof d === "string" ? d : d.message || JSON.stringify(d)))
@@ -179,9 +176,9 @@ export default function RegisterPage() {
           <InputField
             id="register-username"
             name="username"
-            type="text"
+            type="text" v/*  */
             label="Username"
-            placeholder="username kamu"
+            placeholder="username"
             value={formData.username}
             onChange={handleChange}
             error={errors.username}
