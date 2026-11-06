@@ -69,7 +69,7 @@ export default function ProfilePage() {
               </div>
               <div className="space-y-1">
                 <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  Halo, {user?.username || "dika_dev"}! 👋
+                  {user?.username || "dika_dev"}
                 </h1>
                 <p className="text-sm text-neutral-400">
                   {user?.email || "dika@mojiji.com"}

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Layers } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import TrackerList from "@/components/TrackerList";
 
@@ -13,9 +12,8 @@ export default function TrackerPage() {
           {/* Header Title & Navigation */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl flex items-center gap-2.5">
-                <Layers className="text-[#DC2626]" size={26} />
-                <span>Dashboard Tracker</span>
+              <h1 className="text-2xl font-black tracking-tight text-white sm:text-3xl">
+                Tracker Anime & Manga
               </h1>
               <p className="mt-1 text-xs text-neutral-400 sm:text-sm">
                 Kelola status tontonan/bacaan, perbarui progres, dan saring koleksi anime & manga pribadimu.

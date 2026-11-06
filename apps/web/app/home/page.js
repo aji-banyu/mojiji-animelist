@@ -30,6 +30,7 @@ function CatalogCard({ item, mediaType }) {
   return (
     <Link
       href={`/detail?type=${mediaType}&id=${item.malId || item.id}`}
+      scroll={true}
       className="group flex flex-col overflow-hidden rounded-xl bg-[#151924] border border-white/10 p-2.5 transition-all duration-300 hover:-translate-y-1 hover:border-[#6D4AFF]/50 hover:shadow-xl hover:shadow-[#6D4AFF]/10 cursor-pointer"
     >
       {/* Poster Potret dengan Badges di Pojok Atas */}
@@ -137,17 +138,20 @@ function Pagination({ currentPage, totalPages, onPageChange }) {
 }
 
 /**
- * Komponen Section Katalog (Popular, On Going, Completed)
+ * Komponen Section Katalog (Top Rated & Klasik Legendaris)
  */
-function CatalogSection({ category, title, mediaType }) {
+function CatalogSection({ category, title, mediaType, delayMs = 0 }) {
   const [page, setPage] = useState(1);
   const [data, setData] = useState({ items: [], pagination: { currentPage: 1, totalPages: 4 } });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Muat data saat kategori, tipe media, atau halaman berubah
+  // Muat data saat kategori, tipe media, atau halaman berubah dengan jeda bertahap
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
+      if (delayMs > 0 && page === 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
       const res = await fetchHomeCategoryData(category, mediaType, page, 12);
       if (res && res.items) {
         setData(res);
@@ -157,7 +161,7 @@ function CatalogSection({ category, title, mediaType }) {
     } finally {
       setIsLoading(false);
     }
-  }, [category, mediaType, page]);
+  }, [category, mediaType, page, delayMs]);
 
   useEffect(() => {
     loadData();
@@ -170,10 +174,10 @@ function CatalogSection({ category, title, mediaType }) {
 
   return (
     <section className="space-y-5 pt-4">
-      {/* Header Section (Murni Teks Tanpa Icon) */}
+      {/* Header Section (Murni Teks Judul Bersih Tanpa Sort / Label Tambahan) */}
       <div className="flex items-center justify-between border-b border-white/10 pb-3">
-        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white capitalize">
-          {title} {mediaType}
+        <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+          {title}
         </h2>
         <span className="text-xs sm:text-sm font-semibold text-neutral-400">
           Halaman {page} dari {data.pagination?.totalPages || 4}
@@ -255,7 +259,7 @@ export default function HomePage() {
               </h1>
 
               <p className="text-sm sm:text-base text-neutral-200/95 leading-relaxed drop-shadow max-w-lg">
-                Temukan anime favoritmu, lacak progres tontonan, dan ikuti episode terbaru setiap musimnya.
+                Temukan anime dan manga favoritmu, lacak progres, dan ikuti episode terbaru setiap musimnya.
               </p>
 
               <div className="pt-2">
@@ -330,28 +334,23 @@ export default function HomePage() {
         </div>
 
         {/* ========================================================================= */}
-        {/* 3. TIGA SECTION KATALOG: POPULAR, ON GOING, COMPLETED                     */}
+        {/* 3. DUA SECTION KATALOG: TOP RATED & KLASIK LEGENDARIS                     */}
         {/* ========================================================================= */}
         <main className="max-w-7xl mx-auto px-5 sm:px-8 lg:px-12 pt-8 space-y-16">
-          {/* Section 1: Popular */}
+          {/* Section 1: Top Rated */}
           <CatalogSection
-            category="popular"
-            title="Populer"
+            category="top_rated"
+            title="Top Rated"
             mediaType={mediaType}
+            delayMs={0}
           />
 
-          {/* Section 2: On Going */}
+          {/* Section 2: Klasik Legendaris */}
           <CatalogSection
-            category="ongoing"
-            title="On Going"
+            category="classic"
+            title="Klasik Legendaris"
             mediaType={mediaType}
-          />
-
-          {/* Section 3: Completed */}
-          <CatalogSection
-            category="completed"
-            title="Completed"
-            mediaType={mediaType}
+            delayMs={250}
           />
         </main>
       </div>

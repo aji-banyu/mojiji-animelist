@@ -323,6 +323,7 @@ export default function CatalogSearch({ initialType = "anime", initialQuery = ""
                 <Link
                   key={`${type}-${itemId}`}
                   href={`/detail?type=${type}&id=${itemId}`}
+                  scroll={true}
                   className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#181A20] shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-[#DC2626]/60 hover:shadow-xl hover:shadow-red-950/30"
                 >
                   {/* Poster Gambar */}

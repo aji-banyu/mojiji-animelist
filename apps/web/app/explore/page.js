@@ -253,6 +253,7 @@ export default function ExplorePage() {
                 <Link
                   key={`${item.type}-${item.id}`}
                   href={`/detail?type=${item.type}&id=${item.id}`}
+                  scroll={true}
                   className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121622] shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-[#6D4AFF]/60 hover:shadow-xl hover:shadow-violet-500/10"
                 >
                   {/* Poster */}
