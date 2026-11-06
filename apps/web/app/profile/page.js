@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { User, Film, Bookmark, ArrowLeft } from "lucide-react";
+import { User, Film, BookOpen, Bookmark, ArrowLeft, Check, Clock } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 import useAuthStore from "@/store/authStore";
 import { getTrackerListApi } from "@/lib/api";
@@ -12,9 +12,11 @@ export default function ProfilePage() {
 
   // State Statistik Real-Time dari Tracker
   const [stats, setStats] = useState({
+    total: 0,
     watching: 0,
     reading: 0,
-    total: 0,
+    completed: 0,
+    plan: 0,
   });
 
   // Ambil data statistik dari API Tracker
@@ -26,10 +28,14 @@ export default function ProfilePage() {
           const items = res.data;
           const watching = items.filter((i) => i.status === "watching").length;
           const reading = items.filter((i) => i.status === "reading").length;
+          const completed = items.filter((i) => i.status === "completed").length;
+          const plan = items.filter((i) => ["plan", "plan_to_watch", "planned"].includes(i.status)).length;
           setStats({
+            total: items.length,
             watching,
             reading,
-            total: items.length,
+            completed,
+            plan,
           });
         }
       })
@@ -58,7 +64,7 @@ export default function ProfilePage() {
           {/* Kartu Profil Pengguna */}
           <div className="rounded-2xl border border-white/10 bg-[#181A20] p-6 sm:p-8 shadow-xl">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#FF4655]/10 text-[#FF4655] border-2 border-[#FF4655]/30 shadow-inner">
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-[#DC2626]/10 text-[#DC2626] border-2 border-[#DC2626]/30 shadow-inner">
                 <User size={38} />
               </div>
               <div className="space-y-1">
@@ -77,55 +83,51 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          {/* Statistik Personal Pengguna (Sedang Ditonton & Sedang Dibaca) */}
+          {/* Statistik Aktivitas Tracker (5 Kartu) */}
           <div className="space-y-4">
             <h2 className="text-lg font-bold text-white tracking-tight">
               Statistik Aktivitas Tracker
             </h2>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {/* Kartu 1: Sedang Ditonton */}
-              <div className="rounded-2xl border border-white/10 bg-[#181A20] p-6 shadow-md transition-all hover:border-white/20">
-                <div className="flex items-center justify-between text-neutral-400">
-                  <span className="text-xs font-semibold uppercase tracking-wider">
-                    Sedang Ditonton
-                  </span>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FF4655]/10 text-[#FF4655] border border-[#FF4655]/20">
-                    <Film size={18} />
-                  </div>
-                </div>
-                <p className="mt-4 text-4xl font-black text-white">{stats.watching}</p>
-                <p className="mt-1 text-xs text-neutral-400">Judul anime aktif dalam daftar tontonan</p>
-                <div className="mt-4 pt-3 border-t border-white/5">
-                  <Link
-                    href="/tracker?type=anime"
-                    className="text-xs font-semibold text-blue-400 hover:text-blue-300 hover:underline"
-                  >
-                    Buka Tracker Anime →
-                  </Link>
-                </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+              {/* Total Tersimpan */}
+              <div className="rounded-xl border border-white/10 bg-[#181A20] p-4 shadow-sm">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+                  Total Tersimpan
+                </span>
+                <p className="mt-1.5 text-2xl font-extrabold text-white">{stats.total}</p>
               </div>
 
-              {/* Kartu 2: Sedang Dibaca */}
-              <div className="rounded-2xl border border-white/10 bg-[#181A20] p-6 shadow-md transition-all hover:border-white/20">
-                <div className="flex items-center justify-between text-neutral-400">
-                  <span className="text-xs font-semibold uppercase tracking-wider">
-                    Sedang Dibaca
-                  </span>
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FF4655]/10 text-[#FF4655] border border-[#FF4655]/20">
-                    <Bookmark size={18} />
-                  </div>
-                </div>
-                <p className="mt-4 text-4xl font-black text-white">{stats.reading}</p>
-                <p className="mt-1 text-xs text-neutral-400">Judul manga aktif dalam daftar bacaan</p>
-                <div className="mt-4 pt-3 border-t border-white/5">
-                  <Link
-                    href="/tracker?type=manga"
-                    className="text-xs font-semibold text-blue-400 hover:text-blue-300 hover:underline"
-                  >
-                    Buka Tracker Manga →
-                  </Link>
-                </div>
+              {/* Menonton */}
+              <div className="rounded-xl border border-white/10 bg-[#181A20] p-4 shadow-sm">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                  <Film size={12} /> Menonton
+                </span>
+                <p className="mt-1.5 text-2xl font-extrabold text-emerald-400">{stats.watching}</p>
+              </div>
+
+              {/* Membaca */}
+              <div className="rounded-xl border border-white/10 bg-[#181A20] p-4 shadow-sm">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-teal-400 flex items-center gap-1">
+                  <BookOpen size={12} /> Membaca
+                </span>
+                <p className="mt-1.5 text-2xl font-extrabold text-teal-400">{stats.reading}</p>
+              </div>
+
+              {/* Selesai */}
+              <div className="rounded-xl border border-white/10 bg-[#181A20] p-4 shadow-sm">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-400 flex items-center gap-1">
+                  <Check size={12} /> Selesai
+                </span>
+                <p className="mt-1.5 text-2xl font-extrabold text-blue-400">{stats.completed}</p>
+              </div>
+
+              {/* Rencana */}
+              <div className="col-span-2 sm:col-span-1 rounded-xl border border-white/10 bg-[#181A20] p-4 shadow-sm">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-purple-400 flex items-center gap-1">
+                  <Clock size={12} /> Rencana
+                </span>
+                <p className="mt-1.5 text-2xl font-extrabold text-purple-400">{stats.plan}</p>
               </div>
             </div>
           </div>

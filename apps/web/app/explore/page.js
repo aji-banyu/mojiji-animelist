@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Compass, Star, Film, BookOpen, Sparkles, Filter } from "lucide-react";
+import { Star, Film, BookOpen, Sparkles, Filter, SearchX, RotateCcw } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
 
 const EXPLORE_ITEMS = [
@@ -147,10 +147,6 @@ export default function ExplorePage() {
         <div className="mx-auto max-w-6xl space-y-8">
           {/* Header Title */}
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-violet-500/10 px-3.5 py-1 text-xs font-bold uppercase tracking-wider text-violet-400 border border-violet-500/20">
-              <Compass size={14} />
-              <span>Discovery Hub</span>
-            </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
               Eksplorasi Katalog Anime & Manga
             </h1>
@@ -226,7 +222,33 @@ export default function ExplorePage() {
               <span>Menampilkan {filteredItems.length} judul rekomendasi</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            {filteredItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#121622] px-6 py-14 text-center shadow-lg">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-neutral-400 border border-white/10">
+                  <SearchX size={26} className="text-neutral-400" />
+                </div>
+                <h3 className="mt-4 text-base font-bold text-white">
+                  Tidak Ada Judul Ditemukan
+                </h3>
+                <p className="mt-1 max-w-sm text-xs text-neutral-400 leading-relaxed">
+                  Tidak ada rekomendasi untuk genre &quot;{selectedGenre}&quot;.
+                </p>
+                <div className="mt-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedType("all");
+                      setSelectedGenre("All");
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#1E293B] px-4 py-2 text-xs font-bold text-neutral-200 transition-all hover:bg-[#334155] hover:text-white active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <RotateCcw size={13} />
+                    <span>Reset Filter</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filteredItems.map((item) => (
                 <Link
                   key={`${item.type}-${item.id}`}
@@ -286,7 +308,8 @@ export default function ExplorePage() {
                 </Link>
               ))}
             </div>
-          </div>
+          )}
+        </div>
         </div>
       </div>
     </AuthGuard>

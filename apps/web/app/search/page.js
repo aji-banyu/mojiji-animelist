@@ -21,9 +21,6 @@ export default function SearchPage() {
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
               Pencarian Anime & Manga
             </h1>
-            <p className="mt-1 text-xs text-neutral-400 sm:text-sm">
-              Temukan judul anime atau manga favoritmu dengan pencarian katalog instan.
-            </p>
           </div>
 
           <Suspense fallback={<p className="text-sm text-neutral-400 animate-pulse">Memuat pencarian...</p>}>

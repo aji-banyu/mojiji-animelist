@@ -14,11 +14,12 @@ import {
   ExternalLink,
   ChevronDown,
   RefreshCw,
-  Sparkles,
   Check,
   Clock,
   Pause,
   XCircle,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import {
   getTrackerListApi,
@@ -98,6 +99,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [toast, setToast] = useState(null);
+  const [viewMode, setViewMode] = useState("grid");
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -118,10 +120,16 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
         setItems([]);
       }
     } catch (err) {
-      setError(
-        err?.error?.message ||
-          "Gagal memuat daftar tracker. Pastikan server tracker service sedang aktif."
-      );
+      if (
+        err?.isOffline ||
+        err?.status === 503 ||
+        err?.error?.code === "SERVER_OFFLINE" ||
+        err?.code === "ERR_NETWORK"
+      ) {
+        setError("Gagal memuat tracker. Periksa koneksi internet Anda.");
+      } else {
+        setError(err?.error?.message || "Gagal memuat daftar tracker. Silakan coba lagi.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -361,7 +369,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                 onClick={() => setActiveType(t.key)}
                 className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
                   activeType === t.key
-                    ? "bg-[#FF4655] text-white shadow-sm"
+                    ? "bg-[#DC2626] text-white shadow-sm"
                     : "text-neutral-400 hover:text-white"
                 }`}
               >
@@ -382,7 +390,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                 placeholder="Cari judul tracker..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#12141A] py-1.5 pl-8 pr-7 text-xs text-white placeholder-neutral-500 focus:border-[#FF4655] focus:outline-none focus:ring-1 focus:ring-[#FF4655]"
+                className="w-full rounded-xl border border-white/10 bg-[#12141A] py-1.5 pl-8 pr-7 text-xs text-white placeholder-neutral-500 focus:border-[#DC2626] focus:outline-none focus:ring-1 focus:ring-[#DC2626]"
               />
               {searchQuery && (
                 <button
@@ -404,6 +412,34 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
             >
               <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
             </button>
+
+            {/* Toggle Grid/List View */}
+            <div className="flex items-center rounded-xl border border-white/10 bg-[#12141A] p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={`rounded-lg p-1.5 transition-all cursor-pointer ${
+                  viewMode === "grid"
+                    ? "bg-[#6D4AFF] text-white shadow-sm"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+                title="Tampilan Grid"
+              >
+                <LayoutGrid size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={`rounded-lg p-1.5 transition-all cursor-pointer ${
+                  viewMode === "list"
+                    ? "bg-[#6D4AFF] text-white shadow-sm"
+                    : "text-neutral-400 hover:text-white"
+                }`}
+                title="Tampilan List"
+              >
+                <List size={14} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -429,17 +465,22 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
         </div>
       </div>
 
-      {/* Langkah 4: State Error */}
+      {/* Langkah 4: State Error Ramah (MJ-094) */}
       {error && (
-        <div className="flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-xs text-red-200">
-          <AlertCircle size={18} className="shrink-0 text-red-400" />
-          <span className="flex-1">{error}</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-red-500/30 bg-red-950/30 p-4 text-xs sm:text-sm text-red-200 shadow-md">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-400 border border-red-500/30">
+              <AlertCircle size={18} />
+            </div>
+            <span className="font-medium leading-relaxed">{error}</span>
+          </div>
           <button
             type="button"
             onClick={fetchTrackers}
-            className="rounded-lg bg-red-500/20 px-3 py-1 font-bold text-red-200 hover:bg-red-500/30 cursor-pointer"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-[#DC2626] px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-[#b91c1c] active:scale-95 cursor-pointer shrink-0"
           >
-            Coba Lagi
+            <RefreshCw size={12} className={isLoading ? "animate-spin" : ""} />
+            <span>Coba Lagi</span>
           </button>
         </div>
       )}
@@ -464,38 +505,42 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
         </div>
       )}
 
-      {/* Langkah 4: State Kosong (Empty State) */}
+      {/* Langkah 4: State Kosong (Empty State - MJ-094) */}
       {!isLoading && filteredItems.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12141A] px-6 py-14 text-center shadow-lg">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-neutral-400 border border-white/10">
-            <Sparkles size={24} className="text-[#FF4655]" />
-          </div>
-          <h3 className="mt-4 text-base font-bold text-white">
+          <h3 className="text-base font-bold text-white">
             {items.length === 0 ? "Tracker Kamu Masih Kosong" : "Tidak Ada Judul yang Cocok"}
           </h3>
-          <p className="mt-1 max-w-sm text-xs text-neutral-400 leading-relaxed">
-            {items.length === 0
-              ? "Mulai cari dan tambahkan anime atau manga favoritmu ke daftar pelacakan!"
-              : `Tidak ditemukan item dengan filter tipe "${activeType}" dan status "${activeStatus}".`}
-          </p>
-          {items.length === 0 && onEmptyExploreClick && (
+
+          {/* Pemulihan Aksi: Tambah Katalog jika kosong total */}
+          {items.length === 0 && (
             <div className="mt-5">
-              <button
-                type="button"
-                onClick={onEmptyExploreClick}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#FF4655] px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-[#e03d4a] active:scale-95 cursor-pointer"
-              >
-                <Plus size={14} />
-                <span>Jelajahi Katalog Sekarang</span>
-              </button>
+              {onEmptyExploreClick ? (
+                <button
+                  type="button"
+                  onClick={onEmptyExploreClick}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#DC2626] px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-[#b91c1c] active:scale-95 cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>Jelajahi Katalog Sekarang</span>
+                </button>
+              ) : (
+                <Link
+                  href="/search"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#DC2626] px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-[#b91c1c] active:scale-95 cursor-pointer"
+                >
+                  <Plus size={14} />
+                  <span>Jelajahi Katalog Sekarang</span>
+                </Link>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* Grid Kartu Tracker (Langkah 1, 2, 3, 5 MJ-076) */}
+      {/* Kartu Tracker — Grid / List Mode */}
       {!isLoading && filteredItems.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={viewMode === "grid" ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-3"}>
           {filteredItems.map((item) => {
             const mediaType = (item.mediaType || item.media_type || "anime").toLowerCase();
             const malId = item.malId || item.mal_id;
@@ -510,6 +555,138 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
             const isActionLoading = actionLoadingId === item.id;
             const isDeleting = deletingId === item.id;
 
+            {/* ===== LIST VIEW ===== */}
+            if (viewMode === "list") {
+              return (
+                <div
+                  key={item.id}
+                  className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-[#181A20] p-3 shadow-md transition-all hover:border-white/20 hover:shadow-xl sm:gap-4 sm:p-4"
+                >
+                  {/* Small Thumbnail */}
+                  <Link
+                    href={`/detail?type=${mediaType}&id=${malId}`}
+                    className="relative h-16 w-12 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-neutral-900 shadow-sm"
+                  >
+                    {poster ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={poster}
+                        alt={item.title || "Poster"}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-neutral-600">
+                        {mediaType === "manga" ? <BookOpen size={16} /> : <Film size={16} />}
+                      </div>
+                    )}
+                  </Link>
+
+                  {/* Title + Badges */}
+                  <div className="flex flex-1 flex-col gap-1.5 overflow-hidden sm:flex-row sm:items-center sm:gap-3">
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        href={`/detail?type=${mediaType}&id=${malId}`}
+                        className="block truncate text-sm font-bold text-white transition-colors hover:text-[#DC2626]"
+                        title={item.title}
+                      >
+                        {item.title || "Untitled"}
+                      </Link>
+                      <div className="mt-1 flex items-center gap-1.5">
+                        <span className="rounded-full bg-[#DC2626]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#DC2626] border border-[#DC2626]/30">
+                          {mediaType}
+                        </span>
+                        <div className="relative inline-flex items-center">
+                          <select
+                            value={item.status || "plan"}
+                            onChange={(e) => handleStatusChange(item, e.target.value)}
+                            disabled={isActionLoading}
+                            aria-label="Ubah status tracker"
+                            className={`appearance-none rounded-full border py-0.5 pl-2 pr-5 text-[10px] font-semibold transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/40 disabled:opacity-50 ${statusConfig.color} bg-[#12141A]`}
+                          >
+                            {statusOptions.map((opt) => (
+                              <option
+                                key={opt.value}
+                                value={opt.value}
+                                className="bg-[#181A20] text-white text-xs"
+                              >
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            size={10}
+                            className="pointer-events-none absolute right-1.5 text-neutral-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Progress compact */}
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <div className="h-1.5 w-20 overflow-hidden rounded-full bg-neutral-800">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-[#DC2626] to-amber-500 transition-all duration-300"
+                            style={{ width: `${percent}%` }}
+                          />
+                        </div>
+                        <span className="text-[11px] font-semibold text-neutral-400 whitespace-nowrap">
+                          {progress}/{total > 0 ? total : "TBA"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions compact */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {isDeleting ? (
+                      <div className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-950/60 px-2 py-1 text-[11px]">
+                        <span className="text-red-300">Yakin?</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(item.id, item.title)}
+                          disabled={isActionLoading}
+                          className="font-bold text-red-400 hover:text-red-200 cursor-pointer"
+                        >
+                          Ya
+                        </button>
+                        <span className="text-neutral-500">|</span>
+                        <button
+                          type="button"
+                          onClick={() => setDeletingId(null)}
+                          className="text-neutral-400 hover:text-white cursor-pointer"
+                        >
+                          Batal
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setDeletingId(item.id)}
+                        disabled={isActionLoading}
+                        className="rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
+                        title="Hapus dari tracker"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleIncrement(item)}
+                      disabled={isActionLoading || (total > 0 && progress >= total)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/15 px-2.5 py-1 text-xs font-bold text-[#DC2626] transition-all hover:bg-[#DC2626] hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      title={`Tambah progres ${mediaType === "manga" ? "Chapter" : "Episode"} +1`}
+                    >
+                      <Plus size={12} />
+                      <span>+1</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            }
+
+            {/* ===== GRID VIEW (existing layout) ===== */}
             return (
               <div
                 key={item.id}
@@ -540,7 +717,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                     <div className="space-y-1.5">
                       {/* Row Badge Tipe & Dropdown Ubah Status Inline (Langkah 2 - Opsi 1) */}
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="rounded-full bg-[#FF4655]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF4655] border border-[#FF4655]/30">
+                        <span className="rounded-full bg-[#DC2626]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#DC2626] border border-[#DC2626]/30">
                           {mediaType}
                         </span>
 
@@ -573,7 +750,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                       {/* Judul Anime/Manga */}
                       <Link
                         href={`/detail?type=${mediaType}&id=${malId}`}
-                        className="block line-clamp-2 text-sm font-bold text-white transition-colors hover:text-[#FF4655]"
+                        className="block line-clamp-2 text-sm font-bold text-white transition-colors hover:text-[#DC2626]"
                         title={item.title}
                       >
                         {item.title || "Untitled"}
@@ -590,7 +767,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                       </div>
                       <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-[#FF4655] to-amber-500 transition-all duration-300"
+                          className="h-full rounded-full bg-gradient-to-r from-[#DC2626] to-amber-500 transition-all duration-300"
                           style={{ width: `${percent}%` }}
                         />
                       </div>
@@ -647,7 +824,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                       type="button"
                       onClick={() => handleIncrement(item)}
                       disabled={isActionLoading || (total > 0 && progress >= total)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[#FF4655]/30 bg-[#FF4655]/15 px-3 py-1 text-xs font-bold text-[#FF4655] transition-all hover:bg-[#FF4655] hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                      className="inline-flex items-center gap-1 rounded-lg border border-[#DC2626]/30 bg-[#DC2626]/15 px-3 py-1 text-xs font-bold text-[#DC2626] transition-all hover:bg-[#DC2626] hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                       title={`Tambah progres ${mediaType === "manga" ? "Chapter" : "Episode"} +1`}
                     >
                       <Plus size={13} />

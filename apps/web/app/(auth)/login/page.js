@@ -83,7 +83,7 @@ export default function LoginPage() {
         router.push("/home");
       }
     } catch (err) {
-      let errorMessage = "Terjadi kesalahan saat masuk. Silakan coba lagi.";
+      let errorMessage = "Gagal masuk. Silakan coba lagi.";
 
       if (
         err?.isOffline ||
@@ -92,15 +92,12 @@ export default function LoginPage() {
         !err?.status ||
         err?.status === 503
       ) {
-        errorMessage =
-          "Tidak dapat terhubung ke server. Periksa koneksi internet Anda atau coba beberapa saat lagi.";
+        errorMessage = "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
       } else if (err?.status === 401) {
-        errorMessage =
-          err?.error?.message || "Email atau password salah. Silakan periksa kembali.";
+        errorMessage = err?.error?.message || "Email atau password salah.";
       } else if (err?.status === 429) {
         errorMessage =
-          err?.error?.message ||
-          "Terlalu banyak percobaan. Harap tunggu beberapa saat sebelum mencoba kembali.";
+          err?.error?.message || "Terlalu banyak percobaan. Tunggu beberapa saat.";
       } else if (err?.error?.details && Array.isArray(err.error.details)) {
         errorMessage = err.error.details
           .map((d) => (typeof d === "string" ? d : d.message || JSON.stringify(d)))

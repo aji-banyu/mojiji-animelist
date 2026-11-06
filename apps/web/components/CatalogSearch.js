@@ -2,7 +2,17 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Search, X, Star, Film, BookOpen, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Search,
+  X,
+  Star,
+  Film,
+  BookOpen,
+  AlertCircle,
+  Loader2,
+  RotateCcw,
+  WifiOff,
+} from "lucide-react";
 import { searchCatalogApi } from "@/lib/api";
 
 export default function CatalogSearch({ initialType = "anime", initialQuery = "" }) {
@@ -77,17 +87,30 @@ export default function CatalogSearch({ initialType = "anime", initialQuery = ""
           return;
         }
 
-        // Tangani pesan error spesifik dari backend
-        let errorMsg = "Terjadi kendala saat mencari katalog. Silakan coba beberapa saat lagi.";
-        if (err?.status === 429 || err?.error?.code === "RATE_LIMIT_EXCEEDED" || err?.error?.code === "RATE_LIMITED") {
-          errorMsg = "Terlalu banyak permintaan (Batas kuota tercapai). Harap tunggu beberapa detik sebelum mencoba kembali.";
-        } else if (err?.isOffline || err?.status === 503 || err?.error?.code === "SERVER_OFFLINE") {
-          errorMsg = "Tidak dapat terhubung ke server Catalog. Pastikan service API Gateway dan Docker backend aktif.";
+        // Tangani pesan error ramah pengguna (MJ-094)
+        let errorMsg = "Gagal memuat katalog. Silakan coba lagi.";
+        let errorType = "general"; // "rate_limit" | "offline" | "general"
+
+        if (
+          err?.status === 429 ||
+          err?.error?.code === "RATE_LIMIT_EXCEEDED" ||
+          err?.error?.code === "RATE_LIMITED"
+        ) {
+          errorType = "rate_limit";
+          errorMsg = "Batas permintaan tercapai. Tunggu beberapa detik lalu coba lagi.";
+        } else if (
+          err?.isOffline ||
+          err?.status === 503 ||
+          err?.error?.code === "SERVER_OFFLINE" ||
+          err?.code === "ERR_NETWORK"
+        ) {
+          errorType = "offline";
+          errorMsg = "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
         } else if (err?.error?.message) {
           errorMsg = err.error.message;
         }
 
-        setError(errorMsg);
+        setError({ message: errorMsg, type: errorType });
         setResults([]);
       } finally {
         setIsLoading(false);
@@ -220,20 +243,37 @@ export default function CatalogSearch({ initialType = "anime", initialQuery = ""
         </div>
       </div>
 
-      {/* === 2. State: Pesan Error / Masalah Koneksi === */}
+      {/* === 2. State: Pesan Error Ramah (MJ-094) === */}
       {error && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-300 shadow-lg">
-          <AlertCircle size={20} className="mt-0.5 shrink-0 text-red-400" />
-          <div className="flex-1">
-            <p className="font-semibold">Terjadi Kendala</p>
-            <p className="mt-0.5 text-xs text-red-300/90">{error}</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl border border-red-500/30 bg-red-950/30 p-5 text-sm text-red-200 shadow-xl backdrop-blur-sm">
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-400 border border-red-500/30">
+              {error.type === "offline" ? (
+                <WifiOff size={20} />
+              ) : (
+                <AlertCircle size={20} />
+              )}
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-bold text-white text-base">
+                {error.type === "rate_limit"
+                  ? "Batas Kuota Tercapai"
+                  : error.type === "offline"
+                  ? "Koneksi Terputus"
+                  : "Kendala Pencarian"}
+              </p>
+              <p className="text-xs sm:text-sm text-red-200/90 leading-relaxed max-w-xl">
+                {error.message || error}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={() => executeSearch(query, type)}
-            className="rounded-lg bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/30 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#DC2626] px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-[#b91c1c] active:scale-95 cursor-pointer shrink-0"
           >
-            Coba Lagi
+            <RotateCcw size={14} />
+            <span>Coba Lagi</span>
           </button>
         </div>
       )}
@@ -334,17 +374,24 @@ export default function CatalogSearch({ initialType = "anime", initialQuery = ""
         </div>
       )}
 
-      {/* === 5. State: 'Tidak ada hasil' === */}
+      {/* === 5. State: Initial Welcome State (Saat Belum Mengetik / < 3 karakter) === */}
+      {!isLoading && !error && query.trim().length < 3 && (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12141A]/70 px-6 py-14 text-center shadow-xl">
+          <h3 className="text-xl font-extrabold text-white tracking-tight">
+            Temukan {type === "anime" ? "Anime" : "Manga"} Favoritmu!
+          </h3>
+        </div>
+      )}
+
+      {/* === 6. State: 'Tidak ada hasil' === */}
       {!isLoading && !error && hasSearched && results.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12141A]/60 px-6 py-16 text-center shadow-lg">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-neutral-400 border border-white/10">
-            <Search size={28} />
-          </div>
-          <h3 className="mt-4 text-lg font-bold text-white">Tidak ada hasil ditemukan</h3>
-          <p className="mt-1 max-w-md text-xs leading-relaxed text-neutral-400 sm:text-sm">
-            Tidak dapat menemukan {type} dengan judul &quot;
-            <span className="text-white font-medium">{query.trim()}</span>&quot;.
-            Coba periksa ejaan judul atau gunakan kata kunci pencarian yang lain.
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12141A]/70 px-6 py-14 text-center shadow-xl">
+          <h3 className="text-xl font-extrabold text-white tracking-tight">
+            Tidak Ada Hasil Ditemukan
+          </h3>
+          <p className="mt-2 max-w-md text-xs sm:text-sm leading-relaxed text-neutral-400">
+            Tidak ada {type} untuk &quot;
+            <span className="text-white font-semibold">{query.trim()}</span>&quot;. Coba kata kunci lain.
           </p>
         </div>
       )}

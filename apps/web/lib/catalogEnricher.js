@@ -232,44 +232,107 @@ export function enrichCatalogDetail(rawData, type = "anime", id = 1) {
 
   const isAnime = type === "anime";
 
+  // Helper untuk mengekstrak nama dari objek Jikan API (misal [{ name: 'Action' }])
+  const extractNames = (arr) => {
+    if (!arr || !Array.isArray(arr)) return null;
+    const names = arr
+      .map((item) => (typeof item === "object" && item !== null ? item.name : item))
+      .filter(Boolean);
+    return names.length > 0 ? names : null;
+  };
+
+  const rawGenres = extractNames(rawData.genres);
+  const rawThemes = extractNames(rawData.themes);
+  const rawDemographics = extractNames(rawData.demographics);
+  const rawStudios = extractNames(rawData.studios);
+  const rawAuthors = extractNames(rawData.authors);
+  const rawSerializations = extractNames(rawData.serializations);
+  const rawProducers = extractNames(rawData.producers);
+  const rawLicensors = extractNames(rawData.licensors);
+
+  const cleanRank = rawData.rank
+    ? String(rawData.rank).startsWith("#")
+      ? String(rawData.rank)
+      : `#${rawData.rank}`
+    : preset?.ranked || `#${rankNum}`;
+
+  const cleanPop = rawData.popularity
+    ? String(rawData.popularity).startsWith("#")
+      ? String(rawData.popularity)
+      : `#${rawData.popularity}`
+    : preset?.popularity || `#${popNum}`;
+
   return {
     ...rawData,
     score: baseScore,
     // Alternative Titles
     alternativeTitles: {
-      synonyms: preset?.synonyms || [rawData.title, `${rawData.title} (Alternative)`],
-      japanese: preset?.japanese || `${rawData.title} (日本語版)`,
-      english: rawData.title,
+      synonyms:
+        rawData.title_synonyms ||
+        rawData.titleSynonyms ||
+        preset?.synonyms || [rawData.title, `${rawData.title} (Alternative)`],
+      japanese:
+        rawData.title_japanese ||
+        rawData.titleJapanese ||
+        preset?.japanese ||
+        `${rawData.title} (日本語版)`,
+      english: rawData.title_english || rawData.titleEnglish || rawData.title,
     },
     // Information
     information: {
-      type: isAnime ? "TV" : "Manga",
-      episodes: isAnime ? rawData.totalEpisodes || preset?.episodes || 12 : undefined,
-      chapters: !isAnime ? rawData.totalChapters || preset?.chapters || 45 : undefined,
+      type: rawData.type || (isAnime ? "TV" : "Manga"),
+      episodes: isAnime ? rawData.episodes || rawData.totalEpisodes || preset?.episodes || 12 : undefined,
+      chapters: !isAnime ? rawData.chapters || rawData.totalChapters || preset?.chapters || 45 : undefined,
+      volumes: !isAnime ? rawData.volumes || preset?.volumes || undefined : undefined,
       status: rawData.status || (isAnime ? "Currently Airing" : "Publishing"),
-      aired: isAnime ? preset?.aired || `Oct 2024 to ?` : undefined,
-      published: !isAnime ? preset?.published || `2021 to ?` : undefined,
-      premiered: isAnime ? preset?.premiered || selectedSeason : undefined,
-      broadcast: isAnime ? preset?.broadcast || "Fridays at 23:00 (JST)" : undefined,
-      producers: isAnime ? preset?.producers || ["Dentsu", "Aniplex", "TOHO animation", "Shogakukan"] : undefined,
-      licensors: preset?.licensors || ["Crunchyroll", "Muse Communication"],
-      studios: isAnime ? preset?.studios || [selectedStudio] : undefined,
-      authors: !isAnime ? preset?.authors || ["Penulis Orisinal (Story & Art)"] : undefined,
-      serialization: !isAnime ? preset?.serialization || ["Weekly Shonen Magazine"] : undefined,
-      source: preset?.source || (isAnime ? "Light novel" : "Original"),
-      genres: preset?.genres || selectedGenres,
-      themes: preset?.themes || selectedThemes,
-      duration: isAnime ? preset?.duration || "24 min. per ep." : undefined,
-      rating: isAnime ? preset?.rating || "PG-13 - Teens 13 or older" : undefined,
+      aired: isAnime
+        ? rawData.aired?.string || preset?.aired || `Oct 2024 to ?`
+        : undefined,
+      published: !isAnime
+        ? rawData.published?.string || preset?.published || `2021 to ?`
+        : undefined,
+      premiered: isAnime
+        ? (rawData.season && rawData.year
+            ? `${rawData.season.charAt(0).toUpperCase() + rawData.season.slice(1)} ${rawData.year}`
+            : preset?.premiered || selectedSeason)
+        : undefined,
+      broadcast: isAnime
+        ? rawData.broadcast?.string || preset?.broadcast || "Fridays at 23:00 (JST)"
+        : undefined,
+      producers: isAnime
+        ? rawProducers || preset?.producers || ["Dentsu", "Aniplex", "TOHO animation", "Shogakukan"]
+        : undefined,
+      licensors: rawLicensors || preset?.licensors || ["Crunchyroll", "Muse Communication"],
+      studios: isAnime
+        ? rawStudios || preset?.studios || [selectedStudio]
+        : undefined,
+      authors: !isAnime
+        ? rawAuthors || preset?.authors || ["Penulis Orisinal (Story & Art)"]
+        : undefined,
+      serialization: !isAnime
+        ? rawSerializations || preset?.serialization || ["Weekly Shonen Magazine"]
+        : undefined,
+      source: rawData.source || preset?.source || (isAnime ? "Light novel" : "Original"),
+      genres: rawGenres || preset?.genres || selectedGenres,
+      themes: rawThemes || preset?.themes || selectedThemes,
+      demographics: rawDemographics || preset?.demographics || undefined,
+      duration: isAnime ? rawData.duration || preset?.duration || "24 min. per ep." : undefined,
+      rating: isAnime ? rawData.rating || preset?.rating || "PG-13 - Teens 13 or older" : undefined,
     },
     // Statistics
     statistics: {
       score: baseScore.toFixed(2),
-      scoredBy: preset?.scoredBy || userCount.toLocaleString("en-US"),
-      ranked: preset?.ranked || `#${rankNum}`,
-      popularity: preset?.popularity || `#${popNum}`,
-      members: preset?.members || memberNum.toLocaleString("en-US"),
-      favorites: preset?.favorites || favNum.toLocaleString("en-US"),
+      scoredBy: rawData.scored_by
+        ? rawData.scored_by.toLocaleString("en-US")
+        : preset?.scoredBy || userCount.toLocaleString("en-US"),
+      ranked: cleanRank,
+      popularity: cleanPop,
+      members: rawData.members
+        ? rawData.members.toLocaleString("en-US")
+        : preset?.members || memberNum.toLocaleString("en-US"),
+      favorites: rawData.favorites
+        ? rawData.favorites.toLocaleString("en-US")
+        : preset?.favorites || favNum.toLocaleString("en-US"),
     },
     // Trailer
     trailer: {
@@ -281,26 +344,38 @@ export function enrichCatalogDetail(rawData, type = "anime", id = 1) {
       {
         name: "Tokoh Utama (Protagonist)",
         role: "Main",
-        image: rawData.image,
+        image: "",
         voiceActor: isAnime ? { name: "Pengisi Suara Utama", language: "Japanese", image: "" } : undefined,
       },
       {
         name: "Karakter Pendamping A",
         role: "Main",
-        image: rawData.image,
+        image: "",
         voiceActor: isAnime ? { name: "Seiyuu Pendamping", language: "Japanese", image: "" } : undefined,
       },
       {
         name: "Karakter Pendukung B",
         role: "Supporting",
-        image: rawData.image,
+        image: "",
         voiceActor: isAnime ? { name: "Seiyuu Pendukung B", language: "Japanese", image: "" } : undefined,
       },
       {
         name: "Karakter Pendukung C",
         role: "Supporting",
-        image: rawData.image,
+        image: "",
         voiceActor: isAnime ? { name: "Seiyuu Pendukung C", language: "Japanese", image: "" } : undefined,
+      },
+      {
+        name: "Karakter Pendukung D",
+        role: "Supporting",
+        image: "",
+        voiceActor: isAnime ? { name: "Seiyuu Pendukung D", language: "Japanese", image: "" } : undefined,
+      },
+      {
+        name: "Karakter Pendukung E",
+        role: "Supporting",
+        image: "",
+        voiceActor: isAnime ? { name: "Seiyuu Pendukung E", language: "Japanese", image: "" } : undefined,
       },
     ],
     // Staff
@@ -309,6 +384,8 @@ export function enrichCatalogDetail(rawData, type = "anime", id = 1) {
       { name: "Desain Karakter", role: "Character Design", image: "" },
       { name: "Komposisi Musik & Seri", role: isAnime ? "Sound & Music" : "Editor", image: "" },
       { name: "Produser Eksekutif", role: "Producer", image: "" },
+      { name: "Pengarah Animasi", role: isAnime ? "Chief Animation Director" : "Illustrator", image: "" },
+      { name: "Perencana & Distribusi", role: "Planning", image: "" },
     ],
     // Theme Songs (Anime only)
     openings: isAnime ? preset?.openings || [{ title: "Lagu Pembuka Tema Resmi", artist: "Artis Penampil" }] : [],
