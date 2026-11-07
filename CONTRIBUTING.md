@@ -213,3 +213,17 @@ Jika suatu pekerjaan selesai dan menjadi prasyarat bagi pekerjaan rekan lain:
 > **Tiket Dependen:** [MJ-xxx]  
 > **Artefak yang Diserahkan:** [Tautan berkas / URL staging / branch]  
 > **Catatan Penting:** [Konfigurasi khusus, variabel baru, atau batasan sistem]
+
+---
+
+## 10. Otomasi Operasional Peladen (Ops Workflows via GitHub Actions)
+
+Untuk memudahkan anggota tim melakukan pemeliharaan server tanpa memerlukan akses terminal SSH atau kredensial langsung ke VPS, repositori menyediakan alur kerja manual berbasis `workflow_dispatch` di tab **Actions**:
+
+| Nama Workflow | Berkas Konfigurasi | Kapan Digunakan | Cara Menjalankan |
+| :--- | :--- | :--- | :--- |
+| **Staging Environment Toggle** | `.github/workflows/staging-toggle.yml` | Menghemat RAM VPS (2 GB) saat staging tidak dipakai. Mematikan 4 mikroservis backend (`DOWN`) atau menyalakannya kembali saat pengujian (`UP`). | Tab **Actions** &rarr; Pilih *Staging Environment Toggle* &rarr; Klik **Run workflow** &rarr; Pilih aksi `UP` atau `DOWN`. |
+| **Ops - Caddy Server Control** | `.github/workflows/ops-restart-caddy.yml` | Menyegarkan reverse proxy Caddy secara instan (mengatasi desinkronisasi berkas mount/inode) atau memuat ulang konfigurasi *zero-downtime*. | Tab **Actions** &rarr; Pilih *Ops - Caddy Server Control* &rarr; Klik **Run workflow** &rarr; Pilih opsi `restart` (default) atau `reload`. |
+| **Production Pipeline (Manual)** | `.github/workflows/production.yml` | Memicu alur rilis produksi secara manual jika diperlukan (backup DB, migrasi, dan deployment microservices port 5000–5003). | Tab **Actions** &rarr; Pilih *Production Pipeline* &rarr; Klik **Run workflow** (mengarah ke branch `main`). |
+
+*Catatan Keamanan & Arsitektur:* Alur kerja operasional di atas dirancang dengan pengenalan kontainer dinamis (*Dynamic Auto-Detect*) sehingga aman dijalankan dan tetap kompatibel saat struktur Caddy dipindahkan ke `mojiji-infra` pada Sprint 2.

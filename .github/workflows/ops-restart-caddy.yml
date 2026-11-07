@@ -67,3 +67,4 @@ jobs:
 
             echo ""
             echo "✅ Operasi ${{ inputs.action }} pada Caddy berhasil diselesaikan!"
+
