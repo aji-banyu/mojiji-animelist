@@ -74,7 +74,7 @@ Nilai variabel `DATABASE_URL` dan `REDIS_URL` pada file `.env` lokal Anda harus 
 
 ## 4. Panduan Eksekusi Sesuai Peran Anggota Tim
 
-### 🎨 A. UI/UX Designer (Ican) & 🕵️‍♀️ QA Tester (Nadia)
+### 🎨 A. UI/UX Designer (Ichsan) & 🕵️‍♀️ QA Tester (Nadia)
 * **Kebutuhan Docker:** **TIDAK PERLU** menginstal atau menjalankan Docker di laptop.
 * **Fokus Kerja:**
   * **UI/UX:** Merancang antarmuka di Figma dan meninjau konsistensi komponen visual.
@@ -82,7 +82,7 @@ Nilai variabel `DATABASE_URL` dan `REDIS_URL` pada file `.env` lokal Anda harus 
 
 ---
 
-### 💻 B. Frontend Developer (Dika)
+### 💻 B. Frontend Developer (Andika)
 Frontend developer dapat memanfaatkan URL API Staging (`https://staging.mojiji.web.id`) sehingga tidak wajib menyalakan backend lokal. Namun jika membutuhkan backend lokal penuh:
 * **Menyalakan Semua Layanan Lokal:**
   ```bash
