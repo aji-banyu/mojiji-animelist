@@ -231,16 +231,16 @@ Seluruh berkas dokumentasi di folder `docs/` telah dipasangi metadata frontmatte
 
 ## Tim Pengembang & Struktur Peran
 
-Proyek ini dikembangkan secara kolaboratif oleh tim mahasiswa mata kuliah Pemrograman Web Framework dengan struktur peran utama (*Primary Role*) dan peran pendukung (*Secondary Role*):
+Proyek Mojiji AnimeList dikembangkan secara kolaboratif oleh tim mahasiswa mata kuliah Pemrograman Web Framework:
 
-| Anggota Tim | Peran Utama (Primary) | Peran Pendukung (Secondary) | Tanggung Jawab Inti |
-| :--- | :--- | :--- | :--- |
-| **Aji** | DevOps | Frontend | Provisioning VPS, otomatisasi pipeline CI/CD GitHub Actions, reverse proxy Caddy HTTPS, manajemen kontainer Docker, serta perbantuan integrasi frontend Next.js. |
-| **Syafii** | Backend | DevOps | Arsitektur microservices Express.js, API Gateway, autentikasi sesi cookie aman, routing service, serta perbantuan konfigurasi deployment dan Docker. |
-| **Andika** | Frontend | DBA | Pengembangan antarmuka web Next.js 15, komponen antarmuka, konsumsi API client-side, state management Zustand, serta perbantuan perancangan skema dan query database. |
-| **Ryan** | DBA | Backend | Perancangan skema relasional multi-schema PostgreSQL, migrasi Dbmate, optimasi indexing query Supabase, serta perbantuan logika endpoint backend. |
-| **Ichsan** | UI/UX | Tester | Perancangan desain antarmuka, wireframe, user flow, dan mockup sistem di Figma, serta perbantuan pengujian antarmuka dan pengujian fungsional aplikasi. |
-| **Nadia** | QA | UI/UX | Perancangan skenario pengujian (test cases), smoke testing, otomatisasi pengujian API Postman/Newman, validasi Acceptance Criteria, serta perbantuan review estetika desain UI/UX. |
+| Anggota Tim | Peran Utama | Lingkup Tanggung Jawab |
+| :--- | :--- | :--- |
+| **Aji** | DevOps Engineer & Admin | Mengelola server VPS, otomatisasi alur deploy (CI/CD), web server Caddy (HTTPS), dan kontainer Docker. |
+| **Syafii** | Backend Developer | Mengembangkan layanan backend (microservices), API Gateway, sistem login, dan keamanan sesi pengguna. |
+| **Andika** | Frontend Developer | Mengembangkan tampilan web Next.js, komponen antarmuka, dan menghubungkan web dengan backend. |
+| **Ryan** | Database Administrator (DBA) | Merancang struktur database PostgreSQL, migrasi tabel data, dan koneksi database Supabase. |
+| **Ichsan** | UI/UX Designer | Merancang desain tampilan, alur pengguna (*user flow*), dan prototipe aplikasi di Figma. |
+| **Nadia** | Quality Assurance (QA) | Menguji fitur aplikasi, memastikan sistem bebas error, dan menguji API menggunakan Postman. |
 
 ---
 
