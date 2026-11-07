@@ -25,9 +25,12 @@ fi
 echo "Menjalankan seluruh container staging..."
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --remove-orphans
 
-# Muat ulang konfigurasi Caddy secara zero-downtime
-echo "Memuat ulang konfigurasi Caddy (zero-downtime)..."
-docker exec mojiji_caddy_server_staging caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || true
+# Muat ulang konfigurasi Caddy secara otomatis (Auto-Detect)
+echo "Memuat ulang konfigurasi Caddy (Auto-Detect)..."
+CADDY_CONTAINER=$(docker ps --filter "name=caddy" --format "{{.Names}}" | head -n 1)
+if [ -n "$CADDY_CONTAINER" ]; then
+  docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || docker restart "$CADDY_CONTAINER"
+fi
 
 echo ""
 echo "=================================================="
