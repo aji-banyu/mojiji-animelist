@@ -231,16 +231,16 @@ Seluruh berkas dokumentasi di folder `docs/` telah dipasangi metadata frontmatte
 
 ## Tim Pengembang & Struktur Peran
 
-Proyek ini dikembangkan secara kolaboratif oleh tim mahasiswa mata kuliah Pemrograman Web Framework:
+Proyek ini dikembangkan secara kolaboratif oleh tim mahasiswa mata kuliah Pemrograman Web Framework dengan struktur peran utama (*Primary Role*) dan peran pendukung (*Secondary Role*):
 
-| Nama Pengembang | Peran Utama | Tanggung Jawab Inti |
-| :--- | :--- | :--- |
-| **Aji Banyu Rizqi** | DevOps Engineer & Admin | Provisioning VPS, CI/CD pipeline, keamanan jaringan, mitigasi kuota hosting, serta secondary testing. |
-| **Syafii Nurradha** | Backend Lead | Arsitektur microservices Express.js, autentikasi sesi cookie, dan koordinasi rilis backend. |
-| **Andika Abdilah Said** | Backend Developer | Integrasi Tenrai API, logika katalog, caching Upstash Redis, dan endpoint tracker. |
-| **Ryan** | Database Administrator | Perancangan skema database multi-schema, migrasi Dbmate, indexing query, dan Supabase pooler. |
-| **Rian** | Frontend Developer | Antarmuka web Next.js 15, integrasi UI komponen Shadcn, dan konsumsi API client-side. |
-| **Nadia** | Quality Assurance (QA) | Perancangan test case, smoke testing, regresi fungsional, dan validasi kriteria penerimaan (AC). |
+| Anggota Tim | Peran Utama (Primary) | Peran Pendukung (Secondary) | Tanggung Jawab Inti |
+| :--- | :--- | :--- | :--- |
+| **Aji** | DevOps | Frontend | Provisioning VPS, otomatisasi pipeline CI/CD GitHub Actions, reverse proxy Caddy HTTPS, manajemen kontainer Docker, serta perbantuan integrasi frontend Next.js. |
+| **Syafii** | Backend | DevOps | Arsitektur microservices Express.js, API Gateway, autentikasi sesi cookie aman, routing service, serta perbantuan konfigurasi deployment dan Docker. |
+| **Andika** | Frontend | DBA | Pengembangan antarmuka web Next.js 15, komponen antarmuka, konsumsi API client-side, state management Zustand, serta perbantuan perancangan skema dan query database. |
+| **Ryan** | DBA | Backend | Perancangan skema relasional multi-schema PostgreSQL, migrasi Dbmate, optimasi indexing query Supabase, serta perbantuan logika endpoint backend. |
+| **Ichsan** | UI/UX | Tester | Perancangan desain antarmuka, wireframe, user flow, dan mockup sistem di Figma, serta perbantuan pengujian antarmuka dan pengujian fungsional aplikasi. |
+| **Nadia** | QA | UI/UX | Perancangan skenario pengujian (test cases), smoke testing, otomatisasi pengujian API Postman/Newman, validasi Acceptance Criteria, serta perbantuan review estetika desain UI/UX. |
 
 ---
 

@@ -4,7 +4,7 @@
 * **Scope:** Authentication, User Profile, Catalog Discovery, Tracker Service, dan Health Check
 * **Acuan:** Mojiji PRD Revisi 4, bagian 18 — API Overview & Tiket MJ-098
 * **Pemilik Dokumen:** Syafii (Backend)
-* **Reviewer:** Dika (Frontend), Nadia (QA)
+* **Reviewer:** Andika (Frontend), Nadia (QA)
 
 ---
 
