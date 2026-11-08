@@ -1,3 +1,9 @@
+---
+title: "Laporan Bootstrap & Migrasi Pertama ke Supabase Staging (MJ-066)"
+sidebar_position: 7
+tags: [database, staging, migration, bootstrap, docusaurus]
+---
+
 # Laporan Bootstrap & Migrasi Pertama ke Supabase Staging (MJ-066)
 
 Dokumentasi ini mencatat hasil bootstrap dan eksekusi migrasi awal ke lingkungan Supabase *staging* (`mojiji-staging`).

@@ -1,3 +1,9 @@
+---
+title: "Dokumentasi Skema MVP Database (MJ-084)"
+sidebar_position: 10
+tags: [database, mvp, schema, erd, docusaurus]
+---
+
 # Dokumentasi Skema MVP Database
 
 Dokumentasi kamus data, diagram ERD sederhana, dan riwayat migrasi untuk tabel `users` dan `trackers`.

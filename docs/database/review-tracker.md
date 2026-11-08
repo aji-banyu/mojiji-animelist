@@ -1,3 +1,9 @@
+---
+title: "Laporan Review Constraint & Index Tabel Tracker (MJ-067)"
+sidebar_position: 8
+tags: [database, tracker, review, constraint, index, docusaurus]
+---
+
 # Laporan Review Constraint & Index Tabel Tracker (MJ-067)
 
 Dokumentasi ini mencatat implementasi dan pengujian *constraint* serta *index* pada tabel `trackers` di skema `tracker_svc`.

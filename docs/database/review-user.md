@@ -1,3 +1,9 @@
+---
+title: "Laporan Review Constraint & Index Tabel User (MJ-046)"
+sidebar_position: 5
+tags: [database, user, review, constraint, index, docusaurus]
+---
+
 # Laporan Review Constraint & Index Tabel User (MJ-046)
 
 Dokumentasi ini mencakup hasil peninjauan terhadap struktur, *constraint*, dan *index* pada tabel `users` di skema `user_svc` berdasarkan kebutuhan Momiji Project.

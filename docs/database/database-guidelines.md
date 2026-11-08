@@ -1,3 +1,9 @@
+---
+title: "Database Guidelines & Migration Rules (MJ-027)"
+sidebar_position: 3
+tags: [database, guidelines, migration, docusaurus]
+---
+
 # Database Guidelines & Migration Rules (Momoji Project)
 
 Dokumentasi ini menetapkan standar operasional pengelolaan basis data untuk memastikan konsistensi, keamanan, dan kemudahan pemeliharaan di seluruh lingkungan (*development*, *staging*, *production*).

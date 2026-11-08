@@ -1,3 +1,9 @@
+---
+title: "Dokumentasi Koneksi Database (MJ-010)"
+sidebar_position: 1
+tags: [database, connection, local, staging]
+---
+
 # Dokumentasi Koneksi Database (Lokal & Staging)
 
 Dokumen ini berisi panduan dan konfigurasi koneksi database PostgreSQL/Supabase untuk lingkungan **Lokal Development** dan **Staging**, yang dapat digunakan oleh tim Backend untuk konfigurasi service dan DTO.

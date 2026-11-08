@@ -1,3 +1,9 @@
+---
+title: "Laporan Analisis Performa Query Dashboard (MJ-082)"
+sidebar_position: 9
+tags: [database, performance, query, dashboard, index, docusaurus]
+---
+
 # Laporan Analisis Performa Query Dashboard (MJ-082)
 
 ## 1. Tujuan
