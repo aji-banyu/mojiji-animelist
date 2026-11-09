@@ -8,7 +8,6 @@ export default function RegisterPage() {
       <h1 className="mt-8 text-[28px] font-bold leading-tight text-[#ECEEF6] font-heading tracking-tight">
         Daftar
       </h1>
-      <p className="mt-1.5 text-sm text-[#A5AAC0] font-sans">Buat akun, lalu catat judul pertamamu.</p>
       <div className="mt-6">
         <RegisterForm />
       </div>
