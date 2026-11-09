@@ -1,23 +1,78 @@
-import * as React from "react"
-import { Input as InputPrimitive } from "@base-ui/react/input"
-import { cn } from "cn"
+"use client";
 
-function Input({
-  className,
-  type,
-  ...props
-}) {
-  return (
-    <InputPrimitive
-      type={type}
-      data-slot="input"
-      className={cn(
-        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 py-1 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-sm dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
-        className
+import * as React from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const Input = React.forwardRef(function Input(
+  { className, type = "text", label, error, hint, id, ...props },
+  ref
+) {
+  const generatedId = React.useId();
+  const inputId = id || (label ? `input-${generatedId}` : undefined);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const isPassword = type === "password";
+  const actualType = isPassword ? (showPassword ? "text" : "password") : type;
+
+  const inputElement = (
+    <div className="relative w-full">
+      <input
+        ref={ref}
+        id={inputId}
+        type={actualType}
+        aria-invalid={error ? "true" : undefined}
+        className={cn(
+          "h-11 w-full rounded-lg border border-[#2B2D38] bg-[#1E1F24] px-3.5 py-2 text-sm text-[#ECEEF6] placeholder:text-[#6D7390] transition-colors outline-none",
+          "hover:border-[#3A3D4D] focus:border-[#6B68C6] focus:ring-2 focus:ring-[#6B68C6]/30",
+          "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45",
+          isPassword && "pr-10",
+          error && "border-[#EC5D74] focus:border-[#EC5D74] focus:ring-[#EC5D74]/30",
+          className
+        )}
+        {...props}
+      />
+      {isPassword && (
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={showPassword ? "Sembunyikan password" : "Tampilkan password"}
+          onClick={() => setShowPassword((v) => !v)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6D7390] hover:text-[#ECEEF6] transition-colors p-1 cursor-pointer"
+        >
+          {showPassword ? (
+            <EyeOff className="size-4" strokeWidth={1.8} />
+          ) : (
+            <Eye className="size-4" strokeWidth={1.8} />
+          )}
+        </button>
       )}
-      {...props}
-    />
-  )
-}
+    </div>
+  );
 
-export { Input }
+  if (!label && !error && !hint) {
+    return inputElement;
+  }
+
+  return (
+    <div className="w-full space-y-1.5">
+      {label && (
+        <label htmlFor={inputId} className="block text-sm font-medium text-[#A5AAC0]">
+          {label}
+        </label>
+      )}
+      {inputElement}
+      {hint && !error && (
+        <p className="text-xs text-[#6D7390]">{hint}</p>
+      )}
+      {error && (
+        <p role="alert" className="text-xs text-[#EC5D74]">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+});
+
+Input.displayName = "Input";
+
+export { Input };
