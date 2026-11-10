@@ -1,3 +1,9 @@
+---
+title: "Aturan Migration Database (MJ-027)"
+sidebar_position: 4
+tags: [database, migration, docusaurus]
+---
+
 # Aturan Migration Database (Momiji Project)[cite: 3]
 
 Dokumentasi ini menetapkan standar operasional pengelolaan dan eksekusi file migrasi basis data untuk menjaga integritas di seluruh lingkungan (*development*, *staging*, *production*)[cite: 3].

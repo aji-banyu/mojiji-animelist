@@ -1,3 +1,9 @@
+---
+title: "Kamus Data (Data Dictionary) (MJ-011)"
+sidebar_position: 2
+tags: [database, data-dictionary, schema, docusaurus]
+---
+
 # Kamus Data (Data Dictionary) - Momiji Project
 
 Dokumentasi ini mendefinisikan struktur entitas, kolom, tipe data, serta aturan bisnis untuk basis data Momiji Project berdasarkan PRD Poin 17.
