@@ -1,4 +1,4 @@
 name: MOJIJI Production
 values:
   - key: baseUrl
-    value: ''
+    value: 'https://mojiji.web.id'
