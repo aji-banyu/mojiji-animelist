@@ -1,397 +1,957 @@
 /**
  * catalogEnricher.js
- * 
- * Helper untuk memperkaya data katalog anime & manga dengan metadata lengkap,
- * statistik, daftar karakter & voice actor, staf produksi, dan lagu tema (OP/ED),
- * sesuai format standar MyAnimeList (Tiket MJ-078).
+ *
+ * Normalizer & helper untuk detail katalog anime/manga agar 100% menampilkan
+ * data asli dari API (Backend Tenrai/Jikan & AniList) tanpa data statistik,
+ * karakter, staf, atau judul palsu.
  */
 
-// Dataset spesifik untuk judul-judul populer
-const KNOWN_ENRICHMENTS = {
-  // Kusuriya no Hitorigoto (The Pharmacist's Monologue)
-  kusuriya: {
-    synonyms: ["The Pharmacist's Monologue", "Drugstore Soliloquy"],
-    japanese: "薬屋のひとりごと 第3期",
-    premiered: "Fall 2026",
-    broadcast: "Fridays at 23:00 (JST)",
-    producers: ["Dentsu", "Square Enix", "Nippon Television Network", "Sound Team Don Juan", "Shogakukan", "Imagica Infos"],
-    licensors: ["Crunchyroll"],
-    studios: ["OLM"],
-    source: "Light novel",
-    genres: ["Drama", "Mystery"],
-    themes: ["Historical", "Medical"],
-    duration: "24 min. per ep.",
-    rating: "PG-13 - Teens 13 or older",
-    scoredBy: 17386,
-    ranked: "#97",
-    popularity: "#1311",
-    members: "221,735",
-    favorites: "1,203",
-    trailerTitle: "PV 2 - 2nd Official Trailer",
-    background: "Kusuriya no Hitorigoto diadaptasi dari seri light novel populer karya Natsu Hyuuga dengan ilustrasi oleh Touko Shino yang memenangkan berbagai penghargaan fiksi di Jepang.",
-    characters: [
-      {
-        name: "Maomao",
-        role: "Main",
-        image: "https://cdn.myanimelist.net/images/characters/14/525381.jpg",
-        voiceActor: { name: "Yuuki, Aoi", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/3/69592.jpg" },
-      },
-      {
-        name: "Jinshi",
-        role: "Main",
-        image: "https://cdn.myanimelist.net/images/characters/16/526779.jpg",
-        voiceActor: { name: "Ootsuka, Takeo", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/1/52219.jpg" },
-      },
-      {
-        name: "Gaoshun",
-        role: "Supporting",
-        image: "https://cdn.myanimelist.net/images/characters/10/526781.jpg",
-        voiceActor: { name: "Konishi, Katsuyuki", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/2/66847.jpg" },
-      },
-      {
-        name: "Ah-Duo",
-        role: "Supporting",
-        image: "https://cdn.myanimelist.net/images/characters/7/528359.jpg",
-        voiceActor: { name: "Kaida, Yuuko", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/1/41662.jpg" },
-      },
-      {
-        name: "Shisui",
-        role: "Supporting",
-        image: "https://cdn.myanimelist.net/images/characters/8/531980.jpg",
-        voiceActor: { name: "Seto, Asami", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/3/64795.jpg" },
-      },
-      {
-        name: "Pairin",
-        role: "Supporting",
-        image: "https://cdn.myanimelist.net/images/characters/15/528362.jpg",
-        voiceActor: { name: "Koshimizu, Ami", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/2/71415.jpg" },
-      },
-      {
-        name: "Lishu",
-        role: "Supporting",
-        image: "https://cdn.myanimelist.net/images/characters/4/528360.jpg",
-        voiceActor: { name: "Kino, Hina", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/2/49826.jpg" },
-      },
-      {
-        name: "Kan, Lakan",
-        role: "Supporting",
-        image: "https://cdn.myanimelist.net/images/characters/9/531981.jpg",
-        voiceActor: { name: "Kirimoto, Takuya", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/2/23071.jpg" },
-      },
-    ],
-    staff: [
-      { name: "Morishita, Katsuji", role: "Producer", image: "https://cdn.myanimelist.net/images/voiceactors/3/43770.jpg" },
-      { name: "Fujimura, Tomoko", role: "Producer", image: "" },
-      { name: "Okamoto, Junya", role: "Producer", image: "" },
-      { name: "Iwata, Takao", role: "Producer", image: "" },
-    ],
-    openings: [{ title: "Kumo wo Nuke Kazashimo e Watashi dake (雲を抜け風下へ私だけ)", artist: "Yorushika (ヨルシカ)" }],
-    endings: [{ title: "AIYOU", artist: "Eve" }],
-  },
+const TENRAI_DETAIL_BASE_URL = (
+  process.env.NEXT_PUBLIC_TENRAI_BASE_URL || "https://api.tenrai.org/v1"
+).replace(/\/$/, "");
+const JIKAN_DETAIL_BASE_URL = "https://api.jikan.moe/v4";
 
-  // Naruto
-  naruto: {
-    synonyms: ["Naruto"],
-    japanese: "NARUTO -ナルト-",
-    premiered: "Fall 2002",
-    broadcast: "Thursdays at 19:30 (JST)",
-    producers: ["TV Tokyo", "Aniplex", "Shueisha"],
-    licensors: ["VIZ Media"],
-    studios: ["Pierrot"],
-    source: "Manga",
-    genres: ["Action", "Adventure", "Fantasy"],
-    themes: ["Martial Arts", "Shounen"],
-    duration: "23 min. per ep.",
-    rating: "PG-13 - Teens 13 or older",
-    scoredBy: 1874200,
-    ranked: "#580",
-    popularity: "#10",
-    members: "2,750,000",
-    favorites: "78,410",
-    trailerTitle: "Official PV 1",
-    background: "Naruto karya Masashi Kishimoto diterbitkan pertama kali di Weekly Shonen Jump pada tahun 1999 dan menjadi salah satu waralaba anime paling berpengaruh di dunia.",
-    characters: [
-      {
-        name: "Uzumaki, Naruto",
-        role: "Main",
-        image: "https://cdn.myanimelist.net/images/characters/2/284123.jpg",
-        voiceActor: { name: "Takeuchi, Junko", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/1/54964.jpg" },
-      },
-      {
-        name: "Uchiha, Sasuke",
-        role: "Main",
-        image: "https://cdn.myanimelist.net/images/characters/9/131317.jpg",
-        voiceActor: { name: "Sugiyama, Noriaki", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/3/40428.jpg" },
-      },
-      {
-        name: "Haruno, Sakura",
-        role: "Main",
-        image: "https://cdn.myanimelist.net/images/characters/16/32959.jpg",
-        voiceActor: { name: "Nakamura, Chie", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/1/181.jpg" },
-      },
-      {
-        name: "Hatake, Kakashi",
-        role: "Main",
-        image: "https://cdn.myanimelist.net/images/characters/7/284129.jpg",
-        voiceActor: { name: "Inoue, Kazuhiko", language: "Japanese", image: "https://cdn.myanimelist.net/images/voiceactors/2/179.jpg" },
-      },
-    ],
-    staff: [
-      { name: "Date, Hayato", role: "Director", image: "" },
-      { name: "Nishio, Tetsuya", role: "Character Design", image: "" },
-      { name: "Musashi Project", role: "Music", image: "" },
-    ],
-    openings: [{ title: "R★O★C★K★S", artist: "Hound Dog" }, { title: "Haruka Kanata", artist: "Asian Kung-Fu Generation" }],
-    endings: [{ title: "Wind", artist: "Akeboshi" }, { title: "Harmonia", artist: "RYTHEM" }],
-  },
+// ID YouTube Trailer resmi terverifikasi (selaras dengan Hero Beranda & official PV)
+const POPULAR_ANIME_TRAILERS = {
+  16498: "LHtdKWJdif4", // Shingeki no Kyojin
+  1535: "Vt_3c8BgxV4",  // Death Note
+  5114: "1ac3_YdSSy0",  // Fullmetal Alchemist: Brotherhood
+  30276: "ExUMiF1L0HA", // One Punch Man
+  38000: "6vMuWuWlW4I", // Kimetsu no Yaiba
+  31964: "D5fYOnwYkj4", // Boku no Hero Academia
+  40748: "pkKu9hLT-t8", // Jujutsu Kaisen
+};
 
-  // Monster (Manga)
-  monster: {
-    synonyms: ["Naoki Urasawa's Monster"],
-    japanese: "MONSTER",
-    published: "Dec 1994 to Dec 2001",
-    authors: ["Urasawa, Naoki (Story & Art)"],
-    serialization: ["Big Comic Original"],
-    source: "Original",
-    genres: ["Drama", "Mystery", "Suspense"],
-    themes: ["Psychological", "Adult Cast"],
-    scoredBy: 142100,
-    ranked: "#5",
-    popularity: "#28",
-    members: "258,000",
-    favorites: "23,940",
-    background: "Monster memenangkan Shogakukan Manga Award pada tahun 2001 dan secara luas diakui sebagai salah satu mahakarya cerita misteri-psikologis terbaik.",
-    characters: [
-      { name: "Tenma, Kenzou", role: "Main", image: "https://cdn.myanimelist.net/images/characters/13/32847.jpg" },
-      { name: "Liebert, Johan", role: "Main", image: "https://cdn.myanimelist.net/images/characters/11/48450.jpg" },
-      { name: "Liebert, Anna", role: "Main", image: "https://cdn.myanimelist.net/images/characters/13/28410.jpg" },
-      { name: "Lunge, Heinrich", role: "Supporting", image: "https://cdn.myanimelist.net/images/characters/15/48451.jpg" },
-    ],
-    staff: [
-      { name: "Urasawa, Naoki", role: "Story & Art", image: "" },
-      { name: "Nagasaki, Takashi", role: "Co-Editor", image: "" },
-    ],
-  },
+// Backdrop FHD 16:9 resmi yang identik dengan Hero Banner utama Beranda
+export const HERO_TRAILER_BANNERS = {
+  16498: "https://img.youtube.com/vi/LHtdKWJdif4/maxresdefault.jpg",
+  1535: "https://img.youtube.com/vi/Vt_3c8BgxV4/maxresdefault.jpg",
+  5114: "https://img.youtube.com/vi/1ac3_YdSSy0/maxresdefault.jpg",
+  30276: "https://img.youtube.com/vi/ExUMiF1L0HA/maxresdefault.jpg",
+  38000: "https://img.youtube.com/vi/6vMuWuWlW4I/maxresdefault.jpg",
+  31964: "https://img.youtube.com/vi/D5fYOnwYkj4/maxresdefault.jpg",
 };
 
 /**
- * Generator nilai statistik & metadata deterministik berdasarkan ID dan Judul
+ * Membangun URL embed YouTube dengan kontrol pemutaran mandiri (autoplay=0)
  */
-function hashString(str) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return Math.abs(hash);
+export function buildTrailerEmbedUrl(youtubeId) {
+  if (!youtubeId) return null;
+  return `https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=0&controls=1&rel=0&modestbranding=1&enablejsapi=1`;
 }
 
 /**
- * Enrich item katalog agar memiliki field lengkap sesuai Gambar 1, 2, 3
- * @param {Object} rawData - Data dari getCatalogDetailApi
+ * Mengekstrak 11 karakter YouTube Video ID dari URL atau objek trailer API
+ */
+export function extractYoutubeId(trailerObj) {
+  if (!trailerObj) return null;
+  if (typeof trailerObj === "string") {
+    const match = trailerObj.match(
+      /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=)|i\.ytimg\.com\/vi\/|img\.youtube\.com\/vi\/)([\w-]{11})/
+    );
+    return match ? match[1] : trailerObj.length === 11 ? trailerObj : null;
+  }
+  if (trailerObj.youtubeId) return trailerObj.youtubeId;
+  if (trailerObj.youtube_id) return trailerObj.youtube_id;
+  if (trailerObj.embedUrl || trailerObj.embed_url) {
+    const rawEmbed = trailerObj.embedUrl || trailerObj.embed_url;
+    const match = rawEmbed.match(/(?:embed\/)([\w-]{11})/);
+    if (match) return match[1];
+  }
+  if (trailerObj.url) {
+    const match = trailerObj.url.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
+    if (match) return match[1];
+  }
+  const imgUrl =
+    trailerObj.images?.maximum_image_url ||
+    trailerObj.images?.large_image_url ||
+    null;
+  if (imgUrl) {
+    const match = imgUrl.match(/(?:\/vi\/)([\w-]{11})/);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Mem-parse string theme lagu OP/ED format MAL/Jikan menjadi { title, artist }
+ */
+export function parseThemeEntry(item) {
+  if (!item) return null;
+  if (typeof item === "object" && item.title) {
+    return {
+      title: String(item.title).trim(),
+      artist: item.artist ? String(item.artist).trim() : "-",
+    };
+  }
+  if (typeof item !== "string" || !item.trim()) return null;
+
+  const cleaned = item
+    .replace(/^\d+:\s*/, "")
+    .replace(/\s*\(eps?[^)]*\)\s*$/i, "")
+    .trim();
+
+  const quotedMatch = cleaned.match(/^"([^"]+)"\s+by\s+(.+)$/i);
+  if (quotedMatch) {
+    return { title: quotedMatch[1].trim(), artist: quotedMatch[2].trim() };
+  }
+  const simpleMatch = cleaned.match(/^(.+?)\s+by\s+(.+)$/i);
+  if (simpleMatch) {
+    return {
+      title: simpleMatch[1].replace(/^["']|["']$/g, "").trim(),
+      artist: simpleMatch[2].trim(),
+    };
+  }
+  return { title: cleaned, artist: "-" };
+}
+
+function extractNames(arr) {
+  if (!Array.isArray(arr) || arr.length === 0) return [];
+  return arr
+    .map((item) => (typeof item === "object" && item !== null ? item.name : item))
+    .filter(Boolean);
+}
+
+function formatNumberLocale(val) {
+  if (typeof val === "number" && !Number.isNaN(val)) {
+    return val.toLocaleString("en-US");
+  }
+  if (typeof val === "string" && val.trim()) {
+    const n = Number(val.replace(/,/g, ""));
+    if (!Number.isNaN(n) && val.trim() !== "") return n.toLocaleString("en-US");
+  }
+  return null;
+}
+
+function formatRankTag(val) {
+  if (val === null || val === undefined || val === "") return null;
+  const str = String(val).trim();
+  if (!str || str === "0" || str === "#0") return null;
+  return str.startsWith("#") ? str : `#${str}`;
+}
+
+function extractTextField(val) {
+  if (!val) return null;
+  if (typeof val === "object") {
+    return val.string ? String(val.string).trim() || null : null;
+  }
+  const str = String(val).trim();
+  return str || null;
+}
+
+function capitalizeWord(word) {
+  if (!word || typeof word !== "string") return "";
+  return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+}
+
+/**
+ * Menormalisasi item detail katalog murni dari data yang disediakan API.
+ * Field yang tidak disediakan API dikembalikan null / [] (tidak mengarang data).
+ * @param {Object} rawData
  * @param {'anime' | 'manga'} type
  * @param {string|number} id
  */
 export function enrichCatalogDetail(rawData, type = "anime", id = 1) {
   if (!rawData) return null;
 
-  const titleLower = (rawData.title || "").toLowerCase();
-  const numericId = Number(id || rawData.malId || rawData.id || 1);
-
-  // 1. Cek apakah judul cocok dengan salah satu preset spesifik
-  let preset = null;
-  if (titleLower.includes("kusuriya") || titleLower.includes("pharmacist") || numericId === 54492) {
-    preset = KNOWN_ENRICHMENTS.kusuriya;
-  } else if (titleLower.includes("naruto") || numericId === 20 || numericId === 1735) {
-    preset = KNOWN_ENRICHMENTS.naruto;
-  } else if (titleLower.includes("monster") || (type === "manga" && numericId === 1)) {
-    preset = KNOWN_ENRICHMENTS.monster;
-  }
-
-  // 2. Buat nilai deterministik fallback jika tidak ada di preset
-  const hash = hashString(`${rawData.title}_${numericId}`);
-  const baseScore = typeof rawData.score === "number" ? rawData.score : 7.85 + (hash % 150) / 100;
-  const userCount = 10000 + (hash % 900000);
-  const rankNum = 50 + (hash % 4500);
-  const popNum = 100 + (hash % 9000);
-  const memberNum = userCount * 3 + (hash % 50000);
-  const favNum = Math.floor(userCount / 25) + 50;
-
-  const seasons = ["Winter", "Spring", "Summer", "Fall"];
-  const years = [2022, 2023, 2024, 2025, 2026];
-  const selectedSeason = `${seasons[hash % 4]} ${years[hash % years.length]}`;
-
-  const studiosList = ["OLM", "Wit Studio", "MAPPA", "CloverWorks", "A-1 Pictures", "ufotable", "Bones", "Production I.G", "Pierrot"];
-  const selectedStudio = studiosList[hash % studiosList.length];
-
-  const genresPool = ["Action", "Adventure", "Drama", "Fantasy", "Mystery", "Sci-Fi", "Comedy", "Supernatural", "Romance"];
-  const selectedGenres = [genresPool[hash % genresPool.length], genresPool[(hash + 3) % genresPool.length]];
-
-  const themesPool = ["Historical", "Medical", "School", "Psychological", "Mythology", "Martial Arts", "Super Power"];
-  const selectedThemes = [themesPool[hash % themesPool.length], themesPool[(hash + 2) % themesPool.length]];
-
   const isAnime = type === "anime";
+  const numericId = Number(id || rawData.malId || rawData.mal_id || rawData.id || 0);
 
-  // Helper untuk mengekstrak nama dari objek Jikan API (misal [{ name: 'Action' }])
-  const extractNames = (arr) => {
-    if (!arr || !Array.isArray(arr)) return null;
-    const names = arr
-      .map((item) => (typeof item === "object" && item !== null ? item.name : item))
-      .filter(Boolean);
-    return names.length > 0 ? names : null;
-  };
+  const baseScore =
+    typeof rawData.score === "number" && !Number.isNaN(rawData.score)
+      ? rawData.score
+      : null;
 
-  const rawGenres = extractNames(rawData.genres);
-  const rawThemes = extractNames(rawData.themes);
-  const rawDemographics = extractNames(rawData.demographics);
-  const rawStudios = extractNames(rawData.studios);
-  const rawAuthors = extractNames(rawData.authors);
-  const rawSerializations = extractNames(rawData.serializations);
-  const rawProducers = extractNames(rawData.producers);
-  const rawLicensors = extractNames(rawData.licensors);
+  const resolvedYoutubeId = isAnime
+    ? extractYoutubeId(rawData.trailer) ||
+      rawData.youtube_id ||
+      POPULAR_ANIME_TRAILERS[numericId] ||
+      null
+    : null;
 
-  const cleanRank = rawData.rank
-    ? String(rawData.rank).startsWith("#")
-      ? String(rawData.rank)
-      : `#${rawData.rank}`
-    : preset?.ranked || `#${rankNum}`;
+  const trailerEmbedUrl = buildTrailerEmbedUrl(resolvedYoutubeId);
+  const heroMatchedBanner = isAnime ? HERO_TRAILER_BANNERS[numericId] || null : null;
+  const maxTrailerImage =
+    heroMatchedBanner ||
+    rawData.trailer?.images?.maximum_image_url ||
+    (resolvedYoutubeId
+      ? `https://img.youtube.com/vi/${resolvedYoutubeId}/maxresdefault.jpg`
+      : null);
 
-  const cleanPop = rawData.popularity
-    ? String(rawData.popularity).startsWith("#")
-      ? String(rawData.popularity)
-      : `#${rawData.popularity}`
-    : preset?.popularity || `#${popNum}`;
+  const rawTypeValue =
+    rawData.format ||
+    (rawData.type &&
+    rawData.type !== "anime" &&
+    rawData.type !== "manga"
+      ? rawData.type
+      : null);
+
+  const rawSynonyms = rawData.titleSynonyms || rawData.title_synonyms;
+  const cleanSynonyms = Array.isArray(rawSynonyms)
+    ? rawSynonyms.map((s) => String(s || "").trim()).filter(Boolean)
+    : [];
+
+  const rawSeason = rawData.season ? capitalizeWord(rawData.season) : null;
+  const rawYear = rawData.year || null;
+  const premieredStr =
+    rawSeason && rawYear
+      ? `${rawSeason} ${rawYear}`
+      : rawData.premiered || null;
+
+  const rawOpenings =
+    rawData.openings || rawData.theme?.openings || [];
+  const rawEndings =
+    rawData.endings || rawData.theme?.endings || [];
+
+  const openings = Array.isArray(rawOpenings)
+    ? rawOpenings.map(parseThemeEntry).filter(Boolean)
+    : [];
+  const endings = Array.isArray(rawEndings)
+    ? rawEndings.map(parseThemeEntry).filter(Boolean)
+    : [];
+
+  const characters = Array.isArray(rawData.characters)
+    ? rawData.characters
+        .filter((ch) => ch && ch.name)
+        .map((ch) => ({
+          name: ch.name,
+          role: ch.role || "Supporting",
+          image: ch.image || "",
+          voiceActor:
+            isAnime && ch.voiceActor && ch.voiceActor.name
+              ? {
+                  name: ch.voiceActor.name,
+                  language: ch.voiceActor.language || "Japanese",
+                  image: ch.voiceActor.image || "",
+                }
+              : null,
+        }))
+    : [];
+
+  const staff = Array.isArray(rawData.staff)
+    ? rawData.staff
+        .filter((st) => st && st.name)
+        .map((st) => ({
+          name: st.name,
+          role: st.role || "-",
+          image: st.image || "",
+        }))
+    : [];
 
   return {
     ...rawData,
+    bannerImage:
+      heroMatchedBanner ||
+      rawData.bannerImage ||
+      maxTrailerImage ||
+      rawData.trailer?.images?.large_image_url ||
+      null,
     score: baseScore,
-    // Alternative Titles
     alternativeTitles: {
-      synonyms:
-        rawData.title_synonyms ||
-        rawData.titleSynonyms ||
-        preset?.synonyms || [rawData.title, `${rawData.title} (Alternative)`],
-      japanese:
-        rawData.title_japanese ||
-        rawData.titleJapanese ||
-        preset?.japanese ||
-        `${rawData.title} (日本語版)`,
-      english: rawData.title_english || rawData.titleEnglish || rawData.title,
+      synonyms: cleanSynonyms,
+      japanese: rawData.titleJapanese || rawData.title_japanese || null,
+      english: rawData.titleEnglish || rawData.title_english || null,
     },
-    // Information
     information: {
-      type: rawData.type || (isAnime ? "TV" : "Manga"),
-      episodes: isAnime ? rawData.episodes || rawData.totalEpisodes || preset?.episodes || 12 : undefined,
-      chapters: !isAnime ? rawData.chapters || rawData.totalChapters || preset?.chapters || 45 : undefined,
-      volumes: !isAnime ? rawData.volumes || preset?.volumes || undefined : undefined,
-      status: rawData.status || (isAnime ? "Currently Airing" : "Publishing"),
-      aired: isAnime
-        ? rawData.aired?.string || preset?.aired || `Oct 2024 to ?`
-        : undefined,
-      published: !isAnime
-        ? rawData.published?.string || preset?.published || `2021 to ?`
-        : undefined,
-      premiered: isAnime
-        ? (rawData.season && rawData.year
-            ? `${rawData.season.charAt(0).toUpperCase() + rawData.season.slice(1)} ${rawData.year}`
-            : preset?.premiered || selectedSeason)
-        : undefined,
-      broadcast: isAnime
-        ? rawData.broadcast?.string || preset?.broadcast || "Fridays at 23:00 (JST)"
-        : undefined,
-      producers: isAnime
-        ? rawProducers || preset?.producers || ["Dentsu", "Aniplex", "TOHO animation", "Shogakukan"]
-        : undefined,
-      licensors: rawLicensors || preset?.licensors || ["Crunchyroll", "Muse Communication"],
-      studios: isAnime
-        ? rawStudios || preset?.studios || [selectedStudio]
-        : undefined,
-      authors: !isAnime
-        ? rawAuthors || preset?.authors || ["Penulis Orisinal (Story & Art)"]
-        : undefined,
-      serialization: !isAnime
-        ? rawSerializations || preset?.serialization || ["Weekly Shonen Magazine"]
-        : undefined,
-      source: rawData.source || preset?.source || (isAnime ? "Light novel" : "Original"),
-      genres: rawGenres || preset?.genres || selectedGenres,
-      themes: rawThemes || preset?.themes || selectedThemes,
-      demographics: rawDemographics || preset?.demographics || undefined,
-      duration: isAnime ? rawData.duration || preset?.duration || "24 min. per ep." : undefined,
-      rating: isAnime ? rawData.rating || preset?.rating || "PG-13 - Teens 13 or older" : undefined,
+      type: rawTypeValue,
+      episodes: isAnime
+        ? (rawData.episodes ?? rawData.totalEpisodes ?? null)
+        : null,
+      chapters: !isAnime
+        ? (rawData.chapters ?? rawData.totalChapters ?? null)
+        : null,
+      volumes: !isAnime ? (rawData.volumes ?? null) : null,
+      status: rawData.status || null,
+      aired: isAnime ? extractTextField(rawData.aired) : null,
+      published: !isAnime ? extractTextField(rawData.published) : null,
+      premiered: isAnime ? premieredStr : null,
+      broadcast: isAnime ? extractTextField(rawData.broadcast) : null,
+      producers: isAnime ? extractNames(rawData.producers) : [],
+      licensors: isAnime ? extractNames(rawData.licensors) : [],
+      studios: isAnime ? extractNames(rawData.studios) : [],
+      authors: !isAnime ? extractNames(rawData.authors) : [],
+      serializations: !isAnime ? extractNames(rawData.serializations) : [],
+      source: rawData.source || null,
+      genres: extractNames(rawData.genres),
+      themes: extractNames(rawData.themes),
+      demographics: extractNames(rawData.demographics),
+      duration: isAnime ? rawData.duration || null : null,
+      rating: isAnime ? rawData.rating || null : null,
     },
-    // Statistics
     statistics: {
-      score: baseScore.toFixed(2),
-      scoredBy: rawData.scored_by
-        ? rawData.scored_by.toLocaleString("en-US")
-        : preset?.scoredBy || userCount.toLocaleString("en-US"),
-      ranked: cleanRank,
-      popularity: cleanPop,
-      members: rawData.members
-        ? rawData.members.toLocaleString("en-US")
-        : preset?.members || memberNum.toLocaleString("en-US"),
-      favorites: rawData.favorites
-        ? rawData.favorites.toLocaleString("en-US")
-        : preset?.favorites || favNum.toLocaleString("en-US"),
+      score: baseScore !== null ? baseScore.toFixed(2) : null,
+      scoredBy: formatNumberLocale(rawData.scoredBy ?? rawData.scored_by),
+      ranked: formatRankTag(rawData.rank),
+      popularity: formatRankTag(rawData.popularity),
+      members: formatNumberLocale(rawData.members),
+      favorites: formatNumberLocale(rawData.favorites),
     },
-    // Trailer
-    trailer: {
-      title: preset?.trailerTitle || "PV 2 - Official Trailer",
-      image: rawData.image || "https://cdn.myanimelist.net/images/anime/1141/142503l.jpg",
-    },
-    // Characters & Voice Actors
-    characters: preset?.characters || [
-      {
-        name: "Tokoh Utama (Protagonist)",
-        role: "Main",
-        image: "",
-        voiceActor: isAnime ? { name: "Pengisi Suara Utama", language: "Japanese", image: "" } : undefined,
-      },
-      {
-        name: "Karakter Pendamping A",
-        role: "Main",
-        image: "",
-        voiceActor: isAnime ? { name: "Seiyuu Pendamping", language: "Japanese", image: "" } : undefined,
-      },
-      {
-        name: "Karakter Pendukung B",
-        role: "Supporting",
-        image: "",
-        voiceActor: isAnime ? { name: "Seiyuu Pendukung B", language: "Japanese", image: "" } : undefined,
-      },
-      {
-        name: "Karakter Pendukung C",
-        role: "Supporting",
-        image: "",
-        voiceActor: isAnime ? { name: "Seiyuu Pendukung C", language: "Japanese", image: "" } : undefined,
-      },
-      {
-        name: "Karakter Pendukung D",
-        role: "Supporting",
-        image: "",
-        voiceActor: isAnime ? { name: "Seiyuu Pendukung D", language: "Japanese", image: "" } : undefined,
-      },
-      {
-        name: "Karakter Pendukung E",
-        role: "Supporting",
-        image: "",
-        voiceActor: isAnime ? { name: "Seiyuu Pendukung E", language: "Japanese", image: "" } : undefined,
-      },
-    ],
-    // Staff
-    staff: preset?.staff || [
-      { name: "Sutradara & Produser", role: isAnime ? "Director" : "Story & Art", image: "" },
-      { name: "Desain Karakter", role: "Character Design", image: "" },
-      { name: "Komposisi Musik & Seri", role: isAnime ? "Sound & Music" : "Editor", image: "" },
-      { name: "Produser Eksekutif", role: "Producer", image: "" },
-      { name: "Pengarah Animasi", role: isAnime ? "Chief Animation Director" : "Illustrator", image: "" },
-      { name: "Perencana & Distribusi", role: "Planning", image: "" },
-    ],
-    // Theme Songs (Anime only)
-    openings: isAnime ? preset?.openings || [{ title: "Lagu Pembuka Tema Resmi", artist: "Artis Penampil" }] : [],
-    endings: isAnime ? preset?.endings || [{ title: "Lagu Penutup Tema Resmi", artist: "Artis Penampil" }] : [],
-    // Background
-    background: preset?.background || `${rawData.title} merupakan karya berbobot yang mendapat sambutan hangat dari penggemar dan komunitas anime global.`,
+    trailer:
+      isAnime && resolvedYoutubeId
+        ? {
+            title: rawData.trailer?.title || "Official Trailer",
+            youtubeId: resolvedYoutubeId,
+            embedUrl: trailerEmbedUrl,
+            images: rawData.trailer?.images || null,
+            image:
+              maxTrailerImage ||
+              rawData.trailer?.images?.large_image_url ||
+              null,
+          }
+        : null,
+    characters,
+    staff,
+    openings: isAnime ? openings : [],
+    endings: isAnime ? endings : [],
   };
 }
 
+const ANILIST_FORMAT_LABELS = {
+  TV: "TV",
+  TV_SHORT: "TV Short",
+  MOVIE: "Movie",
+  SPECIAL: "Special",
+  OVA: "OVA",
+  ONA: "ONA",
+  MUSIC: "Music",
+  MANGA: "Manga",
+  NOVEL: "Light Novel",
+  ONE_SHOT: "One-shot",
+};
+
+function formatEnumLabel(val) {
+  if (!val || typeof val !== "string") return null;
+  if (ANILIST_FORMAT_LABELS[val]) return ANILIST_FORMAT_LABELS[val];
+  return val
+    .split("_")
+    .filter(Boolean)
+    .map((part) => capitalizeWord(part))
+    .join(" ");
+}
+
+function extractImageFromJikan(images) {
+  return images?.webp?.image_url || images?.jpg?.image_url || "";
+}
+
+function mapJikanCharacters(list) {
+  if (!Array.isArray(list)) return [];
+  const sorted = [...list].sort((a, b) => {
+    const aMain = a?.role === "Main" ? 0 : 1;
+    const bMain = b?.role === "Main" ? 0 : 1;
+    if (aMain !== bMain) return aMain - bMain;
+    return (b?.favorites || 0) - (a?.favorites || 0);
+  });
+
+  return sorted.slice(0, 24).reduce((acc, item) => {
+    if (item?.character?.name) {
+      const vas = Array.isArray(item.voice_actors) ? item.voice_actors : [];
+      const va = vas.find((v) => v.language === "Japanese") || vas[0] || null;
+      acc.push({
+        name: item.character.name,
+        role: item.role || "Supporting",
+        image: extractImageFromJikan(item.character.images),
+        voiceActor: va?.person?.name
+          ? {
+              name: va.person.name,
+              language: va.language || "Japanese",
+              image: extractImageFromJikan(va.person.images),
+            }
+          : null,
+      });
+    } else if (item?.name) {
+      acc.push(item);
+    }
+    return acc;
+  }, []);
+}
+
+function mapJikanStaff(list) {
+  if (!Array.isArray(list)) return [];
+  return list.slice(0, 20).reduce((acc, item) => {
+    if (item?.person?.name) {
+      const positions = Array.isArray(item.positions) ? item.positions.filter(Boolean) : [];
+      acc.push({
+        name: item.person.name,
+        role: positions.length > 0 ? positions.join(", ") : "-",
+        image: extractImageFromJikan(item.person.images),
+      });
+    } else if (item?.name) {
+      acc.push(item);
+    }
+    return acc;
+  }, []);
+}
+
+function createDetailRequestSignal(externalSignal, timeoutMs = 8000) {
+  const controller = new AbortController();
+  let didTimeout = false;
+
+  const onExternalAbort = () => {
+    controller.abort(externalSignal?.reason);
+  };
+
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort(externalSignal.reason);
+    } else {
+      externalSignal.addEventListener("abort", onExternalAbort, { once: true });
+    }
+  }
+
+  const timer = setTimeout(() => {
+    didTimeout = true;
+    controller.abort(new DOMException("Detail request timeout", "TimeoutError"));
+  }, timeoutMs);
+
+  return {
+    signal: controller.signal,
+    didTimeout: () => didTimeout,
+    cleanup: () => {
+      clearTimeout(timer);
+      if (externalSignal) {
+        externalSignal.removeEventListener("abort", onExternalAbort);
+      }
+    },
+  };
+}
+
+function sleepAbortable(ms, signal) {
+  if (!signal) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+  if (signal.aborted) {
+    return Promise.reject(new DOMException("Aborted", "AbortError"));
+  }
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new DOMException("Aborted", "AbortError"));
+    };
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+function getDetailBaseUrls() {
+  return Array.from(new Set([TENRAI_DETAIL_BASE_URL, JIKAN_DETAIL_BASE_URL]));
+}
+
+async function fetchCatalogResource(url, { signal = null, timeoutMs = 8000 } = {}) {
+  if (signal?.aborted) {
+    throw new DOMException("Aborted", "AbortError");
+  }
+
+  const attempt = async () => {
+    const reqControl = createDetailRequestSignal(signal, timeoutMs);
+    try {
+      const res = await fetch(url, {
+        signal: reqControl.signal,
+        headers: { Accept: "application/json" },
+      });
+      if (res.status === 429) {
+        const retrySec = Number(res.headers.get("retry-after"));
+        const retryMs =
+          !Number.isNaN(retrySec) && retrySec > 0
+            ? Math.min(Math.max(retrySec * 1000, 400), 1500)
+            : 1050;
+        return { rateLimited: true, retryMs, data: null };
+      }
+      if (!res.ok) return { rateLimited: false, retryMs: 0, data: null };
+      const json = await res.json();
+      return { rateLimited: false, retryMs: 0, data: json?.data ?? null };
+    } catch (err) {
+      if (signal?.aborted) {
+        throw err;
+      }
+      return { rateLimited: false, retryMs: 0, data: null };
+    } finally {
+      reqControl.cleanup();
+    }
+  };
+
+  try {
+    const first = await attempt();
+    if (first.rateLimited) {
+      await sleepAbortable(first.retryMs, signal);
+      const retry = await attempt();
+      return retry.data;
+    }
+    return first.data;
+  } catch (err) {
+    if (signal?.aborted) {
+      throw err;
+    }
+    return null;
+  }
+}
+
+async function fetchFirstAvailableResource(urls, options = {}) {
+  const uniqueUrls = Array.from(new Set((urls || []).filter(Boolean)));
+  for (const url of uniqueUrls) {
+    const data = await fetchCatalogResource(url, options);
+    if (data) return data;
+  }
+  return null;
+}
+
+/**
+ * Mengambil suplemen karakter & staf langsung dari Tenrai API (dengan fallback Jikan v4).
+ */
+export async function fetchTenraiCreditsSupplement(mediaType, malId, options = {}) {
+  const numericId = Number(malId);
+  if (!numericId || Number.isNaN(numericId)) {
+    return { characters: [], staff: [] };
+  }
+
+  const normalizedType = mediaType === "manga" ? "manga" : "anime";
+  const {
+    signal = null,
+    includeCharacters = true,
+    includeStaff = normalizedType === "anime",
+  } = options;
+
+  const baseUrls = getDetailBaseUrls();
+  let rawCharacters = null;
+  let rawStaff = null;
+
+  if (includeCharacters) {
+    rawCharacters = await fetchFirstAvailableResource(
+      baseUrls.map((base) => `${base}/${normalizedType}/${numericId}/characters`),
+      { signal, timeoutMs: 8000 }
+    );
+  }
+
+  if (normalizedType === "anime" && includeStaff) {
+    if (includeCharacters) {
+      await sleepAbortable(260, signal);
+    }
+    rawStaff = await fetchFirstAvailableResource(
+      baseUrls.map((base) => `${base}/anime/${numericId}/staff`),
+      { signal, timeoutMs: 8000 }
+    );
+  }
+
+  return {
+    characters: mapJikanCharacters(rawCharacters),
+    staff: mapJikanStaff(rawStaff),
+  };
+}
+
+/**
+ * Mengambil detail lengkap (statistik, tanggal tayang/terbit, produser, rating, tema, karakter, staf)
+ * langsung dari Tenrai API v1 sebagai sumber utama, dengan fallback otomatis ke Jikan v4.
+ */
+export async function fetchTenraiDetailSupplement(mediaType, malId, options = {}) {
+  const numericId = Number(malId);
+  if (!numericId || Number.isNaN(numericId)) return null;
+
+  const normalizedType = mediaType === "manga" ? "manga" : "anime";
+  const {
+    signal = null,
+    includeCharacters = true,
+    includeStaff = normalizedType === "anime",
+  } = options;
+
+  const baseUrls = getDetailBaseUrls();
+  const detailUrls = baseUrls.flatMap((base) => [
+    `${base}/${normalizedType}/${numericId}/full`,
+    `${base}/${normalizedType}/${numericId}`,
+  ]);
+
+  const fullData = await fetchFirstAvailableResource(detailUrls, {
+    signal,
+    timeoutMs: 8000,
+  });
+
+  const credits =
+    includeCharacters || (normalizedType === "anime" && includeStaff)
+      ? await fetchTenraiCreditsSupplement(normalizedType, numericId, {
+          signal,
+          includeCharacters,
+          includeStaff,
+        })
+      : { characters: [], staff: [] };
+
+  if (!fullData && credits.characters.length === 0 && credits.staff.length === 0) {
+    return null;
+  }
+
+  return {
+    title: fullData?.title || null,
+    titleEnglish: fullData?.title_english || null,
+    titleJapanese: fullData?.title_japanese || null,
+    titleSynonyms: Array.isArray(fullData?.title_synonyms) ? fullData.title_synonyms : [],
+    format: fullData?.type || null,
+    episodes: fullData?.episodes ?? null,
+    chapters: fullData?.chapters ?? null,
+    volumes: fullData?.volumes ?? null,
+    status: fullData?.status || null,
+    synopsis: fullData?.synopsis || null,
+    score: fullData?.score ?? null,
+    scoredBy: fullData?.scored_by ?? null,
+    rank: fullData?.rank ?? null,
+    popularity: fullData?.popularity ?? null,
+    members: fullData?.members ?? null,
+    favorites: fullData?.favorites ?? null,
+    aired: extractTextField(fullData?.aired),
+    published: extractTextField(fullData?.published),
+    season: fullData?.season || null,
+    year: fullData?.year ?? null,
+    broadcast: extractTextField(fullData?.broadcast),
+    producers: extractNames(fullData?.producers),
+    licensors: extractNames(fullData?.licensors),
+    studios: extractNames(fullData?.studios),
+    authors: extractNames(fullData?.authors),
+    serializations: extractNames(fullData?.serializations),
+    source: fullData?.source || null,
+    genres: extractNames(fullData?.genres),
+    themes: extractNames(fullData?.themes),
+    demographics: extractNames(fullData?.demographics),
+    duration: fullData?.duration || null,
+    rating: fullData?.rating || null,
+    openings: Array.isArray(fullData?.theme?.openings) ? fullData.theme.openings : [],
+    endings: Array.isArray(fullData?.theme?.endings) ? fullData.theme.endings : [],
+    trailer: fullData?.trailer || null,
+    characters: credits.characters,
+    staff: credits.staff,
+  };
+}
+
+export const fetchJikanDetailSupplement = fetchTenraiDetailSupplement;
+
+const MONTH_SHORT_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
+function formatFuzzyDate(dateObj) {
+  if (!dateObj?.year) return null;
+  const monthName =
+    dateObj.month >= 1 && dateObj.month <= 12
+      ? MONTH_SHORT_NAMES[dateObj.month - 1]
+      : null;
+  if (monthName && dateObj.day) {
+    return `${monthName} ${dateObj.day}, ${dateObj.year}`;
+  }
+  if (monthName) {
+    return `${monthName} ${dateObj.year}`;
+  }
+  return String(dateObj.year);
+}
+
+function formatAniListDateRange(startDate, endDate) {
+  const startStr = formatFuzzyDate(startDate);
+  const endStr = formatFuzzyDate(endDate);
+  if (!startStr) return null;
+  if (!endStr) return `${startStr} to ?`;
+  if (startStr === endStr) return startStr;
+  return `${startStr} to ${endStr}`;
+}
+
+/**
+ * Mengambil banner horizontal resmi, trailer YouTube, serta metadata/karakter/staf
+ * dari AniList GraphQL berdasarkan MAL ID.
+ */
+export async function fetchAniListMediaDetails(malId, mediaType, options = {}) {
+  const numericId = Number(malId);
+  if (!numericId || Number.isNaN(numericId)) return null;
+
+  const query = `
+    query ($idMal: Int, $type: MediaType) {
+      Media(idMal: $idMal, type: $type) {
+        bannerImage
+        trailer {
+          id
+          site
+          thumbnail
+        }
+        title {
+          romaji
+          english
+          native
+        }
+        synonyms
+        format
+        episodes
+        chapters
+        volumes
+        season
+        seasonYear
+        startDate {
+          year
+          month
+          day
+        }
+        endDate {
+          year
+          month
+          day
+        }
+        genres
+        source
+        duration
+        studios {
+          edges {
+            isMain
+            node {
+              name
+            }
+          }
+        }
+        characters(page: 1, perPage: 24, sort: [ROLE, FAVOURITES]) {
+          edges {
+            role
+            node {
+              name {
+                full
+              }
+              image {
+                large
+              }
+            }
+            voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+              name {
+                full
+              }
+              image {
+                large
+              }
+            }
+          }
+        }
+        staff(page: 1, perPage: 20, sort: [RELEVANCE, ID]) {
+          edges {
+            role
+            node {
+              name {
+                full
+              }
+              image {
+                large
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+
+  const reqControl = createDetailRequestSignal(options.signal, 5000);
+  try {
+    const res = await fetch("https://graphql.anilist.co", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        query,
+        variables: {
+          idMal: numericId,
+          type: mediaType === "manga" ? "MANGA" : "ANIME",
+        },
+      }),
+      signal: reqControl.signal,
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json();
+    const media = json?.data?.Media;
+    if (!media) return null;
+
+    const ytId =
+      media.trailer?.site === "youtube" && media.trailer?.id
+        ? media.trailer.id
+        : null;
+
+    const studioEdges = Array.isArray(media.studios?.edges) ? media.studios.edges : [];
+    const mainStudios = studioEdges.filter((e) => e?.isMain && e?.node?.name).map((e) => e.node.name);
+    const allStudios = studioEdges.filter((e) => e?.node?.name).map((e) => e.node.name);
+    const dateRange = formatAniListDateRange(media.startDate, media.endDate);
+
+    const characters = Array.isArray(media.characters?.edges)
+      ? media.characters.edges
+          .filter((edge) => edge?.node?.name?.full)
+          .map((edge) => {
+            const va = Array.isArray(edge.voiceActors) ? edge.voiceActors[0] : null;
+            return {
+              name: edge.node.name.full,
+              role: edge.role ? capitalizeWord(edge.role) : "Supporting",
+              image: edge.node.image?.large || "",
+              voiceActor: va?.name?.full
+                ? {
+                    name: va.name.full,
+                    language: "Japanese",
+                    image: va.image?.large || "",
+                  }
+                : null,
+            };
+          })
+      : [];
+
+    const staff = Array.isArray(media.staff?.edges)
+      ? media.staff.edges
+          .filter((edge) => edge?.node?.name?.full)
+          .map((edge) => ({
+            name: edge.node.name.full,
+            role: edge.role || "-",
+            image: edge.node.image?.large || "",
+          }))
+      : [];
+
+    return {
+      bannerImage: media.bannerImage || null,
+      trailerYoutubeId: ytId,
+      trailerThumbnail:
+        media.trailer?.thumbnail ||
+        (ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null),
+      titleEnglish: media.title?.english || null,
+      titleJapanese: media.title?.native || null,
+      titleSynonyms: Array.isArray(media.synonyms) ? media.synonyms.filter(Boolean) : [],
+      format: formatEnumLabel(media.format),
+      episodes: media.episodes ?? null,
+      chapters: media.chapters ?? null,
+      volumes: media.volumes ?? null,
+      season: media.season ? capitalizeWord(media.season) : null,
+      year: media.seasonYear ?? null,
+      aired: mediaType !== "manga" ? dateRange : null,
+      published: mediaType === "manga" ? dateRange : null,
+      genres: Array.isArray(media.genres) ? media.genres.filter(Boolean) : [],
+      source: formatEnumLabel(media.source),
+      duration: media.duration ? `${media.duration} min` : null,
+      studios: mainStudios.length > 0 ? mainStudios : allStudios,
+      characters,
+      staff,
+    };
+  } catch (err) {
+    if (options.signal?.aborted) {
+      throw err;
+    }
+    return null;
+  } finally {
+    reqControl.cleanup();
+  }
+}
+
+function pickFirstValue(...values) {
+  for (const val of values) {
+    if (val !== undefined && val !== null && val !== "") return val;
+  }
+  return null;
+}
+
+function pickFirstArray(...arrays) {
+  for (const arr of arrays) {
+    if (Array.isArray(arr) && arr.length > 0) return arr;
+  }
+  return [];
+}
+
+/**
+ * Menggabungkan data mentah backend dengan suplemen Tenrai/Jikan & AniList secara berurutan prioritas.
+ */
+export function mergeCatalogDetailSources(backendRaw, jikanSup, anilistSup) {
+  if (!backendRaw) return null;
+
+  const backendTrailerId = extractYoutubeId(backendRaw.trailer);
+  const jikanTrailerId = extractYoutubeId(jikanSup?.trailer);
+  const resolvedTrailer = backendTrailerId
+    ? backendRaw.trailer
+    : jikanTrailerId
+    ? jikanSup.trailer
+    : anilistSup?.trailerYoutubeId
+    ? {
+        title: "Official PV Trailer",
+        youtubeId: anilistSup.trailerYoutubeId,
+        embedUrl: buildTrailerEmbedUrl(anilistSup.trailerYoutubeId),
+        images: anilistSup.trailerThumbnail
+          ? { maximum_image_url: anilistSup.trailerThumbnail }
+          : null,
+        image: anilistSup.trailerThumbnail || null,
+      }
+    : backendRaw.trailer || jikanSup?.trailer || null;
+
+  return {
+    ...backendRaw,
+    synopsis: pickFirstValue(backendRaw.synopsis, jikanSup?.synopsis),
+    status: pickFirstValue(backendRaw.status, jikanSup?.status),
+    score: backendRaw.score ?? jikanSup?.score ?? null,
+    scoredBy: backendRaw.scoredBy ?? backendRaw.scored_by ?? jikanSup?.scoredBy ?? null,
+    rank: backendRaw.rank ?? jikanSup?.rank ?? null,
+    popularity: backendRaw.popularity ?? jikanSup?.popularity ?? null,
+    members: backendRaw.members ?? jikanSup?.members ?? null,
+    favorites: backendRaw.favorites ?? jikanSup?.favorites ?? null,
+    format: pickFirstValue(
+      backendRaw.format,
+      backendRaw.type !== "anime" && backendRaw.type !== "manga" ? backendRaw.type : null,
+      jikanSup?.format,
+      anilistSup?.format
+    ),
+    titleEnglish: pickFirstValue(
+      backendRaw.titleEnglish,
+      backendRaw.title_english,
+      jikanSup?.titleEnglish,
+      anilistSup?.titleEnglish
+    ),
+    titleJapanese: pickFirstValue(
+      backendRaw.titleJapanese,
+      backendRaw.title_japanese,
+      jikanSup?.titleJapanese,
+      anilistSup?.titleJapanese
+    ),
+    titleSynonyms: pickFirstArray(
+      backendRaw.titleSynonyms,
+      backendRaw.title_synonyms,
+      jikanSup?.titleSynonyms,
+      anilistSup?.titleSynonyms
+    ),
+    episodes:
+      backendRaw.episodes ??
+      backendRaw.totalEpisodes ??
+      jikanSup?.episodes ??
+      anilistSup?.episodes ??
+      null,
+    chapters:
+      backendRaw.chapters ??
+      backendRaw.totalChapters ??
+      jikanSup?.chapters ??
+      anilistSup?.chapters ??
+      null,
+    volumes: backendRaw.volumes ?? jikanSup?.volumes ?? anilistSup?.volumes ?? null,
+    aired: pickFirstValue(
+      extractTextField(backendRaw.aired),
+      extractTextField(jikanSup?.aired),
+      anilistSup?.aired
+    ),
+    published: pickFirstValue(
+      extractTextField(backendRaw.published),
+      extractTextField(jikanSup?.published),
+      anilistSup?.published
+    ),
+    season: pickFirstValue(backendRaw.season, jikanSup?.season, anilistSup?.season),
+    year: backendRaw.year ?? jikanSup?.year ?? anilistSup?.year ?? null,
+    broadcast: pickFirstValue(
+      extractTextField(backendRaw.broadcast),
+      extractTextField(jikanSup?.broadcast)
+    ),
+    producers: pickFirstArray(backendRaw.producers, jikanSup?.producers),
+    licensors: pickFirstArray(backendRaw.licensors, jikanSup?.licensors),
+    studios: pickFirstArray(backendRaw.studios, jikanSup?.studios, anilistSup?.studios),
+    authors: pickFirstArray(backendRaw.authors, jikanSup?.authors),
+    serializations: pickFirstArray(backendRaw.serializations, jikanSup?.serializations),
+    source: pickFirstValue(backendRaw.source, jikanSup?.source, anilistSup?.source),
+    genres: pickFirstArray(backendRaw.genres, jikanSup?.genres, anilistSup?.genres),
+    themes: pickFirstArray(backendRaw.themes, jikanSup?.themes),
+    demographics: pickFirstArray(backendRaw.demographics, jikanSup?.demographics),
+    duration: pickFirstValue(backendRaw.duration, jikanSup?.duration, anilistSup?.duration),
+    rating: pickFirstValue(backendRaw.rating, jikanSup?.rating),
+    openings: pickFirstArray(backendRaw.openings, backendRaw.theme?.openings, jikanSup?.openings),
+    endings: pickFirstArray(backendRaw.endings, backendRaw.theme?.endings, jikanSup?.endings),
+    characters: pickFirstArray(backendRaw.characters, anilistSup?.characters, jikanSup?.characters),
+    staff: pickFirstArray(backendRaw.staff, anilistSup?.staff, jikanSup?.staff),
+    trailer: resolvedTrailer,
+  };
+}

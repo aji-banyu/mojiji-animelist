@@ -69,6 +69,20 @@ apiClient.interceptors.response.use(
     return response.data ?? { success: true };
   },
   (error) => {
+    if (
+      axios.isCancel(error) ||
+      error?.code === "ERR_CANCELED" ||
+      error?.name === "CanceledError" ||
+      error?.name === "AbortError"
+    ) {
+      return Promise.reject({
+        success: false,
+        isCanceled: true,
+        name: "AbortError",
+        code: "ERR_CANCELED",
+      });
+    }
+
     const isOffline =
       !error.response ||
       error.code === "ERR_NETWORK" ||
@@ -284,14 +298,16 @@ export async function searchCatalogApi({ q = "", type = "anime", page = 1, limit
  * Detail anime atau manga berdasarkan MAL ID
  * GET /api/catalog/:type/:malId
  */
-export async function getCatalogDetailApi(type, malId) {
+export async function getCatalogDetailApi(type, malId, signal = null) {
   if (USE_MOCK) {
     await simulateNetworkDelay(300);
     if (type === "manga") return mockMangaDetail;
     return mockAnimeDetail;
   }
 
-  return await apiClient.get(`/api/catalog/${type}/${malId}`);
+  return await apiClient.get(`/api/catalog/${type}/${malId}`, {
+    signal: signal || undefined,
+  });
 }
 
 // ============================================================
@@ -371,7 +387,7 @@ export async function addTrackerApi({ type, malId, status = "plan", progress = 0
  * Ubah status tracker
  * PATCH /api/tracker/:id/status
  */
-export async function updateTrackerStatusApi(id, status) {
+export async function updateTrackerStatusApi(id, status, progress = undefined) {
   if (USE_MOCK) {
     await simulateNetworkDelay();
     return {
@@ -380,11 +396,17 @@ export async function updateTrackerStatusApi(id, status) {
         ...mockTrackerUpdateStatus.data,
         id,
         status,
+        ...(typeof progress === "number" ? { progress } : {}),
       },
     };
   }
 
-  return await apiClient.patch(`/api/tracker/${id}/status`, { status });
+  const payload = { status };
+  if (typeof progress === "number") {
+    payload.progress = progress;
+  }
+
+  return await apiClient.patch(`/api/tracker/${id}/status`, payload);
 }
 
 /**

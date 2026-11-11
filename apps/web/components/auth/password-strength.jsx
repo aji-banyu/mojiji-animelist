@@ -15,12 +15,12 @@ export function PasswordStrength({ value }) {
             key={i}
             className={cn(
               "h-1 rounded-full transition-colors duration-200",
-              i <= s ? "bg-[#6B68C6]" : "bg-[#181B25] border border-[#242838]/60"
+              i <= s ? "bg-accent" : "bg-surface-2 border border-border/60"
             )}
           />
         ))}
       </div>
-      <span className="w-12 text-xs text-[#A5AAC0]">{LABEL[s]}</span>
+      <span className="w-12 text-xs text-text-2">{LABEL[s]}</span>
     </div>
   );
 }

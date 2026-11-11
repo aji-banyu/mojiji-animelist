@@ -8,7 +8,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Plus Jakarta Sans", var(--font-jakarta), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   --font-heading: "Bricolage Grotesque", var(--font-bricolage), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-display: "Bricolage Grotesque", var(--font-bricolage), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-jakarta: "Plus Jakarta Sans", system-ui, sans-serif;
@@ -31,16 +31,35 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-border-hover: var(--border-hover);
+  --color-score-bg: var(--score-bg);
+  --color-score-text: var(--score-text);
+  --color-switch-pill: var(--switch-pill-bg);
+  --color-switch-border: var(--switch-pill-border);
+  --color-switch-text: var(--switch-pill-text);
+  --color-tag-soft-bg: var(--tag-soft-bg);
+  --color-tag-soft-text: var(--tag-soft-text);
+  --color-tag-soft-border: var(--tag-soft-border);
+  --color-indicator-active: var(--indicator-active);
+  --color-indicator-inactive: var(--indicator-inactive);
+  --color-indicator-inactive-hover: var(--indicator-inactive-hover);
   --color-destructive: var(--destructive);
+  --color-destructive-hover: var(--destructive-hover);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-border: var(--success-border);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-hover: var(--secondary-hover);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
+  --color-secondary-text: var(--secondary-text);
+  --color-secondary-soft: var(--secondary-soft);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
   --color-primary-hover: var(--primary-hover);
@@ -51,13 +70,51 @@
   --color-bg: var(--bg);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
+  --color-surface-2-hover: var(--surface-2-hover);
   --color-text: var(--text);
   --color-text-2: var(--text-2);
   --color-text-3: var(--text-3);
   --color-primary-soft: var(--primary-soft);
   --color-primary-text: var(--primary-text);
   --color-primary-ring: var(--primary-ring);
+  --color-score-star: var(--score-star);
+  --color-detail-star: var(--detail-star);
+  --color-detail-members: var(--detail-members);
+  --color-media-anime: var(--media-anime);
+  --color-media-manga: var(--media-manga);
   --color-status-drop: var(--st-drop);
+  --color-status-active: var(--st-active);
+  --color-status-done: var(--st-done);
+  --color-status-hold: var(--st-hold);
+  --color-status-plan: var(--st-plan);
+  --color-st-plan-badge: var(--st-plan-badge);
+  --color-st-plan-badge-hover: var(--st-plan-badge-hover);
+  --color-st-plan-soft: var(--st-plan-soft);
+  --color-st-plan-soft-hover: var(--st-plan-soft-hover);
+  --color-st-plan-soft-text: var(--st-plan-soft-text);
+  --color-st-plan-muted: var(--st-plan-muted);
+  --color-st-plan-muted-hover: var(--st-plan-muted-hover);
+  --color-st-hold-badge: var(--st-hold-badge);
+  --color-st-hold-badge-hover: var(--st-hold-badge-hover);
+  --color-st-hold-soft: var(--st-hold-soft);
+  --color-st-hold-soft-hover: var(--st-hold-soft-hover);
+  --color-st-hold-soft-text: var(--st-hold-soft-text);
+  --color-st-hold-muted: var(--st-hold-muted);
+  --color-st-hold-muted-hover: var(--st-hold-muted-hover);
+  --color-st-watching-badge: var(--st-watching-badge);
+  --color-st-watching-badge-hover: var(--st-watching-badge-hover);
+  --color-st-watching-soft: var(--st-watching-soft);
+  --color-st-watching-soft-hover: var(--st-watching-soft-hover);
+  --color-st-watching-soft-text: var(--st-watching-soft-text);
+  --color-st-watching-muted: var(--st-watching-muted);
+  --color-st-watching-muted-hover: var(--st-watching-muted-hover);
+  --color-st-done-badge: var(--st-done-badge);
+  --color-st-done-badge-hover: var(--st-done-badge-hover);
+  --color-st-done-soft: var(--st-done-soft);
+  --color-st-done-soft-hover: var(--st-done-soft-hover);
+  --color-st-done-soft-text: var(--st-done-soft-text);
+  --color-st-done-muted: var(--st-done-muted);
+  --color-st-done-muted-hover: var(--st-done-muted-hover);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -72,31 +129,60 @@
   --font-poppins: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --background: #16171B;
   --foreground: #ECEEF6;
-  --card: #11131A;
+  --card: #1E1F24;
   --card-foreground: #ECEEF6;
-  --popover: #11131A;
+  --popover: #1E1F24;
   --popover-foreground: #ECEEF6;
 
-  /* Mojiji Design System - Tahap 3 */
+  /* Skema Warna Baru Mojiji */
+  --bg: #16171B;
+  --surface: #1E1F24;
+  --surface-2: #27292F;
+  --surface-2-hover: #2E313A;
+  --border: #373A42;
+  --border-hover: #5A5E6B;
+  --input: #373A42;
+  --accent: #6B68C6;
+  --accent-hover: #8582D6;
+  --accent-text: #A9A8D9;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(107, 104, 198, 0.16);
+  --accent-ring: rgba(107, 104, 198, 0.45);
+
   --primary: #6B68C6;
   --primary-hover: #5E5AB8;
   --primary-foreground: #FFFFFF;
   --primary-soft: rgba(107, 104, 198, 0.16);
-  --primary-text: #A9A6F7;
+  --primary-text: #A9A8D9;
   --primary-ring: rgba(107, 104, 198, 0.45);
 
-  --secondary: #3A7BA3;
-  --secondary-hover: #2F6A91;
+  --secondary: #8E639C;
+  --secondary-hover: #7E558B;
   --secondary-foreground: #FFFFFF;
+  --secondary-text: #C4A3D1;
+  --secondary-soft: rgba(196, 163, 209, 0.08);
 
-  --accent: #D9895C;
-  --accent-foreground: #FFFFFF;
+  /* Tag & Chip Lembut (Genre di sebelah rating, dsb) */
+  --tag-soft-bg: rgba(196, 163, 209, 0.12);
+  --tag-soft-border: transparent;
+  --tag-soft-text: #D2B7DE;
 
-  --muted: #181B25;
+  /* Indikator Strip Banner (Pudar & Halus) */
+  --indicator-active: rgba(169, 168, 217, 0.50);
+  --indicator-inactive: rgba(255, 255, 255, 0.09);
+  --indicator-inactive-hover: rgba(255, 255, 255, 0.18);
+
+  --switch-pill-bg: #2A2B3D;
+  --switch-pill-border: #3C3E56;
+  --switch-pill-text: #C4C3E8;
+
+  --muted: #1E1F24;
   --muted-foreground: #A5AAC0;
   --destructive: #EC5D74;
-  --border: #2B2D38;
-  --input: #2B2D38;
+  --destructive-hover: #D94A61;
+  --success: #34D399;
+  --success-soft: rgba(16, 185, 129, 0.14);
+  --success-border: rgba(16, 185, 129, 0.25);
   --ring: rgba(107, 104, 198, 0.45);
   --radius: 0.625rem;
 
@@ -104,19 +190,68 @@
   --sidebar-foreground: #ECEEF6;
   --sidebar-primary: #6B68C6;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #242630;
+  --sidebar-accent: #27292F;
   --sidebar-accent-foreground: #ECEEF6;
-  --sidebar-border: #2B2D38;
+  --sidebar-border: #373A42;
   --sidebar-ring: rgba(107, 104, 198, 0.45);
 
-  /* Token Desain Mojiji Auth & Shell (Tahap 3) */
-  --bg: #16171B;
-  --surface: #1E1F24;
-  --surface-2: #242630;
+  /* Typography & Status Tokens */
   --text: #ECEEF6;
   --text-2: #A5AAC0;
   --text-3: #6D7390;
+  --score-star: #D9895C;
+  --score-bg: #E2A63E;
+  --score-text: #16171B;
+  --detail-star: #FF7A3D;
+  --detail-members: #22A6E8;
+  --media-anime: #0EA5E9;
+  --media-manga: #F97316;
+
+  --st-plan: #98A2C8;
+  --st-active: #3CC4B2;
+  --st-done: #7CC76B;
+  --st-hold: #E2A63E;
   --st-drop: #EC5D74;
+
+  /* Palet Semantik Card & Modal Tracker */
+  --st-plan-badge: #4A7C9B;
+  --st-plan-badge-hover: #598DAD;
+  --st-plan-soft: #233E54;
+  --st-plan-soft-hover: #2A4963;
+  --st-plan-soft-text: #BAE2FC;
+  --st-plan-muted: #7DA5C2;
+  --st-plan-muted-hover: #A3C7E0;
+
+  --st-hold-badge: #A37B3E;
+  --st-hold-badge-hover: #B58A4A;
+  --st-hold-soft: #45361E;
+  --st-hold-soft-hover: #524024;
+  --st-hold-soft-text: #F5DC93;
+  --st-hold-muted: #BFA86B;
+  --st-hold-muted-hover: #DBC488;
+
+  --st-watching-badge: #8E639C;
+  --st-watching-badge-hover: #9B70AA;
+  --st-watching-soft: #3F2C4D;
+  --st-watching-soft-hover: #4B345C;
+  --st-watching-soft-text: #EAD2F7;
+  --st-watching-muted: #AD8EC0;
+  --st-watching-muted-hover: #CBB0DC;
+
+  --st-done-badge: #47876B;
+  --st-done-badge-hover: #55997B;
+  --st-done-soft: #1E4033;
+  --st-done-soft-hover: #244D3D;
+  --st-done-soft-text: #A3EBC9;
+  --st-done-muted: #70AD93;
+  --st-done-muted-hover: #96CCB5;
+
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --brand-google-blue: #4285F4;
+  --brand-google-green: #34A853;
+  --brand-google-yellow: #FBBC05;
+  --brand-google-red: #EA4335;
 }
 
 .dark {
@@ -127,44 +262,251 @@
   --popover: #1E1F24;
   --popover-foreground: #ECEEF6;
 
+  /* Skema Warna Baru Mojiji (Dark Theme) */
+  --bg: #16171B;
+  --surface: #1E1F24;
+  --surface-2: #27292F;
+  --surface-2-hover: #2E313A;
+  --border: #373A42;
+  --border-hover: #5A5E6B;
+  --input: #373A42;
+  --accent: #6B68C6;
+  --accent-hover: #8582D6;
+  --accent-text: #A9A8D9;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(107, 104, 198, 0.16);
+  --accent-ring: rgba(107, 104, 198, 0.45);
+
   --primary: #6B68C6;
   --primary-hover: #5E5AB8;
   --primary-foreground: #FFFFFF;
   --primary-soft: rgba(107, 104, 198, 0.16);
-  --primary-text: #A9A6F7;
+  --primary-text: #A9A8D9;
   --primary-ring: rgba(107, 104, 198, 0.45);
 
-  --secondary: #3A7BA3;
-  --secondary-hover: #2F6A91;
+  --secondary: #8E639C;
+  --secondary-hover: #7E558B;
   --secondary-foreground: #FFFFFF;
+  --secondary-text: #C4A3D1;
+  --secondary-soft: rgba(196, 163, 209, 0.08);
 
-  --accent: #D9895C;
-  --accent-foreground: #FFFFFF;
+  /* Tag & Chip Lembut (Genre di sebelah rating, dsb) */
+  --tag-soft-bg: rgba(196, 163, 209, 0.12);
+  --tag-soft-border: transparent;
+  --tag-soft-text: #D2B7DE;
 
-  --muted: #181B25;
+  /* Indikator Strip Banner (Pudar & Halus) */
+  --indicator-active: rgba(169, 168, 217, 0.50);
+  --indicator-inactive: rgba(255, 255, 255, 0.09);
+  --indicator-inactive-hover: rgba(255, 255, 255, 0.18);
+
+  --switch-pill-bg: #2A2B3D;
+  --switch-pill-border: #3C3E56;
+  --switch-pill-text: #C4C3E8;
+
+  --muted: #1E1F24;
   --muted-foreground: #A5AAC0;
   --destructive: #EC5D74;
-  --border: #2B2D38;
-  --input: #2B2D38;
+  --destructive-hover: #D94A61;
+  --success: #34D399;
+  --success-soft: rgba(16, 185, 129, 0.14);
+  --success-border: rgba(16, 185, 129, 0.25);
   --ring: rgba(107, 104, 198, 0.45);
 
   --sidebar: #1E1F24;
   --sidebar-foreground: #ECEEF6;
   --sidebar-primary: #6B68C6;
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #242630;
+  --sidebar-accent: #27292F;
   --sidebar-accent-foreground: #ECEEF6;
-  --sidebar-border: #2B2D38;
+  --sidebar-border: #373A42;
   --sidebar-ring: rgba(107, 104, 198, 0.45);
 
-  /* Token Desain Mojiji Auth & Shell (Tahap 3 - Dark Theme) */
-  --bg: #16171B;
-  --surface: #1E1F24;
-  --surface-2: #242630;
+  /* Typography & Status Tokens */
   --text: #ECEEF6;
   --text-2: #A5AAC0;
   --text-3: #6D7390;
+  --score-star: #D9895C;
+  --score-bg: #E2A63E;
+  --score-text: #16171B;
+  --detail-star: #FF7A3D;
+  --detail-members: #22A6E8;
+  --media-anime: #0EA5E9;
+  --media-manga: #F97316;
+
+  --st-plan: #98A2C8;
+  --st-active: #3CC4B2;
+  --st-done: #7CC76B;
+  --st-hold: #E2A63E;
   --st-drop: #EC5D74;
+
+  /* Palet Semantik Card & Modal Tracker */
+  --st-plan-badge: #4A7C9B;
+  --st-plan-badge-hover: #598DAD;
+  --st-plan-soft: #233E54;
+  --st-plan-soft-hover: #2A4963;
+  --st-plan-soft-text: #BAE2FC;
+  --st-plan-muted: #7DA5C2;
+  --st-plan-muted-hover: #A3C7E0;
+
+  --st-hold-badge: #A37B3E;
+  --st-hold-badge-hover: #B58A4A;
+  --st-hold-soft: #45361E;
+  --st-hold-soft-hover: #524024;
+  --st-hold-soft-text: #F5DC93;
+  --st-hold-muted: #BFA86B;
+  --st-hold-muted-hover: #DBC488;
+
+  --st-watching-badge: #8E639C;
+  --st-watching-badge-hover: #9B70AA;
+  --st-watching-soft: #3F2C4D;
+  --st-watching-soft-hover: #4B345C;
+  --st-watching-soft-text: #EAD2F7;
+  --st-watching-muted: #AD8EC0;
+  --st-watching-muted-hover: #CBB0DC;
+
+  --st-done-badge: #47876B;
+  --st-done-badge-hover: #55997B;
+  --st-done-soft: #1E4033;
+  --st-done-soft-hover: #244D3D;
+  --st-done-soft-text: #A3EBC9;
+  --st-done-muted: #70AD93;
+  --st-done-muted-hover: #96CCB5;
+
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --brand-google-blue: #4285F4;
+  --brand-google-green: #34A853;
+  --brand-google-yellow: #FBBC05;
+  --brand-google-red: #EA4335;
+}
+
+.light {
+  --background: #F5F6FA;
+  --foreground: #14162A;
+  --card: #FFFFFF;
+  --card-foreground: #14162A;
+  --popover: #FFFFFF;
+  --popover-foreground: #14162A;
+
+  /* Skema Warna Mojiji Light Mode (Adopsi Tahap 1 & 2) */
+  --bg: #F5F6FA;
+  --surface: #FFFFFF;
+  --surface-2: #EEF0F6;
+  --surface-2-hover: #E4E7F0;
+  --border: #DDE0EB;
+  --border-hover: #C5C9D6;
+  --input: #DDE0EB;
+
+  --accent: #6B68C6;
+  --accent-hover: #5E5AB8;
+  --accent-text: #5651E0;
+  --accent-foreground: #FFFFFF;
+  --accent-soft: rgba(107, 104, 198, 0.10);
+  --accent-ring: rgba(107, 104, 198, 0.45);
+
+  --primary: #6B68C6;
+  --primary-hover: #5E5AB8;
+  --primary-foreground: #FFFFFF;
+  --primary-soft: rgba(107, 104, 198, 0.10);
+  --primary-text: #5651E0;
+  --primary-ring: rgba(107, 104, 198, 0.45);
+
+  --secondary: #86589A;
+  --secondary-hover: #7B4F8C;
+  --secondary-foreground: #FFFFFF;
+  --secondary-text: #6E4580;
+  --secondary-soft: rgba(134, 88, 154, 0.07);
+
+  /* Tag & Chip Lembut (Genre di sebelah rating, dsb) */
+  --tag-soft-bg: rgba(134, 88, 154, 0.10);
+  --tag-soft-border: transparent;
+  --tag-soft-text: #764A88;
+
+  /* Indikator Strip Banner (Pudar & Halus) */
+  --indicator-active: rgba(107, 104, 198, 0.55);
+  --indicator-inactive: rgba(20, 22, 42, 0.08);
+  --indicator-inactive-hover: rgba(20, 22, 42, 0.16);
+
+  --switch-pill-bg: #E4E6F0;
+  --switch-pill-border: #D0D3E2;
+  --switch-pill-text: #5651E0;
+
+  --muted: #EEF0F6;
+  --muted-foreground: #4B5070;
+  --destructive: #EC5D74;
+  --destructive-hover: #D94A61;
+  --success: #059669;
+  --success-soft: rgba(16, 185, 129, 0.10);
+  --success-border: rgba(5, 150, 105, 0.25);
+  --ring: rgba(107, 104, 198, 0.45);
+
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #14162A;
+  --sidebar-primary: #6B68C6;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #EEF0F6;
+  --sidebar-accent-foreground: #14162A;
+  --sidebar-border: #DDE0EB;
+  --sidebar-ring: rgba(107, 104, 198, 0.45);
+
+  /* Typography & Status Tokens */
+  --text: #14162A;
+  --text-2: #4B5070;
+  --text-3: #7A809C;
+  --score-star: #D9895C;
+  --score-bg: #E2A63E;
+  --score-text: #16171B;
+  --detail-star: #FF7A3D;
+  --detail-members: #22A6E8;
+  --media-anime: #0284C7;
+  --media-manga: #EA580C;
+
+  --st-plan: #7E8AB5;
+  --st-active: #20A593;
+  --st-done: #5EA84D;
+  --st-hold: #D49022;
+  --st-drop: #E03E58;
+
+  /* Palet Semantik Card & Modal Tracker */
+  --st-plan-badge: #4A7C9B;
+  --st-plan-badge-hover: #3E6A85;
+  --st-plan-soft: #D9ECFA;
+  --st-plan-soft-hover: #CCE4F7;
+  --st-plan-soft-text: #1B4F72;
+  --st-plan-muted: #4B708A;
+  --st-plan-muted-hover: #2F536B;
+
+  --st-hold-badge: #A37B3E;
+  --st-hold-badge-hover: #8C6833;
+  --st-hold-soft: #F7E8C8;
+  --st-hold-soft-hover: #F2DFB6;
+  --st-hold-soft-text: #6E4B16;
+  --st-hold-muted: #7A5E2B;
+  --st-hold-muted-hover: #57411B;
+
+  --st-watching-badge: #8E639C;
+  --st-watching-badge-hover: #7C538A;
+  --st-watching-soft: #EADCF2;
+  --st-watching-soft-hover: #E1CEEE;
+  --st-watching-soft-text: #4E2C5E;
+  --st-watching-muted: #684778;
+  --st-watching-muted-hover: #4A2F57;
+
+  --st-done-badge: #47876B;
+  --st-done-badge-hover: #3B735B;
+  --st-done-soft: #D6F0E4;
+  --st-done-soft-hover: #C6EAD9;
+  --st-done-soft-text: #17543B;
+  --st-done-muted: #356B54;
+  --st-done-muted-hover: #214D3A;
+
+  --scrollbar-thumb: rgba(20, 22, 42, 0.18);
+  --scrollbar-thumb-hover: rgba(20, 22, 42, 0.32);
+  --brand-google-blue: #4285F4;
+  --brand-google-green: #34A853;
+  --brand-google-yellow: #FBBC05;
+  --brand-google-red: #EA4335;
 }
 
 @layer base {
@@ -259,10 +601,10 @@ div[data-nextjs-dev-tools-indicator] {
   }
 }
 
-/* Custom Sleek Dark Scrollbar */
+/* Custom Sleek Scrollbar */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -275,12 +617,12 @@ div[data-nextjs-dev-tools-indicator] {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--scrollbar-thumb);
   border-radius: 9999px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
+  background: var(--scrollbar-thumb-hover);
 }
 
 /* Animation untuk Poster Collage Auth (Tahap 3) */

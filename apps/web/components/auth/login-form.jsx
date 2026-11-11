@@ -3,13 +3,15 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Info, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { loginApi } from "@/lib/api";
 import useAuthStore from "@/store/authStore";
 import { validateEmail } from "@/lib/validate";
+
+const REMEMBER_EMAIL_KEY = "mojiji_remember_email";
 
 export function LoginForm() {
   const router = useRouter();
@@ -20,18 +22,31 @@ export function LoginForm() {
   const [remember, setRemember] = useState(true);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Muat email tersimpan setelah mount untuk mencegah mismatch hidrasi
+  useEffect(() => {
+    try {
+      const savedEmail = window.localStorage.getItem(REMEMBER_EMAIL_KEY);
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRemember(true);
+      }
+    } catch { }
+  }, []);
 
   // Jika sudah login, jangan izinkan buka form login -> alihkan ke /home
   useEffect(() => {
     if (user) {
-      router.replace("/home");
+      router.replace("/home/");
     }
   }, [user, router]);
 
   async function onSubmit(e) {
     e.preventDefault();
     setFormError("");
+    setInfoMessage("");
 
     const next = {
       email: validateEmail(email) || undefined,
@@ -42,15 +57,23 @@ export function LoginForm() {
 
     setLoading(true);
     try {
+      const trimmedEmail = email.trim();
       const result = await loginApi({
-        email: email.trim(),
+        email: trimmedEmail,
         password,
       });
 
       if (result.success) {
+        try {
+          if (remember) {
+            window.localStorage.setItem(REMEMBER_EMAIL_KEY, trimmedEmail);
+          } else {
+            window.localStorage.removeItem(REMEMBER_EMAIL_KEY);
+          }
+        } catch { }
         const userData = result.data?.user || result.data;
         useAuthStore.getState().login(userData);
-        router.push("/home");
+        router.push("/home/");
       }
     } catch (err) {
       let errorMessage = "Email atau password salah. Coba lagi.";
@@ -84,10 +107,30 @@ export function LoginForm() {
         {formError && (
           <div
             role="alert"
-            className="flex items-start gap-2 rounded-md bg-[#EC5D74]/15 border border-[#EC5D74]/25 p-3 text-sm text-[#EC5D74]"
+            className="flex items-start gap-2 rounded-md bg-destructive/15 border border-destructive/25 p-3 text-sm text-destructive"
           >
             <AlertCircle className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
             <span>{formError}</span>
+          </div>
+        )}
+        {infoMessage && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-start justify-between gap-2 rounded-md bg-accent-soft border border-accent/30 p-3 text-sm text-text"
+          >
+            <div className="flex items-start gap-2">
+              <Info className="mt-0.5 size-4 shrink-0 text-accent-text" strokeWidth={1.75} />
+              <span>{infoMessage}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setInfoMessage("")}
+              aria-label="Tutup pemberitahuan"
+              className="rounded p-0.5 text-text-2 hover:text-text cursor-pointer"
+            >
+              <X className="size-3.5" />
+            </button>
           </div>
         )}
         <Input
@@ -121,27 +164,29 @@ export function LoginForm() {
               checked={remember}
               onChange={(e) => setRemember(e.target.checked)}
             />
-            <Link
-              href="/forgot-password"
-              onClick={(e) => {
-                e.preventDefault();
-                alert("Fitur lupa password sedang dalam pengembangan.");
+            <button
+              type="button"
+              onClick={() => {
+                setFormError("");
+                setInfoMessage(
+                  "Fitur reset password belum tersedia saat ini. Silakan hubungi administrator atau buat akun baru."
+                );
               }}
-              className="inline-flex min-h-11 items-center text-sm font-semibold text-[#A9A6F7] hover:underline"
+              className="inline-flex min-h-11 items-center text-sm font-semibold text-accent-text hover:underline cursor-pointer"
             >
               Lupa password?
-            </Link>
+            </button>
           </div>
         </div>
         <Button type="submit" loading={loading} className="w-full">
           Masuk
         </Button>
       </form>
-      <p className="mt-6 text-center text-sm text-[#A5AAC0]">
+      <p className="mt-6 text-center text-sm text-text-2">
         Belum punya akun?{" "}
         <Link
-          href="/register"
-          className="inline-flex min-h-11 items-center font-semibold text-[#A9A6F7] hover:underline cursor-pointer"
+          href="/register/"
+          className="inline-flex min-h-11 items-center font-semibold text-accent-text hover:underline cursor-pointer"
         >
           Daftar
         </Link>

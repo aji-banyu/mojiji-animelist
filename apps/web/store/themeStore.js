@@ -1,62 +1,55 @@
 import { create } from "zustand";
 
-/**
- * Theme Store — Mengatur tema tampilan (terang / gelap).
- *
- * Tema disimpan di localStorage agar preferensi pengguna bertahan
- * meskipun halaman di-refresh. Nilai default mengikuti preferensi
- * sistem operasi pengguna.
- */
-const useThemeStore = create((set) => ({
-  // --- State ---
-  // "light" | "dark"
-  theme:
-    typeof window !== "undefined" &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches
-      ? "dark"
-      : "light",
+export const THEME_STORAGE_KEY = "mojiji_theme";
 
-  // --- Actions ---
-  toggleTheme: () =>
-    set((state) => {
-      const next = state.theme === "light" ? "dark" : "light";
+function resolveInitialTheme() {
+  if (typeof window === "undefined") return "dark";
+  try {
+    return window.localStorage.getItem(THEME_STORAGE_KEY) === "light"
+      ? "light"
+      : "dark";
+  } catch {
+    return "dark";
+  }
+}
 
-      // Simpan preferensi ke localStorage
-      if (typeof window !== "undefined") {
-        localStorage.setItem("mojiji-theme", next);
-      }
+function applyThemeToDocument(theme) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  if (theme === "light") {
+    root.classList.remove("dark");
+    root.classList.add("light");
+  } else {
+    root.classList.remove("light");
+    root.classList.add("dark");
+  }
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+  } catch {
+    // Abaikan error penyimpanan jika browser membatasi localStorage
+  }
+}
 
-      return { theme: next };
-    }),
+const useThemeStore = create((set, get) => ({
+  theme: "dark",
 
-  setTheme: (value) => {
-    if (value !== "light" && value !== "dark") return;
-
-    if (typeof window !== "undefined") {
-      localStorage.setItem("mojiji-theme", value);
-    }
-
-    set({ theme: value });
+  toggleTheme: () => {
+    const next = get().theme === "dark" ? "light" : "dark";
+    applyThemeToDocument(next);
+    set({ theme: next });
   },
 
-  /**
-   * Panggil sekali saat aplikasi dimuat (misal di layout.js)
-   * untuk memuat preferensi tema dari localStorage.
-   */
-  initTheme: () =>
-    set(() => {
-      if (typeof window === "undefined") return { theme: "light" };
+  setTheme: (value) => {
+    const next = value === "light" ? "light" : "dark";
+    applyThemeToDocument(next);
+    set({ theme: next });
+  },
 
-      const saved = localStorage.getItem("mojiji-theme");
-      if (saved === "light" || saved === "dark") return { theme: saved };
-
-      // Fallback ke preferensi sistem
-      const prefersDark = window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches;
-      return { theme: prefersDark ? "dark" : "light" };
-    }),
+  initTheme: () => {
+    const resolved = resolveInitialTheme();
+    applyThemeToDocument(resolved);
+    set({ theme: resolved });
+  },
 }));
 
 export default useThemeStore;
-

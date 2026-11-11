@@ -19,7 +19,7 @@ export default function PrimaryButton({
       onClick={onClick}
       className={`group relative w-full ${
         compact ? "h-[50px]" : "h-[56px] sm:h-[60px]"
-      } rounded-xl bg-[#DC2626] px-6 text-sm sm:text-base font-bold text-white shadow-md shadow-red-950/40 transition-all duration-200 hover:bg-[#B91C1C] hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60 cursor-pointer flex items-center justify-center text-center gap-2.5 ${className}`}
+      } rounded-xl bg-accent px-6 text-sm sm:text-base font-bold text-white shadow-md shadow-accent/25 transition-all duration-200 hover:bg-primary-hover hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-60 cursor-pointer flex items-center justify-center text-center gap-2.5 ${className}`}
     >
       {isLoading ? (
         <>
