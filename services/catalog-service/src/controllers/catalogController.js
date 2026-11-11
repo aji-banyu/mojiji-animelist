@@ -232,8 +232,11 @@ async function getDetail(req, res) {
       });
     }
 
-    // 4. Normalisasi data response ke kontrak Mojiji
-    const normalizedItem = normalizeItem(rawResponse.data, type);
+    // 4. Normalisasi data response ke kontrak Mojiji (termasuk metadata penuh, characters & staff)
+    const normalizedItem = normalizeItem(rawResponse.data, type, {
+      characters: rawResponse.characters,
+      staff: rawResponse.staff,
+    });
     const responsePayload = {
       success: true,
       data: normalizedItem,

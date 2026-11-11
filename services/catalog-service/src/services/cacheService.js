@@ -67,7 +67,7 @@ function generateSearchKey(type, query, page, limit) {
  * Membuat kunci cache terstandarisasi untuk detail katalog
  */
 function generateDetailKey(type, malId) {
-  return `catalog:detail:${type}:${malId}`;
+  return `catalog:detail:v2:${type}:${malId}`;
 }
 
 module.exports = {
