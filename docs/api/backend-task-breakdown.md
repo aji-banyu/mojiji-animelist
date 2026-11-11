@@ -1,3 +1,9 @@
+---
+title: "Rincian Tugas Backend & Standar Respons (MJ-026)"
+sidebar_position: 4
+tags: [backend, microservices, task-breakdown, architecture, docusaurus]
+---
+
 # Rincian Tugas Backend dan Standar Respons — Mojiji AnimeList
 
 ## 1. Informasi Dokumen
@@ -18,6 +24,48 @@ Dokumen ini merinci pekerjaan Backend untuk MVP dan menetapkan standar respons y
 Dokumen ini menjelaskan standar kerja yang telah disepakati dan rencana tugas. Dokumen ini **tidak menyatakan bahwa seluruh endpoint telah selesai diimplementasikan atau diuji**.
 
 ## 3. Layanan dan Tanggung Jawab
+
+```mermaid
+flowchart TB
+    subgraph CLIENT ["Klien / Frontend"]
+        UI["Next.js Web Client (:3000)"]
+    end
+
+    subgraph EDGE ["Edge / Reverse Proxy"]
+        Caddy["Caddy Server (:80 / :443)"]
+    end
+
+    subgraph GATEWAY ["API Gateway (:4000)"]
+        GW["Express Proxy + Auth Verifier"]
+    end
+
+    subgraph SERVICES ["Microservices Backend"]
+        UserSvc["User Service (:4001)<br/>Auth, JWT, Register, Login, Me"]
+        CatSvc["Catalog Service (:4002)<br/>Tenrai Client, Redis Cache"]
+        TrackSvc["Tracker Service (:4003)<br/>Tracker CRUD, Progress +1"]
+    end
+
+    subgraph STORAGE ["Storage & Cache"]
+        PG[("PostgreSQL (Supabase)")]
+        Redis[("Redis (Upstash)")]
+        Tenrai["Tenrai API v1 (External)"]
+    end
+
+    UI -->|HTTPS| Caddy
+    Caddy -->|/api/*| GW
+    GW -->|/api/auth & /api/users| UserSvc
+    GW -->|/api/catalog| CatSvc
+    GW -->|/api/tracker| TrackSvc
+    UserSvc --> PG
+    CatSvc --> Redis
+    CatSvc --> Tenrai
+    TrackSvc --> PG
+    TrackSvc -.->|/internal/catalog| CatSvc
+```
+
+> [!NOTE]
+> Dokumen ini merinci pembagian tugas teknis microservices backend dan standar kontrak respons bersama bagi tim Backend, Frontend, dan QA untuk memastikan interoperabilitas sistem yang kokoh.
+
 
 | Layanan | Port lokal default | Tanggung jawab |
 |---|---:|---|
