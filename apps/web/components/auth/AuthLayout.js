@@ -24,11 +24,11 @@ const animePosters = [
 
 export default function AuthLayout({ children }) {
   return (
-    <div className="min-h-screen w-full flex bg-[#0B1220] text-white [font-family:var(--font-inter)] selection:bg-[#FF2D2D] selection:text-white">
+    <div className="min-h-screen w-full flex bg-bg text-text [font-family:var(--font-inter)] selection:bg-accent/30 selection:text-text">
       {/* ========================================================================= */}
       {/* 1. PANEL KIRI: VISUAL & BRANDING (±42% Lebar pada Layar Desktop)          */}
       {/* ========================================================================= */}
-      <aside className="hidden lg:flex lg:w-[42%] relative overflow-hidden flex-col justify-between p-12 xl:p-16 select-none bg-[#080D18]">
+      <aside className="hidden lg:flex lg:w-[42%] relative overflow-hidden flex-col justify-between p-12 xl:p-16 select-none bg-surface">
         {/* Kolase Poster Anime Diagonal Miring (-13deg) */}
         <div
           className="absolute -inset-24 flex items-center justify-center pointer-events-none transform -rotate-[13deg] scale-110 xl:scale-125 opacity-40"
@@ -38,7 +38,7 @@ export default function AuthLayout({ children }) {
             {animePosters.map((poster, idx) => (
               <div
                 key={idx}
-                className="group relative aspect-[2/3] w-full overflow-hidden rounded-2xl border border-white/10 bg-neutral-900 shadow-2xl transition-transform"
+                className="group relative aspect-[2/3] w-full overflow-hidden rounded-2xl border border-border bg-surface-2 shadow-2xl transition-transform"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -48,26 +48,26 @@ export default function AuthLayout({ children }) {
                   className="h-full w-full object-cover"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-bg/80 via-bg/20 to-transparent" />
               </div>
             ))}
           </div>
         </div>
 
-        {/* Lapisan Gradient Overlay Sinematik: Merah Marun Atas-Kiri & Navy Gelap Pekat di Bawah */}
+        {/* Lapisan Gradient Overlay Sinematik */}
         <div
-          className="absolute inset-0 pointer-events-none bg-gradient-to-br from-[#7f1d1d]/75 via-[#0B1220]/70 to-[#0B1220]"
+          className="absolute inset-0 pointer-events-none bg-gradient-to-br from-accent/25 via-bg/70 to-bg"
           aria-hidden="true"
         />
         <div
-          className="absolute inset-x-0 bottom-0 h-96 pointer-events-none bg-gradient-to-t from-[#0B1220] via-[#0B1220]/90 to-transparent"
+          className="absolute inset-x-0 bottom-0 h-96 pointer-events-none bg-gradient-to-t from-bg via-bg/90 to-transparent"
           aria-hidden="true"
         />
 
         {/* Logo Mojiji di Pojok Kiri Atas */}
         <div className="relative z-10">
           <Link
-            href="/home"
+            href="/login/"
             className="inline-flex items-center gap-3 transition-opacity hover:opacity-90"
           >
             <Image
@@ -78,7 +78,7 @@ export default function AuthLayout({ children }) {
               className="h-7 w-auto drop-shadow-md"
               priority
             />
-            <span className="text-2xl font-black tracking-tight text-white drop-shadow">
+            <span className="text-2xl font-black tracking-tight text-text drop-shadow">
               Mojiji
             </span>
           </Link>
@@ -86,10 +86,10 @@ export default function AuthLayout({ children }) {
 
         {/* Heading & Deskripsi di Bagian Bawah Panel */}
         <div className="relative z-10 space-y-4 max-w-[480px]">
-          <h1 className="text-4xl xl:text-5xl font-black tracking-tight text-white leading-[1.12] drop-shadow-xl">
+          <h1 className="text-4xl xl:text-5xl font-black tracking-tight text-text leading-[1.12] drop-shadow-xl">
             Selamat Datang <br /> di Mojiji!
           </h1>
-          <p className="text-base xl:text-lg text-slate-300 leading-relaxed drop-shadow">
+          <p className="text-base xl:text-lg text-text-2 leading-relaxed drop-shadow">
             Tempat terbaik untuk melacak anime dan manga subtitle Indonesia favoritmu dengan cepat dan nyaman.
           </p>
         </div>
@@ -98,10 +98,10 @@ export default function AuthLayout({ children }) {
       {/* ========================================================================= */}
       {/* 2. PANEL KANAN: FORM AUTENTIKASI (±58% Lebar pada Layar Desktop)          */}
       {/* ========================================================================= */}
-      <section className="w-full lg:w-[58%] min-h-screen bg-[#0B1220] flex flex-col justify-center px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24 py-12 relative overflow-y-auto">
+      <section className="w-full lg:w-[58%] min-h-screen bg-bg flex flex-col justify-center px-6 sm:px-12 md:px-16 lg:px-20 xl:px-24 py-12 relative overflow-y-auto">
         {/* Logo Khusus Mobile / Tablet (<1024px) */}
         <div className="lg:hidden mb-8 flex justify-center">
-          <Link href="/home" className="inline-flex items-center gap-3">
+          <Link href="/login/" className="inline-flex items-center gap-3">
             <Image
               src="/images/logo_mojiji.png"
               alt="Logo Mojiji"
@@ -110,7 +110,7 @@ export default function AuthLayout({ children }) {
               className="h-7 w-auto"
               priority
             />
-            <span className="text-2xl font-black tracking-tight text-white">
+            <span className="text-2xl font-black tracking-tight text-text">
               Mojiji
             </span>
           </Link>

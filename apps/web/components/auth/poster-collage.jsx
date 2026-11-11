@@ -57,7 +57,7 @@ function Tile({ title, image }) {
   const [bad, setBad] = useState(false);
 
   return (
-    <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-[#2B2D38] bg-[#1E1F24] shadow-md group">
+    <div className="relative aspect-[2/3] overflow-hidden rounded-xl border border-border bg-surface shadow-md group">
       {!bad && (
         /* eslint-disable-next-line @next/next/no-img-element */
         <img
@@ -69,9 +69,9 @@ function Tile({ title, image }) {
           className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
       )}
-      {/* Overlay gradien halus agar teks terbaca jelas dan selaras dengan background #16171B */}
-      <div className="absolute inset-0 bg-gradient-to-t from-[#16171B]/90 via-[#16171B]/25 to-transparent pointer-events-none" />
-      <span className="absolute inset-x-3 bottom-3 font-heading text-xs font-semibold leading-tight text-white/95 drop-shadow">
+      {/* Overlay gradien halus agar teks terbaca jelas dan selaras dengan background tema */}
+      <div className="absolute inset-0 bg-gradient-to-t from-bg/90 via-bg/25 to-transparent pointer-events-none" />
+      <span className="absolute inset-x-3 bottom-3 font-heading text-xs font-semibold leading-tight text-text drop-shadow">
         {title}
       </span>
     </div>

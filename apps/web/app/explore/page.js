@@ -1,319 +1,563 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { Star, Film, BookOpen, Sparkles, Filter, SearchX, RotateCcw } from "lucide-react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  Suspense,
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { SearchX, RotateCcw, Loader2 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
+import CatalogCard from "@/components/CatalogCard";
+import ExploreFilterSidebar from "@/components/ExploreFilterSidebar";
+import ExploreToolbar from "@/components/ExploreToolbar";
+import Pagination from "@/components/ui/Pagination";
+import SegmentedSwitch from "@/components/ui/SegmentedSwitch";
+import Tag from "@/components/ui/Tag";
+import { Button } from "@/components/ui/button";
+import { fetchExploreCatalog } from "@/lib/homeData";
+import useFilterStore, { buildExploreCacheKey } from "@/store/filterStore";
 
-const EXPLORE_ITEMS = [
-  {
-    id: 20,
-    type: "anime",
-    title: "Naruto",
-    japanese: "NARUTO -ナルト-",
-    score: 8.0,
-    episodes: "220 Eps",
-    genres: ["Action", "Adventure", "Fantasy"],
-    status: "Finished Airing",
-    image: "https://cdn.myanimelist.net/images/anime/13/17405.jpg",
-    highlight: "Shounen Klasik Populer",
-  },
-  {
-    id: 54492,
-    type: "anime",
-    title: "Kusuriya no Hitorigoto",
-    japanese: "薬屋のひとりごと",
-    score: 8.9,
-    episodes: "24 Eps",
-    genres: ["Drama", "Mystery", "Historical"],
-    status: "Finished Airing",
-    image: "https://cdn.myanimelist.net/images/anime/1708/138033.jpg",
-    highlight: "Top Rated Season",
-  },
-  {
-    id: 1,
-    type: "manga",
-    title: "Monster",
-    japanese: "MONSTER",
-    score: 9.1,
-    episodes: "162 Ch",
-    genres: ["Drama", "Mystery", "Psychological"],
-    status: "Finished",
-    image: "https://cdn.myanimelist.net/images/anime/10/18740.jpg",
-    highlight: "Masterpiece Seinen",
-  },
-  {
-    id: 16498,
-    type: "anime",
-    title: "Attack on Titan",
-    japanese: "進撃の巨人",
-    score: 8.5,
-    episodes: "25 Eps",
-    genres: ["Action", "Drama", "Suspense"],
-    status: "Finished Airing",
-    image: "https://cdn.myanimelist.net/images/anime/10/47347.jpg",
-    highlight: "Aksi Fenomenal",
-  },
-  {
-    id: 52991,
-    type: "anime",
-    title: "Sousou no Frieren",
-    japanese: "葬送のフリーレン",
-    score: 9.3,
-    episodes: "28 Eps",
-    genres: ["Adventure", "Drama", "Fantasy"],
-    status: "Finished Airing",
-    image: "https://cdn.myanimelist.net/images/anime/1015/138075.jpg",
-    highlight: "Peringkat #1 MAL",
-  },
-  {
-    id: 40748,
-    type: "anime",
-    title: "Jujutsu Kaisen",
-    japanese: "呪術廻戦",
-    score: 8.6,
-    episodes: "24 Eps",
-    genres: ["Action", "Fantasy", "Supernatural"],
-    status: "Finished Airing",
-    image: "https://cdn.myanimelist.net/images/anime/1171/109222.jpg",
-    highlight: "Aksi Supernatural",
-  },
-  {
-    id: 38000,
-    type: "anime",
-    title: "Demon Slayer: Kimetsu no Yaiba",
-    japanese: "鬼滅の刃",
-    score: 8.5,
-    episodes: "26 Eps",
-    genres: ["Action", "Fantasy", "Historical"],
-    status: "Finished Airing",
-    image: "https://cdn.myanimelist.net/images/anime/1286/99889.jpg",
-    highlight: "Visual Ufotable",
-  },
-  {
-    id: 21,
-    type: "anime",
-    title: "One Piece",
-    japanese: "ONE PIECE",
-    score: 8.7,
-    episodes: "1100+ Eps",
-    genres: ["Action", "Adventure", "Fantasy"],
-    status: "Currently Airing",
-    image: "https://cdn.myanimelist.net/images/anime/6/73245.jpg",
-    highlight: "Petualangan Legendaris",
-  },
-  {
-    id: 2,
-    type: "manga",
-    title: "Berserk",
-    japanese: "ベルセルク",
-    score: 9.5,
-    episodes: "364 Ch",
-    genres: ["Action", "Adventure", "Dark Fantasy"],
-    status: "On Hiatus",
-    image: "https://cdn.myanimelist.net/images/manga/1/157897.jpg",
-    highlight: "Legenda Dark Fantasy",
-  },
-  {
-    id: 11,
-    type: "manga",
-    title: "Chainsaw Man",
-    japanese: "チェンソーマン",
-    score: 8.7,
-    episodes: "160+ Ch",
-    genres: ["Action", "Supernatural", "Gore"],
-    status: "Publishing",
-    image: "https://cdn.myanimelist.net/images/anime/1806/126216.jpg",
-    highlight: "Modern Shounen Hit",
-  },
+const ALL_GENRES = [
+  "Action",
+  "Adventure",
+  "Comedy",
+  "Drama",
+  "Fantasy",
+  "Historical",
+  "Horror",
+  "Mystery",
+  "Psychological",
+  "Romance",
+  "Sci-Fi",
+  "Slice of Life",
+  "Sports",
+  "Supernatural",
+  "Thriller",
 ];
 
-const GENRES = ["All", "Action", "Adventure", "Fantasy", "Drama", "Mystery", "Supernatural"];
+const ALL_GENRE_LOWER_MAP = new Map(
+  ALL_GENRES.map((genre) => [genre.toLowerCase(), genre])
+);
+ALL_GENRE_LOWER_MAP.set("suspense", "Thriller");
 
-export default function ExplorePage() {
-  const [selectedType, setSelectedType] = useState("all"); // "all" | "anime" | "manga"
-  const [selectedGenre, setSelectedGenre] = useState("All");
+function parseGenreParam(rawGenre) {
+  if (!rawGenre) return [];
+  const seen = new Set();
+  const parsed = [];
+  for (const token of String(rawGenre).split(",")) {
+    const matched = ALL_GENRE_LOWER_MAP.get(token.trim().toLowerCase());
+    if (matched && !seen.has(matched)) {
+      seen.add(matched);
+      parsed.push(matched);
+    }
+  }
+  return parsed;
+}
 
-  const filteredItems = EXPLORE_ITEMS.filter((item) => {
-    const matchType = selectedType === "all" || item.type === selectedType;
-    const matchGenre =
-      selectedGenre === "All" || item.genres.includes(selectedGenre);
-    return matchType && matchGenre;
+function buildExploreUrl({ q = "", type = "all", genres = [] } = {}) {
+  const params = new URLSearchParams();
+  const trimmedQ = String(q || "").trim();
+  if (trimmedQ) params.set("q", trimmedQ);
+  if (type === "anime" || type === "manga") params.set("type", type);
+  if (Array.isArray(genres) && genres.length > 0) {
+    params.set("genre", genres.join(","));
+  }
+  const qs = params.toString();
+  return qs ? `/explore/?${qs}` : "/explore/";
+}
+
+const TYPE_OPTIONS = [
+  { id: "all", label: "Semua" },
+  { id: "anime", label: "Anime" },
+  { id: "manga", label: "Manga" },
+];
+
+const FORMAT_OPTIONS_ALL = [
+  "Semua",
+  "TV",
+  "Movie",
+  "OVA",
+  "ONA",
+  "Special",
+  "Manga",
+  "Manhwa",
+  "Light Novel",
+];
+const FORMAT_OPTIONS_ANIME = ["Semua", "TV", "Movie", "OVA", "ONA", "Special"];
+const FORMAT_OPTIONS_MANGA = ["Semua", "Manga", "Manhwa", "Light Novel"];
+
+const SORT_OPTIONS = [
+  { value: "popularity", label: "Popularitas" },
+  { value: "newest", label: "Terbaru" },
+  { value: "rating", label: "Rating" },
+];
+
+function ExploreContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const qParam = searchParams.get("q") || "";
+  const typeParam = searchParams.get("type") || "";
+  const genreParam = searchParams.get("genre") || "";
+
+  const getExploreCatalogCache = useFilterStore(
+    (state) => state.getExploreCatalogCache
+  );
+  const setExploreCatalogCache = useFilterStore(
+    (state) => state.setExploreCatalogCache
+  );
+
+  // State Filter Sidebar
+  const [selectedType, setSelectedType] = useState(() => {
+    if (typeParam === "anime" || typeParam === "manga") return typeParam;
+    return "all";
   });
+  const [selectedGenres, setSelectedGenres] = useState(() =>
+    parseGenreParam(genreParam)
+  );
+  const [selectedFormat, setSelectedFormat] = useState("Semua");
+  const [genreSearch, setGenreSearch] = useState("");
+
+  // State Pencarian & Sorting
+  const [searchQuery, setSearchQuery] = useState(qParam);
+  const [sortBy, setSortBy] = useState("popularity");
+
+  // State Data & Loading dari Tenrai API
+  const [catalogItems, setCatalogItems] = useState([]);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // State Mobile Sidebar
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Sinkronisasi saat q parameter dari URL berubah
+  useEffect(() => {
+    setSearchQuery(qParam);
+    setCurrentPage(1);
+  }, [qParam]);
+
+  // Sinkronisasi saat type parameter dari URL berubah (mis. navigasi Kembali / Navbar)
+  const prevTypeParamRef = useRef(typeParam);
+  useEffect(() => {
+    if (prevTypeParamRef.current === typeParam) return;
+    prevTypeParamRef.current = typeParam;
+    const nextType =
+      typeParam === "anime" || typeParam === "manga" ? typeParam : "all";
+    setSelectedType(nextType);
+    setCurrentPage(1);
+  }, [typeParam]);
+
+  // Sinkronisasi saat genre parameter dari URL berubah (mis. klik tag genre dari halaman Detail)
+  const prevGenreParamRef = useRef(genreParam);
+  useEffect(() => {
+    if (prevGenreParamRef.current === genreParam) return;
+    prevGenreParamRef.current = genreParam;
+    setSelectedGenres(parseGenreParam(genreParam));
+    setCurrentPage(1);
+  }, [genreParam]);
+
+  // Ambil data katalog dengan cache store TTL 5 menit sebelum memanggil Tenrai API
+  useEffect(() => {
+    let isMounted = true;
+    const trimmedQuery = searchQuery.trim();
+    const cacheKey = buildExploreCacheKey({
+      type: selectedType,
+      query: trimmedQuery,
+      genres: selectedGenres,
+      format: selectedFormat,
+      sortBy,
+      page: currentPage,
+    });
+
+    const cached = getExploreCatalogCache(cacheKey);
+    if (cached) {
+      setCatalogItems(Array.isArray(cached.items) ? cached.items : []);
+      setTotalPages(Math.max(1, Number(cached.pagination?.totalPages) || 1));
+      setIsLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsLoading(true);
+
+    const loadCatalogData = async () => {
+      try {
+        const res = await fetchExploreCatalog({
+          type: selectedType,
+          query: trimmedQuery,
+          genres: selectedGenres,
+          format: selectedFormat,
+          sortBy,
+          page: currentPage,
+          limit: 30,
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) return;
+
+        const nextItems = Array.isArray(res) ? res : res?.items || [];
+        const nextPagination = Array.isArray(res)
+          ? { currentPage, totalPages: 1, hasNextPage: false }
+          : res?.pagination || { currentPage, totalPages: 1, hasNextPage: false };
+
+        setExploreCatalogCache(cacheKey, {
+          items: nextItems,
+          pagination: nextPagination,
+        });
+
+        if (isMounted) {
+          setCatalogItems(nextItems);
+          setTotalPages(Math.max(1, Number(nextPagination.totalPages) || 1));
+        }
+      } catch (err) {
+        if (err?.name === "AbortError" || controller.signal.aborted) {
+          return;
+        }
+        if (isMounted) {
+          setCatalogItems([]);
+          setTotalPages(1);
+        }
+      } finally {
+        if (isMounted && !controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    const delayMs = trimmedQuery && trimmedQuery !== qParam ? 350 : 0;
+    const timer = setTimeout(() => {
+      loadCatalogData();
+    }, delayMs);
+
+    return () => {
+      isMounted = false;
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [
+    searchQuery,
+    qParam,
+    selectedType,
+    selectedGenres,
+    selectedFormat,
+    sortBy,
+    currentPage,
+    getExploreCatalogCache,
+    setExploreCatalogCache,
+  ]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    router.push(
+      buildExploreUrl({
+        q: "",
+        type: selectedType,
+        genres: selectedGenres,
+      })
+    );
+  }, [router, selectedType, selectedGenres]);
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+    if (!value.trim() && qParam) {
+      router.push(
+        buildExploreUrl({
+          q: "",
+          type: selectedType,
+          genres: selectedGenres,
+        })
+      );
+    }
+  };
+
+  const handleSearchSubmit = () => {
+    const trimmed = searchQuery.trim();
+    router.push(
+      buildExploreUrl({
+        q: trimmed,
+        type: selectedType,
+        genres: selectedGenres,
+      })
+    );
+  };
+
+  const toggleGenre = (genre) => {
+    const nextGenres = selectedGenres.includes(genre)
+      ? selectedGenres.filter((g) => g !== genre)
+      : [...selectedGenres, genre];
+    setSelectedGenres(nextGenres);
+    setCurrentPage(1);
+    const nextGenreQuery = nextGenres.join(",");
+    prevGenreParamRef.current = nextGenreQuery;
+    router.replace(
+      buildExploreUrl({
+        q: qParam,
+        type: selectedType,
+        genres: nextGenres,
+      }),
+      { scroll: false }
+    );
+  };
+
+  // Format yang tersedia sesuai Tipe yang dipilih
+  const availableFormats = useMemo(() => {
+    if (selectedType === "anime") return FORMAT_OPTIONS_ANIME;
+    if (selectedType === "manga") return FORMAT_OPTIONS_MANGA;
+    return FORMAT_OPTIONS_ALL;
+  }, [selectedType]);
+
+  // Handler ganti Tipe dengan auto-reset format & sinkronisasi URL agar bertahan saat kembali
+  const handleTypeChange = (newType) => {
+    setSelectedType(newType);
+    setCurrentPage(1);
+    if (selectedFormat !== "Semua") {
+      const allowed =
+        newType === "anime"
+          ? FORMAT_OPTIONS_ANIME
+          : newType === "manga"
+          ? FORMAT_OPTIONS_MANGA
+          : FORMAT_OPTIONS_ALL;
+      if (!allowed.includes(selectedFormat)) {
+        setSelectedFormat("Semua");
+      }
+    }
+    prevTypeParamRef.current = newType === "all" ? "" : newType;
+    router.replace(
+      buildExploreUrl({
+        q: qParam,
+        type: newType,
+        genres: selectedGenres,
+      }),
+      { scroll: false }
+    );
+  };
+
+  const resetAll = () => {
+    setSelectedType("all");
+    setSelectedGenres([]);
+    setSelectedFormat("Semua");
+    setGenreSearch("");
+    setSortBy("popularity");
+    setSearchQuery("");
+    setCurrentPage(1);
+    prevTypeParamRef.current = "";
+    prevGenreParamRef.current = "";
+    router.push("/explore/");
+  };
+
+  const visibleGenres = useMemo(
+    () =>
+      genreSearch
+        ? ALL_GENRES.filter((g) =>
+            g.toLowerCase().includes(genreSearch.toLowerCase())
+          )
+        : ALL_GENRES,
+    [genreSearch]
+  );
+
+  const sortedItems = useMemo(() => {
+    const filtered = catalogItems.filter((item) => {
+      const matchType = selectedType === "all" || item.type === selectedType;
+      const matchGenre =
+        selectedGenres.length === 0 ||
+        selectedGenres.every((g) =>
+          item.genres?.some(
+            (ig) =>
+              ig.toLowerCase() === g.toLowerCase() ||
+              (g === "Thriller" && ig.toLowerCase() === "suspense")
+          )
+        );
+      const matchFormat =
+        selectedFormat === "Semua" ||
+        String(item.format || "").toLowerCase() === selectedFormat.toLowerCase();
+      return matchType && matchGenre && matchFormat;
+    });
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === "rating") return (b.score || 0) - (a.score || 0);
+      if (sortBy === "newest") {
+        const yearDiff = (Number(b.year) || 0) - (Number(a.year) || 0);
+        return yearDiff !== 0 ? yearDiff : (b.id || 0) - (a.id || 0);
+      }
+      return 0;
+    });
+  }, [catalogItems, selectedType, selectedGenres, selectedFormat, sortBy]);
+
+  const activeFilterCount =
+    (selectedType !== "all" ? 1 : 0) +
+    selectedGenres.length +
+    (selectedFormat !== "Semua" ? 1 : 0);
+
+  const catalogTypeLabel =
+    selectedType === "all"
+      ? "Campuran Anime & Manga"
+      : selectedType === "anime"
+      ? "Katalog Anime Populer"
+      : "Katalog Manga Populer";
 
   return (
-    <AuthGuard>
-      <div className="min-h-[calc(100vh-5rem)] bg-[#0A0E17] text-white px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl space-y-8">
-          {/* Header Title */}
-          <div className="space-y-2">
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-              Eksplorasi Katalog Anime & Manga
-            </h1>
-            <p className="text-sm sm:text-base text-neutral-400 max-w-2xl">
-              Temukan rekomendasi judul terpopuler, jelajahi berbagai genre pilihan, dan simpan judul favoritmu langsung ke tracker.
-            </p>
-          </div>
+    <div className="min-h-[calc(100vh-65px)] bg-bg text-text selection:bg-accent/30 selection:text-text lg:flex">
+      {/* Sidebar Filter Kiri Docked (Desktop Sticky Full-Height + Mobile Drawer) */}
+      <ExploreFilterSidebar
+        selectedType={selectedType}
+        onTypeChange={handleTypeChange}
+        genres={visibleGenres}
+        selectedGenres={selectedGenres}
+        onToggleGenre={toggleGenre}
+        genreSearch={genreSearch}
+        onGenreSearchChange={setGenreSearch}
+        formats={availableFormats}
+        selectedFormat={selectedFormat}
+        onSelectFormat={(fmt) => {
+          setSelectedFormat(fmt);
+          setCurrentPage(1);
+        }}
+        activeFilterCount={activeFilterCount}
+        onReset={resetAll}
+        mobileOpen={sidebarOpen}
+        onCloseMobile={() => setSidebarOpen(false)}
+      />
 
-          {/* Filter Bar: Tipe & Genre */}
-          <div className="flex flex-col gap-4 rounded-2xl border border-[#1E293B] bg-[#0F172A]/80 p-4 sm:p-5 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
-            {/* Tipe Selector: All / Anime / Manga */}
-            <div className="flex items-center gap-1 rounded-xl bg-[#0B1222] p-1 border border-[#334155]/40">
-              <button
-                type="button"
-                onClick={() => setSelectedType("all")}
-                className={`rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                  selectedType === "all"
-                    ? "bg-[#6D4AFF] text-white shadow-md shadow-violet-500/30"
-                    : "text-neutral-400 hover:text-white"
-                }`}
-              >
-                Semua
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedType("anime")}
-                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                  selectedType === "anime"
-                    ? "bg-[#6D4AFF] text-white shadow-md shadow-violet-500/30"
-                    : "text-neutral-400 hover:text-white"
-                }`}
-              >
-                <Film size={14} />
-                <span>Anime</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedType("manga")}
-                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
-                  selectedType === "manga"
-                    ? "bg-[#6D4AFF] text-white shadow-md shadow-violet-500/30"
-                    : "text-neutral-400 hover:text-white"
-                }`}
-              >
-                <BookOpen size={14} />
-                <span>Manga</span>
-              </button>
+      {/* Area Konten Utama */}
+      <main className="flex-1 min-w-0 pb-24">
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 space-y-6">
+          {/* Header Halaman Selaras dengan Section Beranda */}
+          <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight font-['Bricolage_Grotesque'] select-none">
+                Jelajah Katalog
+              </h1>
+              <Tag variant="secondary" size="pill">
+                {catalogTypeLabel}
+              </Tag>
             </div>
 
-            {/* Genre Pills */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Filter size={15} className="text-slate-400 mr-1 hidden sm:block" />
-              {GENRES.map((genre) => (
-                <button
-                  key={genre}
-                  type="button"
-                  onClick={() => setSelectedGenre(genre)}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-medium transition-all cursor-pointer ${
-                    selectedGenre === genre
-                      ? "bg-white text-black font-bold shadow-sm"
-                      : "bg-[#1E293B]/60 text-slate-300 hover:bg-[#1E293B] hover:text-white"
-                  }`}
-                >
-                  {genre}
-                </button>
-              ))}
-            </div>
-          </div>
+            {/* Switch Tipe Cepat untuk Mobile/Tablet (Desktop memakai Sidebar Kiri) */}
+            <SegmentedSwitch
+              options={TYPE_OPTIONS}
+              value={selectedType}
+              onChange={handleTypeChange}
+              className="w-full sm:w-56 lg:hidden"
+              ariaLabel="Filter Tipe Media Cepat"
+            />
+          </header>
 
-          {/* Grid Katalog Rekomendasi */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs sm:text-sm text-neutral-400">
-              <span>Menampilkan {filteredItems.length} judul rekomendasi</span>
+          <div className="space-y-5">
+            <ExploreToolbar
+              searchQuery={searchQuery}
+              onSearchChange={handleSearchChange}
+              onSearchSubmit={handleSearchSubmit}
+              onClearSearch={handleClearSearch}
+              sortBy={sortBy}
+              sortOptions={SORT_OPTIONS}
+              onSortChange={(nextSort) => {
+                setSortBy(nextSort);
+                setCurrentPage(1);
+              }}
+              activeFilterCount={activeFilterCount}
+              onOpenMobileSidebar={() => setSidebarOpen(true)}
+              isLoading={isLoading}
+            />
+
+            {/* Info Jumlah Judul & Halaman */}
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs py-0.5">
+              <span className="font-semibold text-text">
+                Menampilkan {sortedItems.length} judul
+              </span>
+              {totalPages > 1 && (
+                <span className="text-text-2 font-medium text-[11px] sm:text-xs">
+                  Halaman {currentPage} dari {totalPages}
+                </span>
+              )}
             </div>
 
-            {filteredItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#121622] px-6 py-14 text-center shadow-lg">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/5 text-neutral-400 border border-white/10">
-                  <SearchX size={26} className="text-neutral-400" />
-                </div>
-                <h3 className="mt-4 text-base font-bold text-white">
-                  Tidak Ada Judul Ditemukan
-                </h3>
-                <p className="mt-1 max-w-sm text-xs text-neutral-400 leading-relaxed">
-                  Tidak ada rekomendasi untuk genre &quot;{selectedGenre}&quot;.
-                </p>
-                <div className="mt-5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedType("all");
-                      setSelectedGenre("All");
-                    }}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#1E293B] px-4 py-2 text-xs font-bold text-neutral-200 transition-all hover:bg-[#334155] hover:text-white active:scale-95 cursor-pointer shadow-sm"
+            {/* Grid Katalog */}
+            {isLoading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(165px,1fr))] gap-3 sm:gap-3.5">
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col overflow-hidden rounded-xl bg-surface border border-border shadow-sm animate-pulse"
                   >
-                    <RotateCcw size={13} />
-                    <span>Reset Filter</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {filteredItems.map((item) => (
-                <Link
-                  key={`${item.type}-${item.id}`}
-                  href={`/detail?type=${item.type}&id=${item.id}`}
-                  scroll={true}
-                  className="group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#121622] shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-[#6D4AFF]/60 hover:shadow-xl hover:shadow-violet-500/10"
-                >
-                  {/* Poster */}
-                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-900">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.image}
-                      alt={item.title}
-                      referrerPolicy="no-referrer"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                      loading="lazy"
-                    />
-
-                    {/* Badge Highlight di Pojok Kiri Atas */}
-                    <div className="absolute top-2.5 left-2.5">
-                      <span className="rounded-md bg-black/75 px-2 py-0.5 text-[10px] font-bold text-amber-300 backdrop-blur-md border border-amber-400/20">
-                        {item.highlight}
-                      </span>
-                    </div>
-
-                    {/* Gradient & Rating Bawah */}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/95 via-black/50 to-transparent p-2.5">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-white">
-                        <span className="flex items-center gap-1 text-amber-400">
-                          <Star size={12} className="fill-amber-400" />
-                          <span>{item.score.toFixed(1)}</span>
-                        </span>
-                        <span className="rounded bg-black/60 px-1.5 py-0.5 text-neutral-300 backdrop-blur-sm">
-                          {item.episodes}
-                        </span>
+                    <div className="aspect-[3/4] w-full bg-surface-2" />
+                    <div className="p-2.5 sm:p-3 space-y-2 border-t border-border">
+                      <div className="h-3.5 bg-surface-2 rounded w-4/5" />
+                      <div className="flex justify-between">
+                        <div className="h-3 bg-surface-2 rounded w-1/3" />
+                        <div className="h-3 bg-surface-2 rounded w-1/4" />
                       </div>
                     </div>
                   </div>
+                ))}
+              </div>
+            ) : sortedItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface px-6 py-16 text-center shadow-sm">
+                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-2 text-text-2 border border-border">
+                  <SearchX size={26} />
+                </div>
+                <h3 className="mt-4 text-base font-black text-text tracking-tight font-['Bricolage_Grotesque']">
+                  Tidak Ada Judul Ditemukan
+                </h3>
+                <p className="mt-1 max-w-sm text-xs text-text-2 leading-relaxed">
+                  {searchQuery.trim()
+                    ? `Tidak ada judul yang cocok dengan "${searchQuery}".`
+                    : "Coba ubah filter atau reset untuk melihat lebih banyak judul."}
+                </p>
+                <Button
+                  variant="primary"
+                  size="md"
+                  onClick={resetAll}
+                  className="mt-5 text-xs font-bold"
+                >
+                  <RotateCcw size={13} />
+                  <span>Reset Semua Filter</span>
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-[repeat(auto-fill,minmax(165px,1fr))] gap-3 sm:gap-3.5">
+                  {sortedItems.map((item) => (
+                    <CatalogCard key={`${item.type}-${item.id}`} item={item} />
+                  ))}
+                </div>
 
-                  {/* Keterangan */}
-                  <div className="flex flex-1 flex-col justify-between p-3.5">
-                    <div>
-                      <h3
-                        className="line-clamp-1 text-sm font-bold text-white transition-colors group-hover:text-[#6D4AFF]"
-                        title={item.title}
-                      >
-                        {item.title}
-                      </h3>
-                      <p className="line-clamp-1 text-xs text-neutral-400 mt-0.5">
-                        {item.genres.join(", ")}
-                      </p>
-                    </div>
-                    <div className="mt-3 pt-2 border-t border-white/5 flex items-center justify-between text-[11px] text-neutral-400 uppercase tracking-wider">
-                      <span className="capitalize text-slate-300">{item.type}</span>
-                      <span className="text-emerald-400 font-semibold">{item.status}</span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  activeColor="accent"
+                  onPageChange={(newPage) => {
+                    setCurrentPage(newPage);
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  }}
+                  className="pt-8 pb-4"
+                />
+              </>
+            )}
+          </div>
         </div>
-        </div>
-      </div>
-    </AuthGuard>
+      </main>
+    </div>
   );
 }
 
+export default function ExplorePage() {
+  return (
+    <AuthGuard>
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-bg flex items-center justify-center">
+            <Loader2 size={28} className="animate-spin text-accent" />
+          </div>
+        }
+      >
+        <ExploreContent />
+      </Suspense>
+    </AuthGuard>
+  );
+}

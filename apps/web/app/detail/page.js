@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -11,11 +11,8 @@ import {
   AlertCircle,
   PlusCircle,
   SearchX,
-  ChevronDown,
   CheckCircle2,
-  Loader2,
   X,
-  Play,
   Search,
   RotateCcw,
   WifiOff,
@@ -23,26 +20,53 @@ import {
   Bookmark,
 } from "lucide-react";
 import AuthGuard from "@/components/AuthGuard";
+import DetailInfoSidebar from "@/components/detail/DetailInfoSidebar";
+import DetailMediaSections, {
+  DetailSynopsis,
+} from "@/components/detail/DetailMediaSections";
+import { Button } from "@/components/ui/button";
+import RatingBadge from "@/components/ui/RatingBadge";
+import Tag from "@/components/ui/Tag";
+import { getCatalogDetailApi } from "@/lib/api";
 import {
-  getCatalogDetailApi,
-  getTrackerItemApi,
-  addTrackerApi,
-} from "@/lib/api";
-import { enrichCatalogDetail } from "@/lib/catalogEnricher";
+  enrichCatalogDetail,
+  HERO_TRAILER_BANNERS,
+  fetchAniListMediaDetails,
+  fetchTenraiDetailSupplement,
+  fetchTenraiCreditsSupplement,
+  mergeCatalogDetailSources,
+} from "@/lib/catalogEnricher";
+import { cn } from "@/lib/utils";
+import useTrackerStore, { getTrackerCompositeKey } from "@/store/trackerStore";
 
-const RATING_OPTIONS = [
-  { value: "", label: "Beri Rating" },
-  { value: "10", label: "10 - Masterpiece" },
-  { value: "9", label: "9 - Great" },
-  { value: "8", label: "8 - Very Good" },
-  { value: "7", label: "7 - Good" },
-  { value: "6", label: "6 - Fine" },
-  { value: "5", label: "5 - Average" },
-  { value: "4", label: "4 - Bad" },
-  { value: "3", label: "3 - Very Bad" },
-  { value: "2", label: "2 - Horrible" },
-  { value: "1", label: "1 - Appalling" },
-];
+const DETAIL_CACHE_TTL_MS = 5 * 60 * 1000;
+const DETAIL_CACHE_MAX_ENTRIES = 30;
+const detailCache = new Map();
+
+function getCachedDetail(type, id) {
+  if (!id) return null;
+  const key = `${String(type || "anime").toLowerCase()}:${String(id)}`;
+  const entry = detailCache.get(key);
+  if (!entry) return null;
+  if (Date.now() - entry.fetchedAt > DETAIL_CACHE_TTL_MS) {
+    detailCache.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function setCachedDetail(type, id, payload) {
+  if (!id || !payload) return;
+  const key = `${String(type || "anime").toLowerCase()}:${String(id)}`;
+  if (detailCache.has(key)) {
+    detailCache.delete(key);
+  }
+  detailCache.set(key, { data: payload, fetchedAt: Date.now() });
+  if (detailCache.size > DETAIL_CACHE_MAX_ENTRIES) {
+    const oldestKey = detailCache.keys().next().value;
+    detailCache.delete(oldestKey);
+  }
+}
 
 function formatStatNumber(val) {
   if (!val || val === "-") return "-";
@@ -65,8 +89,8 @@ function formatStatNumber(val) {
 }
 
 /**
- * DetailContent — Membaca query parameter ?type=&id= dan menyajikan detail lengkap
- * dengan tipografi sans-serif modern yang tegas, proporsional, dan nyaman dibaca.
+ * DetailContent — Menampilkan detail katalog dengan banner horizontal parallax
+ * dan sheet konten utama yang selaras dengan halaman Beranda, Jelajah, dan Tracker.
  */
 function DetailContent() {
   const searchParams = useSearchParams();
@@ -74,21 +98,132 @@ function DetailContent() {
   const type = searchParams.get("type") || "anime"; // "anime" | "manga"
   const id = searchParams.get("id"); // MAL ID
 
-  const [data, setData] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const initialCached = id ? getCachedDetail(type, id) : null;
+  const [data, setData] = useState(initialCached);
+  const [isLoading, setIsLoading] = useState(!initialCached);
   const [error, setError] = useState(null);
   const [isNotFound, setIsNotFound] = useState(false);
 
-  // State Pelacakan Tracker & Rating
-  const [trackedItem, setTrackedItem] = useState(null);
+  // State Pelacakan Tracker terpusat dari store
+  const trackerItems = useTrackerStore((state) => state.items);
+  const checkTrackerItem = useTrackerStore((state) => state.checkTrackerItem);
+  const addTrackerItem = useTrackerStore((state) => state.addTrackerItem);
+
+  const trackedItem = useMemo(() => {
+    if (!id) return null;
+    const targetKey = getTrackerCompositeKey(type, id);
+    return (
+      trackerItems.find(
+        (it) =>
+          getTrackerCompositeKey(
+            it?.mediaType || it?.media_type,
+            it?.malId ?? it?.mal_id
+          ) === targetKey
+      ) || null
+    );
+  }, [trackerItems, type, id]);
+
   const [isSavingTracker, setIsSavingTracker] = useState(false);
-  const [userRating, setUserRating] = useState("");
   const [toast, setToast] = useState(null);
-  const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
-  const [showAllCharacters, setShowAllCharacters] = useState(false);
-  const [showAllStaff, setShowAllStaff] = useState(false);
+
+  // State Banner 16:9 Fallback Index & Parallax Layer Ref
+  const [bannerIdx, setBannerIdx] = useState(0);
+  const bannerLayerRef = useRef(null);
+
+  // State Deteksi Error Pemutar Trailer (YouTube Embed)
+  const [trailerHasError, setTrailerHasError] = useState(false);
 
   const isAnime = type === "anime";
+  const itemKey = `${type}:${id || ""}`;
+
+  // Reset status banner & trailer saat berpindah judul
+  useEffect(() => {
+    setTrailerHasError(false);
+    setBannerIdx(0);
+  }, [type, id]);
+
+  // Efek parallax halus: background banner tetap tertahan & sedikit bergeser ke bawah saat scroll
+  useEffect(() => {
+    let rafId = null;
+
+    const updateParallax = () => {
+      rafId = null;
+      if (!bannerLayerRef.current) return;
+      const shift = Math.min(window.scrollY * 0.14, 56);
+      bannerLayerRef.current.style.transform = `translate3d(0, ${shift}px, 0) scale(1.08)`;
+    };
+
+    const handleScroll = () => {
+      if (rafId !== null) return;
+      rafId = window.requestAnimationFrame(updateParallax);
+    };
+
+    updateParallax();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (rafId !== null) window.cancelAnimationFrame(rafId);
+    };
+  }, [isLoading, data]);
+
+  // Pre-check ketersediaan embed video YouTube via oEmbed API publik
+  useEffect(() => {
+    const youtubeId = data?.trailer?.youtubeId;
+    setTrailerHasError(false);
+    if (!isAnime || !youtubeId) return;
+
+    let isCancelled = false;
+
+    fetch(
+      `https://www.youtube-nocookie.com/oembed?url=https://www.youtube.com/watch?v=${youtubeId}&format=json`
+    )
+      .then((res) => {
+        if (!isCancelled && !res.ok) {
+          setTrailerHasError(true);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [isAnime, data?.trailer?.youtubeId]);
+
+  // Listener event postMessage dari YouTube IFrame Player
+  useEffect(() => {
+    const handleYouTubeMessage = (event) => {
+      try {
+        const origin = event.origin || "";
+        if (
+          !origin.includes("youtube.com") &&
+          !origin.includes("youtube-nocookie.com")
+        ) {
+          return;
+        }
+
+        let payload = event.data;
+        if (typeof payload === "string") {
+          try {
+            payload = JSON.parse(payload);
+          } catch {
+            return;
+          }
+        }
+
+        if (
+          payload &&
+          (payload.event === "onError" ||
+            payload.event === "onPlayerError" ||
+            (payload.event === "infoDelivery" && payload.info?.errorCode))
+        ) {
+          setTrailerHasError(true);
+        }
+      } catch {}
+    };
+
+    window.addEventListener("message", handleYouTubeMessage);
+    return () => window.removeEventListener("message", handleYouTubeMessage);
+  }, []);
 
   // Auto-dismiss toast setelah 4 detik
   useEffect(() => {
@@ -97,7 +232,7 @@ function DetailContent() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  // Pastikan halaman detail anime & manga selalu mulai dari posisi scroll paling atas (Hero Banner & Cover)
+  // Pastikan halaman detail selalu mulai dari posisi scroll paling atas
   useEffect(() => {
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -108,20 +243,7 @@ function DetailContent() {
     }
   }, [type, id, isLoading]);
 
-  // Muat rating lokal tersimpan
-  useEffect(() => {
-    if (!id) return;
-    try {
-      const savedRating = localStorage.getItem(`mojiji_rating_${type}_${id}`);
-      if (savedRating) {
-        setUserRating(savedRating);
-      }
-    } catch {
-      // LocalStorage tidak tersedia / SSR fallback
-    }
-  }, [type, id]);
-
-  // Ambil detail katalog dan status tracker saat ini
+  // Ambil detail katalog (gunakan cache 5 menit jika tersedia) dan cek status tracker store
   useEffect(() => {
     if (!id) {
       setError("Parameter ID katalog tidak ditemukan pada URL.");
@@ -130,6 +252,21 @@ function DetailContent() {
     }
 
     let isMounted = true;
+    const controller = new AbortController();
+    checkTrackerItem(type, id).catch(() => {});
+
+    const cached = getCachedDetail(type, id);
+    if (cached) {
+      setData(cached);
+      setError(null);
+      setIsNotFound(false);
+      setIsLoading(false);
+      setBannerIdx(0);
+      return () => {
+        isMounted = false;
+        controller.abort();
+      };
+    }
 
     const fetchDetail = async () => {
       setIsLoading(true);
@@ -137,17 +274,146 @@ function DetailContent() {
       setIsNotFound(false);
 
       try {
-        const response = await getCatalogDetailApi(type, id);
-
-        if (isMounted) {
-          if (response && response.success && response.data) {
-            const enriched = enrichCatalogDetail(response.data, type, id);
-            setData(enriched);
-          } else {
-            setIsNotFound(true);
+        const anilistPromise = fetchAniListMediaDetails(id, type, {
+          signal: controller.signal,
+        }).catch((err) => {
+          if (controller.signal.aborted || err?.name === "AbortError") {
+            throw err;
           }
+          return null;
+        });
+
+        const response = await getCatalogDetailApi(type, id, controller.signal);
+
+        if (!isMounted || controller.signal.aborted) return;
+
+        if (response && response.success && response.data) {
+          const rawDetail = response.data;
+          const hasDateField = isAnime
+            ? Boolean(rawDetail.aired)
+            : Boolean(rawDetail.published);
+          const hasCoreStats =
+            rawDetail.rank != null ||
+            rawDetail.popularity != null ||
+            rawDetail.members != null ||
+            rawDetail.favorites != null;
+          const hasBackendInformation = Boolean(
+            Object.prototype.hasOwnProperty.call(rawDetail, "rank") &&
+              Object.prototype.hasOwnProperty.call(rawDetail, "popularity") &&
+              Object.prototype.hasOwnProperty.call(
+                rawDetail,
+                isAnime ? "aired" : "published"
+              ) &&
+              (hasCoreStats || hasDateField)
+          );
+
+          // Bila backend mengirim skema ringkas/parsial, segera panggil Tenrai /full paralel dengan AniList
+          const tenraiMainPromise = !hasBackendInformation
+            ? fetchTenraiDetailSupplement(type, id, {
+                signal: controller.signal,
+                includeCharacters: false,
+                includeStaff: false,
+              }).catch((err) => {
+                if (controller.signal.aborted || err?.name === "AbortError") {
+                  throw err;
+                }
+                return null;
+              })
+            : Promise.resolve(null);
+
+          const [anilistRes, tenraiRes] = await Promise.allSettled([
+            anilistPromise,
+            tenraiMainPromise,
+          ]);
+
+          if (!isMounted || controller.signal.aborted) return;
+
+          const anilist =
+            anilistRes.status === "fulfilled" ? anilistRes.value : null;
+          let tenraiSupplement =
+            tenraiRes.status === "fulfilled" ? tenraiRes.value : null;
+
+          // Ambil karakter/staf dari Tenrai hanya jika baik backend maupun AniList belum menyediakannya
+          const missingCharacters =
+            (!Array.isArray(rawDetail.characters) ||
+              rawDetail.characters.length === 0) &&
+            (!Array.isArray(anilist?.characters) ||
+              anilist.characters.length === 0);
+          const missingStaff =
+            isAnime &&
+            (!Array.isArray(rawDetail.staff) || rawDetail.staff.length === 0) &&
+            (!Array.isArray(anilist?.staff) || anilist.staff.length === 0);
+
+          if (missingCharacters || missingStaff) {
+            const credits = await fetchTenraiCreditsSupplement(type, id, {
+              signal: controller.signal,
+              includeCharacters: missingCharacters,
+              includeStaff: missingStaff,
+            }).catch((err) => {
+              if (controller.signal.aborted || err?.name === "AbortError") {
+                throw err;
+              }
+              return { characters: [], staff: [] };
+            });
+
+            if (!isMounted || controller.signal.aborted) return;
+
+            tenraiSupplement = {
+              ...(tenraiSupplement || {}),
+              characters:
+                credits.characters.length > 0
+                  ? credits.characters
+                  : tenraiSupplement?.characters || [],
+              staff:
+                credits.staff.length > 0
+                  ? credits.staff
+                  : tenraiSupplement?.staff || [],
+            };
+          }
+
+          const mergedRaw = mergeCatalogDetailSources(
+            rawDetail,
+            tenraiSupplement,
+            anilist
+          );
+          const enriched = enrichCatalogDetail(mergedRaw, type, id);
+          const numericMalId = Number(id || enriched.malId || enriched.id);
+
+          const hydratedPayload = {
+            ...enriched,
+            anilistBanner: anilist?.bannerImage || null,
+            anilistTrailerThumb: anilist?.trailerThumbnail || null,
+            hasHeroPresetBanner: Boolean(
+              isAnime && HERO_TRAILER_BANNERS[numericMalId]
+            ),
+          };
+
+          const hasCacheableDetails = Boolean(
+            hydratedPayload.statistics?.ranked ||
+              hydratedPayload.statistics?.popularity ||
+              hydratedPayload.statistics?.members ||
+              hydratedPayload.information?.aired ||
+              hydratedPayload.information?.published
+          );
+          if (hasCacheableDetails) {
+            setCachedDetail(type, id, hydratedPayload);
+          }
+
+          setData(hydratedPayload);
+          setBannerIdx(0);
+        } else {
+          setIsNotFound(true);
         }
       } catch (err) {
+        if (
+          controller.signal.aborted ||
+          err?.isCanceled ||
+          err?.name === "AbortError" ||
+          err?.name === "CanceledError" ||
+          err?.code === "ERR_CANCELED"
+        ) {
+          return;
+        }
         if (isMounted) {
           if (err?.status === 404 || err?.error?.code === "NOT_FOUND") {
             setIsNotFound(true);
@@ -169,7 +435,7 @@ function DetailContent() {
           }
         }
       } finally {
-        if (isMounted) {
+        if (isMounted && !controller.signal.aborted) {
           setIsLoading(false);
         }
       }
@@ -177,21 +443,13 @@ function DetailContent() {
 
     fetchDetail();
 
-    // Periksa status tracker pengguna
-    getTrackerItemApi(type, id)
-      .then((item) => {
-        if (isMounted && item) {
-          setTrackedItem(item);
-        }
-      })
-      .catch(() => {});
-
     return () => {
       isMounted = false;
+      controller.abort();
     };
-  }, [type, id]);
+  }, [type, id, isAnime, checkTrackerItem]);
 
-  // Handler tambah judul ke tracker
+  // Handler tambah judul ke tracker terpusat via store
   const handleToggleTracker = async () => {
     if (trackedItem) {
       setToast({
@@ -203,39 +461,38 @@ function DetailContent() {
 
     setIsSavingTracker(true);
     const defaultStatus = isAnime ? "watching" : "reading";
+    const resolvedPoster = data?.image || data?.imageUrl || data?.image_url || "";
+    const resolvedTotal = isAnime
+      ? data?.information?.episodes ?? data?.totalEpisodes ?? 0
+      : data?.information?.chapters ?? data?.totalChapters ?? 0;
 
     try {
-      const res = await addTrackerApi({
+      const result = await addTrackerItem({
         type,
         malId: id,
         status: defaultStatus,
         progress: 0,
+        metadata: {
+          title: data?.title || "Untitled",
+          imageUrl: resolvedPoster,
+          total: Number(resolvedTotal) || 0,
+        },
       });
 
-      if (res && res.data) {
-        setTrackedItem(res.data);
-      } else {
-        const item = await getTrackerItemApi(type, id);
-        setTrackedItem(item || { malId: id, mediaType: type, status: defaultStatus, progress: 0 });
-      }
-
-      setToast({
-        type: "success",
-        message: `Berhasil menambahkan "${data?.title || "Judul"}" ke tracker!`,
-      });
-    } catch (err) {
-      if (err?.status === 401 || err?.error?.code === "UNAUTHORIZED") {
-        router.push("/login");
-        return;
-      }
-
-      if (err?.status === 409 || err?.error?.code === "CONFLICT") {
+      if (result?.alreadyExists) {
         setToast({
           type: "info",
           message: "Judul ini sudah tersimpan di daftar tracker Anda.",
         });
-        const item = await getTrackerItemApi(type, id);
-        if (item) setTrackedItem(item);
+      } else {
+        setToast({
+          type: "success",
+          message: `Berhasil menambahkan "${data?.title || "Judul"}" ke tracker!`,
+        });
+      }
+    } catch (err) {
+      if (err?.status === 401 || err?.error?.code === "UNAUTHORIZED") {
+        router.push("/login/");
         return;
       }
 
@@ -248,77 +505,101 @@ function DetailContent() {
     }
   };
 
-  // Handler rating bintang (disimpan ke localStorage)
-  const handleRatingChange = (newRating) => {
-    setUserRating(newRating);
-    try {
-      if (newRating) {
-        localStorage.setItem(`mojiji_rating_${type}_${id}`, newRating);
-        setToast({
-          type: "success",
-          message: `Rating tersimpan: ${newRating}/10 Bintang`,
-        });
-      } else {
-        localStorage.removeItem(`mojiji_rating_${type}_${id}`);
-      }
-    } catch {
-      // LocalStorage fallback
-    }
-  };
-
   const poster = data?.image || data?.imageUrl || data?.image_url;
   const malId = data?.malId || data?.mal_id || data?.id || id;
   const totalCount = isAnime
-    ? data?.information?.episodes || data?.totalEpisodes || "?"
-    : data?.information?.chapters || data?.totalChapters || "?";
+    ? data?.information?.episodes ?? data?.totalEpisodes ?? null
+    : data?.information?.chapters ?? data?.totalChapters ?? null;
+
+  // Susun kandidat URL banner horizontal (Hero Beranda -> AniList Banner Horizontal -> Trailer FHD -> Poster)
+  const bannerCandidates = useMemo(() => {
+    const heroMatched = isAnime ? HERO_TRAILER_BANNERS[Number(malId)] : null;
+    const ytId = data?.trailer?.youtubeId;
+    const raw = [
+      heroMatched,
+      data?.anilistBanner,
+      data?.bannerImage,
+      data?.trailer?.images?.maximum_image_url,
+      ytId ? `https://img.youtube.com/vi/${ytId}/maxresdefault.jpg` : null,
+      data?.anilistTrailerThumb,
+      ytId ? `https://img.youtube.com/vi/${ytId}/hq720.jpg` : null,
+      ytId ? `https://img.youtube.com/vi/${ytId}/sddefault.jpg` : null,
+      data?.trailer?.images?.large_image_url,
+      data?.trailer?.image,
+      poster,
+    ].filter(Boolean);
+
+    return Array.from(new Set(raw));
+  }, [data, poster, isAnime, malId]);
+
+  const activeBannerUrl = bannerCandidates[bannerIdx] || poster || null;
+  const isUsingPosterFallback = Boolean(
+    activeBannerUrl && poster && activeBannerUrl === poster
+  );
+
+  const handleBannerError = () => {
+    setBannerIdx((prev) =>
+      prev + 1 < bannerCandidates.length ? prev + 1 : prev
+    );
+  };
+
+  const handleBannerLoad = (e) => {
+    const img = e.currentTarget;
+    // YouTube mengembalikan thumbnail placeholder 120x90 jika resolusi maxresdefault tidak tersedia
+    const isYoutubeUrl =
+      activeBannerUrl?.includes("img.youtube.com") ||
+      activeBannerUrl?.includes("i.ytimg.com");
+    if (
+      isYoutubeUrl &&
+      img.naturalWidth <= 120 &&
+      bannerIdx + 1 < bannerCandidates.length
+    ) {
+      setBannerIdx((prev) => prev + 1);
+    }
+  };
 
   const handleBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
     } else {
-      router.push("/explore");
+      router.push("/explore/");
     }
   };
 
-  const genres = data?.information?.genres || [];
+  const genres = Array.isArray(data?.information?.genres) ? data.information.genres : [];
   const studioOrAuthor = isAnime
-    ? data?.information?.studios?.[0] || data?.information?.studios?.join(", ") || "-"
-    : data?.information?.authors?.[0] || data?.information?.authors?.join(", ") || "-";
-  const formatType = data?.information?.type || (isAnime ? "Anime (TV)" : "Manga");
+    ? data?.information?.studios?.length > 0
+      ? data.information.studios.join(", ")
+      : "-"
+    : data?.information?.authors?.length > 0
+    ? data.information.authors.join(", ")
+    : "-";
+  const formatType = data?.information?.type || "-";
 
   return (
-    <div
-      style={{
-        fontFamily:
-          "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-      }}
-      className="relative min-h-[calc(100vh-3.5rem)] bg-[#0A0D14] text-neutral-100 font-sans font-normal pb-20 selection:bg-[#6D4AFF] selection:text-white"
-    >
-      {/* Toast Notification Floating Feedback */}
+    <div className="relative min-h-screen bg-bg text-text font-sans font-normal selection:bg-accent/30 selection:text-text transition-colors duration-200">
+      {/* Toast Notification Floating Feedback (Selaras Beranda & Tracker) */}
       {toast && (
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border px-5 py-3.5 text-base font-semibold shadow-2xl backdrop-blur-md transition-all animate-in slide-in-from-bottom-3 duration-200 ${
-            toast.type === "success"
-              ? "border-emerald-500/40 bg-emerald-950/95 text-emerald-200"
-              : toast.type === "info"
-              ? "border-[#6D4AFF]/40 bg-[#1F1F23]/95 text-white"
-              : "border-red-500/40 bg-red-950/95 text-red-200"
-          }`}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-border/60 bg-surface px-4 py-3 text-xs sm:text-sm font-semibold text-text shadow-sm backdrop-blur-md transition-all animate-in fade-in slide-in-from-bottom-3 duration-200"
         >
           {toast.type === "success" ? (
-            <CheckCircle2 size={20} className="text-emerald-400 shrink-0" />
+            <CheckCircle2 size={17} className="text-secondary shrink-0" />
+          ) : toast.type === "info" ? (
+            <AlertCircle size={17} className="shrink-0 text-accent" />
           ) : (
-            <AlertCircle size={20} className="shrink-0 text-[#6D4AFF]" />
+            <AlertCircle size={17} className="shrink-0 text-destructive" />
           )}
           <span className="max-w-sm">{toast.message}</span>
           <button
             type="button"
             onClick={() => setToast(null)}
-            className="ml-2 rounded-lg p-1 text-neutral-400 hover:bg-white/10 hover:text-white cursor-pointer"
+            aria-label="Tutup notifikasi"
+            className="ml-1 rounded-lg p-1 text-text-2 hover:bg-surface-2 hover:text-text transition-colors cursor-pointer"
           >
-            <X size={16} />
+            <X size={14} />
           </button>
         </div>
       )}
@@ -326,792 +607,348 @@ function DetailContent() {
       {/* === KONDISI 1: Loading Skeleton Shimmer === */}
       {isLoading && (
         <div className="animate-pulse">
-          <div className="relative h-[360px] md:h-[420px] w-full bg-[#151924]" />
-          <div className="max-w-7xl mx-auto px-5 md:px-8 -mt-[210px] md:-mt-[260px] relative z-20 space-y-8">
-            <div className="flex flex-col md:flex-row items-center md:items-end gap-6">
-              <div className="h-[240px] w-[160px] md:h-[288px] md:w-[193px] rounded-lg bg-neutral-800 shrink-0" />
-              <div className="space-y-4 w-full md:w-2/3 pb-2">
-                <div className="h-10 w-3/4 rounded-lg bg-neutral-800" />
-                <div className="h-6 w-1/4 rounded-lg bg-neutral-800/60" />
+          <div className="relative h-[285px] sm:h-[340px] md:h-[385px] lg:h-[415px] w-full bg-surface-2" />
+          <div className="relative z-10 -mt-12 sm:-mt-14 md:-mt-16 rounded-t-2xl sm:rounded-t-3xl border-t border-border/70 bg-bg pb-20">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-5 sm:space-y-6">
+              <div className="flex flex-col md:flex-row items-center md:items-end gap-5 sm:gap-7">
+                <div className="-mt-24 sm:-mt-28 md:-mt-32 h-[200px] w-[135px] sm:h-[234px] sm:w-[158px] md:h-[262px] md:w-[176px] rounded-xl bg-surface shrink-0 border border-border shadow-xl" />
+                <div className="space-y-3 w-full md:w-2/3 pt-2 md:pb-2">
+                  <div className="flex gap-2">
+                    <div className="h-6 w-16 rounded-full bg-surface-2" />
+                    <div className="h-6 w-24 rounded-full bg-surface-2" />
+                  </div>
+                  <div className="h-9 w-3/4 rounded-xl bg-surface border border-border" />
+                  <div className="h-5 w-1/4 rounded-lg bg-surface-2" />
+                </div>
               </div>
+              <div className="h-12 w-52 rounded-xl bg-surface border border-border" />
+              <div className="h-28 w-full rounded-2xl bg-surface border border-border" />
             </div>
-            <div className="h-16 w-full rounded-xl bg-neutral-800/40" />
-            <div className="h-28 w-full rounded-xl bg-neutral-800/30" />
           </div>
         </div>
       )}
 
       {/* === KONDISI 2: 404 Not Found === */}
       {!isLoading && isNotFound && (
-        <div className="max-w-4xl mx-auto px-4 py-16">
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#121620] px-6 py-20 text-center shadow-xl">
-            <div className="flex h-18 w-18 items-center justify-center rounded-2xl bg-red-500/10 text-red-400 border border-red-500/20">
-              <SearchX size={38} />
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 pt-24 sm:pt-28 pb-16">
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-border bg-surface px-6 py-20 text-center shadow-sm">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20">
+              <SearchX size={32} />
             </div>
-            <h2 className="mt-5 text-2xl font-bold text-white tracking-tight">Item Katalog Tidak Ditemukan</h2>
-            <p className="mt-2.5 max-w-md text-sm sm:text-base leading-relaxed text-neutral-400">
-              Data {type} dengan ID <strong className="text-white">#{id}</strong> tidak ditemukan dalam katalog.
+            <h2 className="mt-5 text-xl sm:text-2xl font-black text-text tracking-tight font-['Bricolage_Grotesque']">
+              Item Katalog Tidak Ditemukan
+            </h2>
+            <p className="mt-2 max-w-md text-xs sm:text-sm leading-relaxed text-text-2">
+              Data {type} dengan ID <strong className="text-text">#{id}</strong> tidak ditemukan dalam katalog.
             </p>
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link
-                href="/search"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#DC2626] px-6 py-3 text-sm font-bold text-white shadow-lg transition-all hover:bg-[#b91c1c] active:scale-95"
+                href="/explore/"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-accent hover:bg-primary-hover px-5 text-xs sm:text-sm font-bold text-white shadow-sm transition-all active:scale-95"
               >
-                <Search size={17} />
+                <Search size={15} />
                 <span>Jelajahi Katalog Lainnya</span>
               </Link>
               <Link
-                href="/dashboard"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#1E293B] px-6 py-3 text-sm font-bold text-neutral-200 transition-all hover:bg-[#334155] hover:text-white active:scale-95"
+                href="/home/"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-surface-2 hover:bg-surface-2-hover hover:border-border-hover px-5 text-xs sm:text-sm font-semibold text-text-2 hover:text-text transition-all active:scale-95"
               >
-                <ArrowLeft size={17} />
-                <span>Kembali ke Dashboard</span>
+                <ArrowLeft size={15} />
+                <span>Kembali ke Beranda</span>
               </Link>
             </div>
           </div>
         </div>
       )}
 
-      {/* === KONDISI 3: Upstream Error (MJ-094 Pesan Ramah) === */}
+      {/* === KONDISI 3: Upstream Error === */}
       {!isLoading && !isNotFound && error && (
-        <div className="max-w-4xl mx-auto px-4 py-16">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 rounded-2xl border border-red-500/30 bg-red-950/30 p-6 text-base text-red-200 shadow-xl backdrop-blur-sm">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 pt-24 sm:pt-28 pb-16">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 rounded-2xl border border-destructive/30 bg-surface p-5 sm:p-6 text-sm text-text shadow-sm">
             <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-red-500/15 text-red-400 border border-red-500/30">
-                <WifiOff size={24} />
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive border border-destructive/25">
+                <WifiOff size={22} />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold text-white">Gagal Memuat Detail Katalog</h3>
-                <p className="text-sm sm:text-base text-red-200/90 leading-relaxed max-w-xl">{error}</p>
+                <h3 className="text-base sm:text-lg font-black text-text tracking-tight font-['Bricolage_Grotesque']">
+                  Gagal Memuat Detail Katalog
+                </h3>
+                <p className="text-xs sm:text-sm text-text-2 leading-relaxed max-w-xl">{error}</p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3 shrink-0">
-              <button
-                type="button"
+            <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+              <Button
+                variant="primary"
+                size="md"
                 onClick={() => window.location.reload()}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#DC2626] px-5 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-[#b91c1c] active:scale-95 cursor-pointer"
+                className="bg-destructive hover:bg-destructive-hover shadow-none"
               >
-                <RotateCcw size={16} />
-                <span>Muat Ulang Halaman</span>
-              </button>
+                <RotateCcw size={15} />
+                <span>Muat Ulang</span>
+              </Button>
               <Link
-                href="/search"
-                className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#1E293B] px-5 py-2.5 text-sm font-bold text-neutral-200 transition-all hover:bg-[#334155] hover:text-white active:scale-95"
+                href="/explore/"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-surface-2 hover:bg-surface-2-hover hover:border-border-hover px-4 text-xs sm:text-sm font-semibold text-text-2 hover:text-text transition-all active:scale-95"
               >
-                <Search size={16} />
-                <span>Ke Pencarian</span>
+                <Search size={15} />
+                <span>Ke Jelajah</span>
               </Link>
             </div>
           </div>
         </div>
       )}
 
-      {/* === KONDISI 4: Data Berhasil Dimuat (UI Hero Banner yang Hidup) === */}
+      {/* === KONDISI 4: Data Berhasil Dimuat (Sticky 16:9 Parallax Banner + Rising Sheet) === */}
       {!isLoading && !isNotFound && !error && data && (
         <>
-          {/* ===== 1. CINEMATIC HERO BANNER (Tinggi ±420px) ===== */}
-          <div className="relative h-[360px] md:h-[420px] w-full overflow-hidden bg-[#09090B]">
-            {/* Background Poster Terlihat Hidup (Blur Ringan & Poster Terlihat Jelas) */}
-            {poster && (
-              <div
-                className="absolute inset-0 w-full h-full bg-cover bg-center blur-[3px] scale-102 opacity-85 brightness-[0.85] pointer-events-none select-none transition-all duration-700"
-                style={{ backgroundImage: `url(${poster})` }}
-                aria-hidden="true"
-              />
-            )}
-
-            {/* Gradient Overlay Transparan Lembut -> #0A0D14 */}
+          {/* ===== 1. STICKY PARALLAX HERO BANNER (Horizontal FHD) ===== */}
+          <div className="sticky top-0 z-0 h-[285px] sm:h-[340px] md:h-[385px] lg:h-[415px] w-full overflow-hidden bg-bg">
+            {/* Layer Gambar Parallax — diam tertahan di atas & bergeser lembut ke bawah saat di-scroll */}
             <div
-              className="absolute inset-0 bg-gradient-to-b from-black/15 via-black/30 to-[#0A0D14] pointer-events-none"
+              ref={bannerLayerRef}
+              className="absolute inset-0 h-full w-full will-change-transform origin-center"
+              style={{ transform: "translate3d(0, 0px, 0) scale(1.08)" }}
+            >
+              {activeBannerUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={activeBannerUrl}
+                  alt={`${data.title || "Catalog"} Banner`}
+                  referrerPolicy="no-referrer"
+                  onLoad={handleBannerLoad}
+                  onError={handleBannerError}
+                  className={cn(
+                    "h-full w-full object-cover object-center select-none transition-opacity duration-500",
+                    isUsingPosterFallback && "blur-[3px] opacity-85"
+                  )}
+                />
+              ) : (
+                <div className="h-full w-full bg-surface-2" />
+              )}
+            </div>
+
+            {/* Scrim Atas Halus untuk keterbacaan Header Transparan */}
+            <div
+              className="pointer-events-none absolute inset-x-0 top-0 h-28"
+              style={{
+                background:
+                  "linear-gradient(to bottom, color-mix(in srgb, var(--bg) 65%, transparent) 0%, transparent 100%)",
+              }}
               aria-hidden="true"
             />
 
-            {/* Tombol Bulat di Pojok Atas: Kiri (ArrowLeft) & Kanan (Home) */}
-            <button
-              type="button"
-              onClick={handleBack}
-              aria-label="Kembali"
-              className="absolute top-[24px] md:top-[30px] left-[20px] md:left-[32px] z-30 flex h-12 w-12 md:h-[56px] md:w-[56px] items-center justify-center rounded-full border border-white/15 bg-black/50 text-white shadow-xl backdrop-blur-md transition-all duration-200 hover:bg-black/75 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#6D4AFF] cursor-pointer"
-            >
-              <ArrowLeft size={24} strokeWidth={2.2} />
-            </button>
+            {/* Scrim Bawah Halus memudar ke latar belakang dinamis --bg */}
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-32 sm:h-40"
+              style={{
+                background:
+                  "linear-gradient(to top, var(--bg) 0%, color-mix(in srgb, var(--bg) 72%, transparent) 45%, transparent 100%)",
+              }}
+              aria-hidden="true"
+            />
 
-            <Link
-              href="/home"
-              aria-label="Beranda"
-              className="absolute top-[24px] md:top-[30px] right-[20px] md:right-[32px] z-30 flex h-12 w-12 md:h-[56px] md:w-[56px] items-center justify-center rounded-full border border-white/15 bg-black/50 text-white shadow-xl backdrop-blur-md transition-all duration-200 hover:bg-black/75 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-[#6D4AFF] cursor-pointer"
-            >
-              <Home size={24} strokeWidth={2.2} />
-            </Link>
-          </div>
-
-          {/* ===== 2. KONTEN UTAMA: COVER OVERLAPPING, AKSI & STATISTIK ===== */}
-          <div className="relative px-5 md:px-[32px] -mt-[210px] md:-mt-[270px] z-20 max-w-7xl mx-auto space-y-8">
-            {/* Header: Cover + Judul & Status */}
-            <div className="flex flex-col md:flex-row items-center md:items-end gap-5 md:gap-[30px]">
-              {/* Cover Potret ±193×288px */}
-              <div className="relative h-[240px] w-[160px] md:h-[288px] md:w-[193px] shrink-0 overflow-hidden rounded-lg border border-white/20 bg-[#181A20] shadow-[0_20px_50px_rgba(0,0,0,0.8)]">
-                {poster ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={poster}
-                    alt={data.title || "Poster"}
-                    referrerPolicy="no-referrer"
-                    className="h-full w-full object-cover select-none"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-neutral-900 text-neutral-600">
-                    {isAnime ? <Film size={48} /> : <BookOpen size={48} />}
-                  </div>
-                )}
-              </div>
-
-              {/* Judul & Status */}
-              <div className="flex flex-1 flex-col text-center md:text-left min-w-0 pb-2">
-                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2.5">
-                  <span className="rounded-full bg-[#6D4AFF]/20 px-3 py-0.5 text-xs font-bold uppercase tracking-wider text-[#7C5CFF] border border-[#6D4AFF]/30">
-                    {isAnime ? "Anime" : "Manga"}
-                  </span>
-                  <span className="rounded-full bg-white/10 px-3 py-0.5 text-xs font-semibold text-neutral-200 border border-white/15">
-                    {data.status || "Status Unknown"}
-                  </span>
-                  <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs text-neutral-400">
-                    MAL #{malId}
-                  </span>
-                </div>
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[56px] font-bold text-white tracking-tight leading-tight line-clamp-2">
-                  {data.title || "Untitled"}
-                </h1>
-                <p className="mt-2 md:mt-[16px] text-base md:text-[22px] font-medium text-[#D4D4D8]">
-                  {data.status || "Updating"}
-                </p>
-              </div>
-            </div>
-
-            {/* ===== 3. BARIS AKSI & STATISTIK (Sejajar dengan bagian bawah cover) ===== */}
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 pt-4 border-b border-white/10 pb-8">
-              {/* Kiri: Tombol Aksi (Tambah ke Tracker & Rating Bintang) */}
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                {/* 1. Tombol Tambah ke Tracker (Tanpa dobel plus) */}
+            {/* Tombol Bulat Mengambang (Diposisikan Aman di Bawah Header Transparan 64px) */}
+            <div className="pointer-events-none absolute inset-x-0 top-[76px] sm:top-[82px] z-20">
+              <div className="mx-auto flex max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
                 <button
                   type="button"
-                  onClick={handleToggleTracker}
-                  disabled={isSavingTracker}
-                  className={`flex h-[56px] md:h-[64px] items-center justify-center gap-2.5 rounded-lg px-6 text-base md:text-[18px] font-bold shadow-lg transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 ${
-                    trackedItem
-                      ? "bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30"
-                      : "bg-[#6D4AFF] text-white hover:bg-[#7C5CFF] shadow-[#6D4AFF]/20"
-                  }`}
+                  onClick={handleBack}
+                  aria-label="Kembali"
+                  title="Kembali"
+                  className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-surface/85 text-text shadow-md backdrop-blur-md transition-all duration-200 hover:bg-surface hover:border-border-hover hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer"
                 >
-                  {isSavingTracker ? (
-                    <>
-                      <Loader2 size={20} className="animate-spin" />
-                      <span>Menyimpan...</span>
-                    </>
-                  ) : trackedItem ? (
-                    <>
-                      <CheckCircle2 size={20} className="text-emerald-400" />
-                      <span>Sudah di Tracker</span>
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle size={20} />
-                      <span>Tambah ke Tracker</span>
-                    </>
-                  )}
+                  <ArrowLeft size={18} strokeWidth={2.2} />
                 </button>
 
-                {/* 2. Rating Star Dropdown (Bersih: Beri Rating) */}
-                <div className="relative flex items-center h-[56px] md:h-[64px]">
-                  <div className="absolute left-4 text-amber-400 pointer-events-none">
-                    <Star size={18} className={userRating ? "fill-amber-400" : ""} />
-                  </div>
-                  <select
-                    value={userRating}
-                    onChange={(e) => handleRatingChange(e.target.value)}
-                    className="h-full appearance-none rounded-lg border border-white/10 bg-[#1F1F23] pl-11 pr-10 text-sm md:text-base font-semibold text-white shadow-inner focus:border-[#6D4AFF] focus:outline-none transition-all cursor-pointer hover:bg-[#2A2A30]"
-                    aria-label="Beri Rating"
-                  >
-                    {RATING_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value} className="bg-[#181D2A] text-white">
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown size={14} className="pointer-events-none absolute right-3 text-neutral-400" />
-                </div>
-              </div>
-
-              {/* Kanan: Statistik Score & Members (Popularity & Ranked dipindah ke Information) */}
-              <div className="flex items-center justify-around sm:justify-end gap-4 sm:gap-6 py-2">
-                {/* Score */}
-                <div className="flex items-center gap-2 cursor-help" title={`Score: ${data.statistics?.score || "-"}`}>
-                  <Star size={22} className="fill-[#FF7A3D] text-[#FF7A3D] shrink-0" />
-                  <span className="text-lg md:text-[22px] font-semibold text-white">
-                    {data.statistics?.score || "-"}
-                  </span>
-                </div>
-                <div className="h-6 w-[1px] bg-white/15" aria-hidden="true" />
-
-                {/* Members / Bookmark */}
-                <div className="flex items-center gap-2 cursor-help" title={`Members: ${data.statistics?.members || "-"}`}>
-                  <Bookmark size={22} className="fill-[#22A6E8] text-[#22A6E8] shrink-0" />
-                  <span className="text-lg md:text-[22px] font-semibold text-white">
-                    {formatStatNumber(data.statistics?.members) || "-"}
-                  </span>
-                </div>
+                <Link
+                  href="/home/"
+                  aria-label="Beranda"
+                  title="Beranda"
+                  className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-surface/85 text-text shadow-md backdrop-blur-md transition-all duration-200 hover:bg-surface hover:border-border-hover hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer"
+                >
+                  <Home size={18} strokeWidth={2.2} />
+                </Link>
               </div>
             </div>
+          </div>
 
-            {/* ===== 4. SINOPSIS (Lebar Penuh dengan Read More & Text Justify) ===== */}
-            {(() => {
-              const synopsisText = (data.synopsis || "Sinopsis belum tersedia untuk judul ini.")
-                .replace(/\[Written by MAL Rewrite\]/gi, "")
-                .replace(/\(Source:[^)]+\)/gi, "")
-                .trim();
-
-              return (
-                <section aria-label="Sinopsis" className="w-full pt-2">
-                  {!isSynopsisExpanded ? (
-                    <div className="relative">
-                      <p className="line-clamp-3 text-base md:text-[20px] md:leading-[30px] text-[#E4E4E7] font-normal text-justify pr-4 select-text">
-                        {synopsisText}
-                      </p>
-                      <div className="absolute bottom-0 right-0 flex items-center bg-gradient-to-l from-[#0A0D14] via-[#0A0D14] to-transparent pl-10">
-                        <button
-                          type="button"
-                          onClick={() => setIsSynopsisExpanded(true)}
-                          className="text-[#7C5CFF] font-bold text-base md:text-[20px] leading-[30px] hover:text-[#9B82FF] transition-colors cursor-pointer bg-[#0A0D14] pl-1 focus:outline-none focus:ring-1 focus:ring-[#7C5CFF] rounded"
-                        >
-                          ... Read More
-                        </button>
-                      </div>
-                    </div>
+          {/* ===== 2. ELEMEN INTI PENUTUP BANNER (z-10 solid bg-bg dari Card ke bawah) ===== */}
+          <div className="relative z-10 -mt-12 sm:-mt-14 md:-mt-16 rounded-t-2xl sm:rounded-t-3xl border-t border-border/70 bg-bg pt-2 pb-20">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-5 sm:space-y-6">
+              {/* Header: Cover Poster + Badge & Judul */}
+              <div className="flex flex-col md:flex-row items-center md:items-end gap-5 sm:gap-7">
+                {/* Cover Potret menonjol ke atas menyentuh banner */}
+                <div className="relative -mt-24 sm:-mt-28 md:-mt-32 h-[200px] w-[135px] sm:h-[234px] sm:w-[158px] md:h-[262px] md:w-[176px] shrink-0 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+                  {poster ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={poster}
+                      alt={data.title || "Poster"}
+                      referrerPolicy="no-referrer"
+                      className="h-full w-full object-cover select-none"
+                    />
                   ) : (
-                    <div className="space-y-3">
-                      <p className="text-base md:text-[20px] md:leading-[30px] text-[#E4E4E7] font-normal leading-relaxed text-justify select-text transition-all duration-300">
-                        {synopsisText}
-                      </p>
-                      <button
-                        type="button"
-                        onClick={() => setIsSynopsisExpanded(false)}
-                        className="text-[#7C5CFF] font-bold text-sm md:text-[18px] hover:text-[#9B82FF] transition-colors cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#7C5CFF] rounded inline-block"
-                      >
-                        Show Less
-                      </button>
+                    <div className="flex h-full w-full items-center justify-center bg-surface-2 text-text-2">
+                      {isAnime ? <Film size={44} /> : <BookOpen size={44} />}
                     </div>
                   )}
-                </section>
-              );
-            })()}
+                </div>
 
-            {/* ===== 5. METADATA CHIPS (Label + Chips) ===== */}
-            <section aria-label="Metadata" className="w-full pt-4 space-y-4">
-              <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
-                {/* Genre */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                  <span className="w-[115px] shrink-0 text-base md:text-[18px] font-bold text-white tracking-tight">
-                    Genre
-                  </span>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {genres.length > 0 ? (
-                      genres.map((g) => (
-                        <Link
-                          key={g}
-                          href={`/explore?genre=${encodeURIComponent(g)}`}
-                          className="inline-flex h-[38px] md:h-[42px] items-center justify-center rounded-md bg-[#27272A] px-3.5 text-xs md:text-sm text-[#D4D4D8] transition-all hover:bg-[#35353A] hover:text-white cursor-pointer"
-                        >
-                          {g}
-                        </Link>
-                      ))
+                {/* Judul, RatingBadge & Tags (Selaras Beranda) */}
+                <div className="flex flex-1 flex-col text-center md:text-left min-w-0 pt-1 md:pb-2">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3">
+                    {data.statistics?.score ? (
+                      <RatingBadge score={data.statistics.score} size="hero" />
                     ) : (
-                      <span className="text-xs text-neutral-500">-</span>
+                      <Tag variant="neutral" size="pill" className="gap-1.5 font-semibold">
+                        <Star size={12} className="text-text-3" />
+                        <span>Belum ada skor</span>
+                      </Tag>
                     )}
+                    <Tag variant="secondary" size="pill" className="uppercase tracking-wider font-bold">
+                      {isAnime ? "Anime" : "Manga"}
+                    </Tag>
+                    <Tag variant="neutral" size="pill">
+                      {data.status || "-"}
+                    </Tag>
                   </div>
-                </div>
-
-                <div className="hidden lg:block h-[32px] w-[1px] bg-white/15" aria-hidden="true" />
-
-                {/* Studio / Author */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                  <span className="w-[100px] shrink-0 text-base md:text-[18px] font-bold text-white tracking-tight">
-                    {isAnime ? "Studio" : "Author"}
-                  </span>
-                  <span className="inline-flex h-[38px] md:h-[42px] items-center justify-center rounded-md bg-[#27272A] px-3.5 text-xs md:text-sm text-[#D4D4D8]">
-                    {studioOrAuthor}
-                  </span>
-                </div>
-
-                <div className="hidden lg:block h-[32px] w-[1px] bg-white/15" aria-hidden="true" />
-
-                {/* Format / Type */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                  <span className="w-[100px] shrink-0 text-base md:text-[18px] font-bold text-white tracking-tight">
-                    Format
-                  </span>
-                  <span className="inline-flex h-[38px] md:h-[42px] items-center justify-center rounded-md bg-[#27272A] px-3.5 text-xs md:text-sm text-[#D4D4D8]">
-                    {formatType}
-                  </span>
-                </div>
-
-                <div className="hidden lg:block h-[32px] w-[1px] bg-white/15" aria-hidden="true" />
-
-                {/* Episodes / Chapters */}
-                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
-                  <span className="w-[100px] shrink-0 text-base md:text-[18px] font-bold text-white tracking-tight">
-                    {isAnime ? "Episode" : "Chapter"}
-                  </span>
-                  <span className="inline-flex h-[38px] md:h-[42px] items-center justify-center rounded-md bg-[#27272A] px-3.5 text-xs md:text-sm text-[#D4D4D8]">
-                    {totalCount} {isAnime ? "Eps" : "Ch"}
-                  </span>
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-text tracking-tight leading-[1.15] font-['Bricolage_Grotesque'] line-clamp-2">
+                    {data.title || "Untitled"}
+                  </h1>
+                  <p className="mt-2 text-sm sm:text-base font-medium text-text-2">
+                    {data.status || "-"}
+                  </p>
                 </div>
               </div>
-            </section>
 
-            {/* ===== 6. DETAIL MENDALAM: CHARACTERS, STAFF, THEMES & INFO ===== */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-8 border-t border-white/10 items-start">
-              {/* Kolom Kiri (Sidebar Info Tambahan) */}
-              <div className="lg:col-span-4 space-y-6">
-                <div className="rounded-2xl border border-white/10 bg-[#121620] p-5 space-y-6 shadow-lg">
-                  {/* Alternative Titles */}
-                  <div>
-                    <h3 className="font-bold text-white text-base tracking-tight border-b border-white/10 pb-2.5 mb-3">
-                      Alternative Titles
-                    </h3>
-                    <div className="space-y-2 text-xs sm:text-sm text-neutral-300">
-                      {data.alternativeTitles?.synonyms && (
-                        <p className="leading-relaxed">
-                          <span className="font-semibold text-neutral-400">Synonyms:</span>{" "}
-                          <span className="text-neutral-100">
-                            {Array.isArray(data.alternativeTitles.synonyms)
-                              ? data.alternativeTitles.synonyms.join(", ")
-                              : data.alternativeTitles.synonyms}
-                          </span>
-                        </p>
-                      )}
-                      {data.alternativeTitles?.japanese && (
-                        <p className="leading-relaxed">
-                          <span className="font-semibold text-neutral-400">Japanese:</span>{" "}
-                          <span className="text-white font-medium">
-                            {data.alternativeTitles.japanese}
-                          </span>
-                        </p>
-                      )}
-                      {data.alternativeTitles?.english && (
-                        <p className="leading-relaxed">
-                          <span className="font-semibold text-neutral-400">English:</span>{" "}
-                          <span className="text-neutral-100">{data.alternativeTitles.english}</span>
-                        </p>
-                      )}
-                    </div>
+              {/* ===== 3. BARIS AKSI & STATISTIK ===== */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-6">
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                  <Button
+                    variant={trackedItem ? "secondary" : "primary"}
+                    size="lg"
+                    loading={isSavingTracker}
+                    onClick={handleToggleTracker}
+                  >
+                    {trackedItem ? (
+                      <>
+                        <CheckCircle2 size={18} className="text-white" />
+                        <span>Sudah di Tracker</span>
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle size={18} />
+                        <span>Tambah ke Tracker</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Kartu Mini Statistik Score & Members */}
+                <div className="flex items-center justify-center sm:justify-end gap-4 rounded-xl border border-border bg-surface px-4 py-2.5 shadow-sm self-center sm:self-auto">
+                  <div
+                    className="flex items-center gap-2 cursor-help"
+                    title={`Score: ${data.statistics?.score || "-"}`}
+                  >
+                    <Star size={18} className="fill-detail-star text-detail-star shrink-0" />
+                    <span className="text-base sm:text-lg font-bold text-text tabular-nums">
+                      {data.statistics?.score || "-"}
+                    </span>
                   </div>
+                  <div className="h-5 w-[1px] bg-border" aria-hidden="true" />
+                  <div
+                    className="flex items-center gap-2 cursor-help"
+                    title={`Members: ${data.statistics?.members || "-"}`}
+                  >
+                    <Bookmark size={18} className="fill-detail-members text-detail-members shrink-0" />
+                    <span className="text-base sm:text-lg font-bold text-text tabular-nums">
+                      {formatStatNumber(data.statistics?.members) || "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
 
-                  {/* Informasi Rinci Lengkap Sesuai Data API */}
-                  <div>
-                    <h3 className="font-bold text-white text-base tracking-tight border-b border-white/10 pb-2.5 mb-3">
-                      Information
-                    </h3>
-                    <div className="space-y-2.5 text-xs sm:text-sm text-neutral-300">
-                      <p>
-                        <span className="font-semibold text-neutral-400">Type:</span>{" "}
-                        <span className="text-white font-semibold">
-                          {data.information?.type || (isAnime ? "TV" : "Manga")}
-                        </span>
-                      </p>
+              {/* ===== 4. SINOPSIS ===== */}
+              <DetailSynopsis key={itemKey} synopsis={data.synopsis} />
 
-                      <p>
-                        <span className="font-semibold text-neutral-400">
-                          {isAnime ? "Episodes:" : "Chapters:"}
-                        </span>{" "}
-                        <span className="text-white font-semibold">{totalCount}</span>
-                      </p>
-
-                      {!isAnime && data.information?.volumes && (
-                        <p>
-                          <span className="font-semibold text-neutral-400">Volumes:</span>{" "}
-                          <span className="text-neutral-100">{data.information.volumes}</span>
-                        </p>
-                      )}
-
-                      <p>
-                        <span className="font-semibold text-neutral-400">Status:</span>{" "}
-                        <span className="text-white font-semibold">
-                          {data.information?.status || data.status || "-"}
-                        </span>
-                      </p>
-
-                      {/* Ranked & Popularity (Dipindahkan dari Banner) */}
-                      <p>
-                        <span className="font-semibold text-neutral-400">Ranked:</span>{" "}
-                        <span className="text-[#8B5CF6] font-bold">
-                          {data.statistics?.ranked || "-"}
-                        </span>
-                      </p>
-
-                      <p>
-                        <span className="font-semibold text-neutral-400">Popularity:</span>{" "}
-                        <span className="text-neutral-200 font-bold">
-                          {data.statistics?.popularity || "-"}
-                        </span>
-                      </p>
-
-                      <p>
-                        <span className="font-semibold text-neutral-400">Members:</span>{" "}
-                        <span className="text-neutral-100">
-                          {data.statistics?.members || "-"}
-                        </span>
-                      </p>
-
-                      <p>
-                        <span className="font-semibold text-neutral-400">Favorites:</span>{" "}
-                        <span className="text-neutral-100">
-                          {data.statistics?.favorites || "-"}
-                        </span>
-                      </p>
-
-                      {isAnime ? (
-                        <>
-                          <p>
-                            <span className="font-semibold text-neutral-400">Aired:</span>{" "}
-                            <span className="text-neutral-100">{data.information?.aired || "-"}</span>
-                          </p>
-                          {data.information?.premiered && (
-                            <p>
-                              <span className="font-semibold text-neutral-400">Premiered:</span>{" "}
-                              <span className="text-[#7C5CFF] font-bold">
-                                {data.information.premiered}
-                              </span>
-                            </p>
-                          )}
-                          {data.information?.broadcast && (
-                            <p>
-                              <span className="font-semibold text-neutral-400">Broadcast:</span>{" "}
-                              <span className="text-neutral-100">{data.information.broadcast}</span>
-                            </p>
-                          )}
-                          {data.information?.producers && (
-                            <p className="leading-relaxed">
-                              <span className="font-semibold text-neutral-400">Producers:</span>{" "}
-                              <span className="text-neutral-100">
-                                {Array.isArray(data.information.producers)
-                                  ? data.information.producers.join(", ")
-                                  : data.information.producers}
-                              </span>
-                            </p>
-                          )}
-                          {data.information?.studios && (
-                            <p>
-                              <span className="font-semibold text-neutral-400">Studios:</span>{" "}
-                              <span className="text-[#7C5CFF] font-bold">
-                                {Array.isArray(data.information.studios)
-                                  ? data.information.studios.join(", ")
-                                  : data.information.studios}
-                              </span>
-                            </p>
-                          )}
-                          {data.information?.duration && (
-                            <p>
-                              <span className="font-semibold text-neutral-400">Duration:</span>{" "}
-                              <span className="text-neutral-100">
-                                {data.information.duration}
-                              </span>
-                            </p>
-                          )}
-                          {data.information?.rating && (
-                            <p>
-                              <span className="font-semibold text-neutral-400">Rating:</span>{" "}
-                              <span className="text-neutral-100">
-                                {data.information.rating}
-                              </span>
-                            </p>
-                          )}
-                        </>
+              {/* ===== 5. METADATA CHIPS (Reusable Tag) ===== */}
+              <section aria-label="Metadata" className="w-full space-y-4">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-4">
+                  {/* Genre */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-text-3">
+                      Genre
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {genres.length > 0 ? (
+                        genres.map((g) => (
+                          <Link key={g} href={`/explore/?genre=${encodeURIComponent(g)}`}>
+                            <Tag
+                              variant="secondary"
+                              size="default"
+                              className="px-3 py-1.5 hover:bg-secondary hover:text-white transition-colors cursor-pointer"
+                            >
+                              {g}
+                            </Tag>
+                          </Link>
+                        ))
                       ) : (
-                        <>
-                          <p>
-                            <span className="font-semibold text-neutral-400">Published:</span>{" "}
-                            <span className="text-neutral-100">{data.information?.published || "-"}</span>
-                          </p>
-                          {data.information?.authors && (
-                            <p>
-                              <span className="font-semibold text-neutral-400">Authors:</span>{" "}
-                              <span className="text-[#7C5CFF] font-bold">
-                                {Array.isArray(data.information.authors)
-                                  ? data.information.authors.join(", ")
-                                  : data.information.authors}
-                              </span>
-                            </p>
-                          )}
-                          {data.information?.serialization && (
-                            <p>
-                              <span className="font-semibold text-neutral-400">Serialization:</span>{" "}
-                              <span className="text-neutral-100">
-                                {Array.isArray(data.information.serialization)
-                                  ? data.information.serialization.join(", ")
-                                  : data.information.serialization}
-                              </span>
-                            </p>
-                          )}
-                        </>
-                      )}
-
-                      {data.information?.licensors && (
-                        <p className="leading-relaxed">
-                          <span className="font-semibold text-neutral-400">Licensors:</span>{" "}
-                          <span className="text-neutral-100">
-                            {Array.isArray(data.information.licensors)
-                              ? data.information.licensors.join(", ")
-                              : data.information.licensors}
-                          </span>
-                        </p>
-                      )}
-
-                      <p>
-                        <span className="font-semibold text-neutral-400">Source:</span>{" "}
-                        <span className="text-neutral-100">{data.information?.source || "Original"}</span>
-                      </p>
-
-                      {data.information?.genres && (
-                        <p className="leading-relaxed">
-                          <span className="font-semibold text-neutral-400">Genres:</span>{" "}
-                          <span className="text-neutral-100">
-                            {Array.isArray(data.information.genres)
-                              ? data.information.genres.join(", ")
-                              : data.information.genres}
-                          </span>
-                        </p>
-                      )}
-
-                      {data.information?.themes && (
-                        <p className="leading-relaxed">
-                          <span className="font-semibold text-neutral-400">Themes:</span>{" "}
-                          <span className="text-neutral-100">
-                            {Array.isArray(data.information.themes)
-                              ? data.information.themes.join(", ")
-                              : data.information.themes}
-                          </span>
-                        </p>
-                      )}
-
-                      {data.information?.demographics && (
-                        <p className="leading-relaxed">
-                          <span className="font-semibold text-neutral-400">Demographic:</span>{" "}
-                          <span className="text-neutral-100">
-                            {Array.isArray(data.information.demographics)
-                              ? data.information.demographics.join(", ")
-                              : data.information.demographics}
-                          </span>
-                        </p>
+                        <span className="text-xs text-text-2">-</span>
                       )}
                     </div>
+                  </div>
+
+                  <div className="hidden lg:block h-6 w-[1px] bg-border" aria-hidden="true" />
+
+                  {/* Studio / Author */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-text-3">
+                      {isAnime ? "Studio" : "Author"}
+                    </span>
+                    <Tag variant="filter" size="default" className="px-3 py-1.5 text-text">
+                      {studioOrAuthor}
+                    </Tag>
+                  </div>
+
+                  <div className="hidden lg:block h-6 w-[1px] bg-border" aria-hidden="true" />
+
+                  {/* Format */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-text-3">
+                      Format
+                    </span>
+                    <Tag variant="filter" size="default" className="px-3 py-1.5 text-text">
+                      {formatType}
+                    </Tag>
+                  </div>
+
+                  <div className="hidden lg:block h-6 w-[1px] bg-border" aria-hidden="true" />
+
+                  {/* Episodes / Chapters */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                    <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-text-3">
+                      {isAnime ? "Episode" : "Chapter"}
+                    </span>
+                    <Tag variant="filter" size="default" className="px-3 py-1.5 text-text tabular-nums">
+                      {totalCount !== null ? `${totalCount} ${isAnime ? "Eps" : "Ch"}` : "-"}
+                    </Tag>
                   </div>
                 </div>
-              </div>
+              </section>
 
-              {/* Kolom Kanan (Konten Karakter, Staff & Lagu Tema) */}
-              <div className="lg:col-span-8 space-y-7">
-                {/* Characters */}
-                {data.characters && data.characters.length > 0 && (
-                  <div className="space-y-4 rounded-2xl border border-white/10 bg-[#121620] p-5 sm:p-6 shadow-md">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <h3 className="text-lg font-bold tracking-tight text-white">
-                        {isAnime ? "Characters & Voice Actors" : "Characters"}
-                      </h3>
-                      {data.characters.length > 4 && (
-                        <button
-                          type="button"
-                          onClick={() => setShowAllCharacters((prev) => !prev)}
-                          className="flex items-center gap-1.5 text-xs sm:text-sm text-[#7C5CFF] font-semibold hover:text-[#9B82FF] transition-colors cursor-pointer"
-                        >
-                          <span>
-                            {showAllCharacters
-                              ? "Show Less"
-                              : isAnime
-                              ? "More characters & voices"
-                              : "More characters"}
-                          </span>
-                          <ChevronDown
-                            size={14}
-                            className={`transition-transform duration-200 ${
-                              showAllCharacters ? "rotate-180" : ""
-                            }`}
-                          />
-                        </button>
-                      )}
-                    </div>
-                    {/* Mode List Vertikal: 1 di atas, 2 di bawah 1, dst. */}
-                    <div className="flex flex-col gap-3 pt-1">
-                      {(showAllCharacters ? data.characters : data.characters.slice(0, 4)).map((char, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between rounded-xl border border-white/10 bg-[#151924] p-3 sm:p-3.5 transition-colors hover:border-white/20 overflow-hidden min-w-0"
-                        >
-                          {/* Character Left */}
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div className="h-14 w-11 shrink-0 overflow-hidden rounded-lg bg-neutral-800 border border-white/10">
-                              {char.image ? (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img
-                                  src={char.image}
-                                  alt={char.name}
-                                  referrerPolicy="no-referrer"
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center bg-neutral-800 text-neutral-400 text-sm font-bold">
-                                  ?
-                                </div>
-                              )}
-                            </div>
-                            <div className="overflow-hidden min-w-0 flex-1">
-                              <p className="text-sm sm:text-base font-bold text-white truncate">{char.name}</p>
-                              <p className="text-xs sm:text-sm text-neutral-400 truncate mt-0.5">{char.role}</p>
-                            </div>
-                          </div>
-
-                          {/* Voice Actor Right (Ruang lega di mode list) */}
-                          {isAnime && char.voiceActor && (
-                            <div className="flex items-center justify-end gap-3 text-right pl-3 shrink-0 max-w-[50%] overflow-hidden min-w-0">
-                              <div className="overflow-hidden min-w-0 flex-1">
-                                <p className="text-xs sm:text-sm md:text-base font-semibold text-[#7C5CFF] truncate">
-                                  {char.voiceActor.name}
-                                </p>
-                                <p className="text-xs text-neutral-400 truncate mt-0.5">
-                                  {char.voiceActor.language}
-                                </p>
-                              </div>
-                              <div className="h-14 w-11 shrink-0 overflow-hidden rounded-lg bg-neutral-800 border border-white/10">
-                                {char.voiceActor.image ? (
-                                  /* eslint-disable-next-line @next/next/no-img-element */
-                                  <img
-                                    src={char.voiceActor.image}
-                                    alt={char.voiceActor.name}
-                                    referrerPolicy="no-referrer"
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center bg-neutral-800 text-neutral-400 text-sm font-bold">
-                                    ?
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Staff */}
-                {data.staff && data.staff.length > 0 && (
-                  <div className="space-y-4 rounded-2xl border border-white/10 bg-[#121620] p-5 sm:p-6 shadow-md">
-                    <div className="flex items-center justify-between border-b border-white/10 pb-3">
-                      <h3 className="text-lg font-bold tracking-tight text-white">Staff</h3>
-                      {data.staff.length > 4 && (
-                        <button
-                          type="button"
-                          onClick={() => setShowAllStaff((prev) => !prev)}
-                          className="flex items-center gap-1.5 text-xs sm:text-sm text-[#7C5CFF] font-semibold hover:text-[#9B82FF] transition-colors cursor-pointer"
-                        >
-                          <span>{showAllStaff ? "Show Less" : "More staff"}</span>
-                          <ChevronDown
-                            size={14}
-                            className={`transition-transform duration-200 ${
-                              showAllStaff ? "rotate-180" : ""
-                            }`}
-                          />
-                        </button>
-                      )}
-                    </div>
-                    {/* Mode List Vertikal: 1 di atas, 2 di bawah 1, dst. */}
-                    <div className="flex flex-col gap-2.5 pt-1">
-                      {(showAllStaff ? data.staff : data.staff.slice(0, 4)).map((st, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-3.5 rounded-xl border border-white/10 bg-[#151924] p-3 sm:p-3.5 transition-colors hover:border-white/20 overflow-hidden min-w-0"
-                        >
-                          <div className="h-12 w-10 shrink-0 overflow-hidden rounded-lg bg-neutral-800 border border-white/10">
-                            {st.image ? (
-                              /* eslint-disable-next-line @next/next/no-img-element */
-                              <img
-                                src={st.image}
-                                alt={st.name}
-                                referrerPolicy="no-referrer"
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-neutral-800 text-neutral-400 text-sm font-bold">
-                                ?
-                              </div>
-                            )}
-                          </div>
-                          <div className="overflow-hidden min-w-0 flex-1">
-                            <p className="text-sm sm:text-base font-bold text-white truncate">{st.name}</p>
-                            <p className="text-xs sm:text-sm text-neutral-400 truncate mt-0.5">{st.role}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Theme Songs (Opening & Ending - Anime Only) */}
-                {isAnime && (data.openings?.length > 0 || data.endings?.length > 0) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    {data.openings?.length > 0 && (
-                      <div className="space-y-3 rounded-2xl border border-white/10 bg-[#121620] p-5 shadow-md">
-                        <h3 className="text-base font-bold tracking-tight text-white border-b border-white/10 pb-3">
-                          Opening Theme
-                        </h3>
-                        <div className="space-y-2 pt-1">
-                          {data.openings.slice(0, 3).map((op, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#151924] p-3 text-xs"
-                            >
-                              <div className="flex items-center gap-2.5 overflow-hidden">
-                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#6D4AFF]/20 text-[#7C5CFF]">
-                                  <Play size={12} className="fill-[#7C5CFF] ml-0.5" />
-                                </div>
-                                <div className="truncate">
-                                  <p className="font-semibold text-white truncate">&quot;{op.title}&quot;</p>
-                                  <p className="text-neutral-400 truncate mt-0.5">by {op.artist}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {data.endings?.length > 0 && (
-                      <div className="space-y-3 rounded-2xl border border-white/10 bg-[#121620] p-5 shadow-md">
-                        <h3 className="text-base font-bold tracking-tight text-white border-b border-white/10 pb-3">
-                          Ending Theme
-                        </h3>
-                        <div className="space-y-2 pt-1">
-                          {data.endings.slice(0, 3).map((ed, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#151924] p-3 text-xs"
-                            >
-                              <div className="flex items-center gap-2.5 overflow-hidden">
-                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-600/20 text-emerald-400">
-                                  <Play size={12} className="fill-emerald-400 ml-0.5" />
-                                </div>
-                                <div className="truncate">
-                                  <p className="font-semibold text-white truncate">&quot;{ed.title}&quot;</p>
-                                  <p className="text-neutral-400 truncate mt-0.5">by {ed.artist}</p>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
+              {/* ===== 6. DETAIL MENDALAM: CHARACTERS, STAFF, THEMES & INFO ===== */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 pt-6 border-t border-border items-start">
+                <DetailInfoSidebar
+                  data={data}
+                  isAnime={isAnime}
+                  totalCount={totalCount}
+                />
+                <DetailMediaSections
+                  key={itemKey}
+                  data={data}
+                  isAnime={isAnime}
+                  trailerHasError={trailerHasError}
+                />
               </div>
             </div>
           </div>
@@ -1126,8 +963,8 @@ export default function DetailPage() {
     <AuthGuard>
       <Suspense
         fallback={
-          <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-[#0A0D14]">
-            <p className="text-base text-neutral-400 animate-pulse">Memuat data katalog...</p>
+          <div className="flex min-h-screen items-center justify-center bg-bg pt-16 text-text-2">
+            <p className="text-base text-text-2 animate-pulse">Memuat data katalog...</p>
           </div>
         }
       >

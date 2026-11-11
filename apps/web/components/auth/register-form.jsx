@@ -24,7 +24,7 @@ export function RegisterForm() {
   // Jika sudah login, jangan izinkan buka form register -> alihkan ke /home
   useEffect(() => {
     if (user) {
-      router.replace("/home");
+      router.replace("/home/");
     }
   }, [user, router]);
 
@@ -62,7 +62,7 @@ export function RegisterForm() {
       if (result.success) {
         setSuccessMessage("Akun berhasil dibuat! Mengalihkan ke halaman masuk...");
         setTimeout(() => {
-          router.push("/login");
+          router.push("/login/");
         }, 1200);
       }
     } catch (err) {
@@ -100,16 +100,16 @@ export function RegisterForm() {
         {successMessage && (
           <div
             role="status"
-            className="flex items-start gap-2 rounded-md bg-[color-mix(in_srgb,#10B981_14%,transparent)] p-3 text-sm text-emerald-400 border border-emerald-500/20"
+            className="flex items-start gap-2 rounded-md bg-success-soft p-3 text-sm text-success border border-success-border"
           >
-            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-emerald-400" strokeWidth={1.75} />
+            <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-success" strokeWidth={1.75} />
             <span>{successMessage}</span>
           </div>
         )}
         {formError && (
           <div
             role="alert"
-            className="flex items-start gap-2 rounded-md bg-[#EC5D74]/15 border border-[#EC5D74]/25 p-3 text-sm text-[#EC5D74]"
+            className="flex items-start gap-2 rounded-md bg-destructive/15 border border-destructive/25 p-3 text-sm text-destructive"
           >
             <AlertCircle className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
             <span>{formError}</span>
@@ -118,7 +118,7 @@ export function RegisterForm() {
         <Input
           label="Username"
           autoComplete="username"
-          placeholder="andika"
+          placeholder="username"
           {...bind("username")}
         />
         <Input
@@ -143,11 +143,11 @@ export function RegisterForm() {
           Daftar
         </Button>
       </form>
-      <p className="mt-6 text-center text-sm text-[#A5AAC0]">
+      <p className="mt-6 text-center text-sm text-text-2">
         Sudah punya akun?{" "}
         <Link
-          href="/login"
-          className="inline-flex min-h-11 items-center font-semibold text-[#A9A6F7] hover:underline cursor-pointer"
+          href="/login/"
+          className="inline-flex min-h-11 items-center font-semibold text-accent-text hover:underline cursor-pointer"
         >
           Masuk
         </Link>
