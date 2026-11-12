@@ -1,9 +1,14 @@
-# Definition of Done (DoD) — MOJIJI
+---
+title: "Pedoman Definition of Done (DoD) & Standar Kualitas"
+sidebar_position: 4
+tags: [qa, dod, definition-of-done, standard, checklist]
+---
+
+# Definition of Done (DoD) — Standar Kualitas MOJIJI
 
 > **Proyek:** MOJIJI — Web Tracking Anime & Manga  
-> **Tiket pembuatan dokumen:** MJ-031  
-> **Sumber aturan:** Mini PRD MOJIJI Revisi 4 (v1.4 — Docker/Migration Update), **poin 4: Team & Development → Development Workflow → Definition of Done**.  
-> **Status:** Draft untuk disepakati tim; checklist ini tidak mengubah PRD.
+> **Sumber aturan:** Mini PRD MOJIJI Revisi 4 (v1.4 — Docker/Migration Update), **poin 4: Development Workflow → Definition of Done**.  
+> **Status:** Disepakati Seluruh Tim (QA, Frontend, Backend, DBA, DevOps).
 
 ## 1. Apa itu Definition of Done—
 

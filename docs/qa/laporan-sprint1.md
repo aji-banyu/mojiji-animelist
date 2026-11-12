@@ -1,10 +1,15 @@
+---
+title: "Laporan Pengujian Sprint 1 & Evaluasi Kualitas UTS"
+sidebar_position: 5
+tags: [qa, sprint-1, laporan-pengujian, uts, milestone]
+---
+
 # Laporan Pengujian Sprint 1 dan Status Bug Terbuka (Milestone UTS MVP)
 
-> **Tiket:** MJ-105 | **Minggu:** 8 (Sprint 1 MVP) | **Role:** QA (Nadia)  
+> **Status:** **FINAL / QA SIGN-OFF SPRINT 1 (UTS LIVE)**  
 > **Environment:** MOJIJI Staging (`https://staging.mojiji.web.id`) & Production (`https://mojiji.web.id`)  
 > **Periode:** Minggu 3 s/d Minggu 8  
-> **Referensi:** Mini PRD Revisi 4 (v1.4), Skenario MVP (`docs/qa/skenario-mvp.md`), Laporan Regresi (`docs/qa/regression-m8.md`), Bukti Postman (`docs/qa/bukti-postman/`), Verifikasi AC (`docs/qa/verifikasi-ac-mvp-nfr.md`)  
-> **Status:** **FINAL / QA SIGN-OFF SPRINT 1**  
+> **Referensi:** Mini PRD Revisi 4 (v1.4), Skenario MVP (`docs/qa/skenario-mvp.md`), Laporan Regresi (`docs/qa/arsip-tiket/regression-m8.md`), Bukti Postman (`docs/qa/bukti-postman/`), Verifikasi AC (`docs/qa/verifikasi-ac-mvp-nfr.md`)  
 > **Tanggal:** 10 November 2026  
 
 ---
