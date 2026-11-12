@@ -166,7 +166,11 @@ jobs:
               echo "⚠️ Peringatan: Kontainer Caddy tidak ditemukan untuk di-restart."
             fi
 
-            # 8. Pemeriksaan kesehatan (Healthcheck)
+            # 8. Pemeriksaan kesehatan (Healthcheck) & verifikasi berkas statis
+            echo "Memeriksa berkas statis di dalam direktori Caddy..."
+            if [ -n "$CADDY_CONTAINER" ]; then
+              docker exec "$CADDY_CONTAINER" ls -la /srv/production 2>/dev/null || true
+            fi
             echo "Pemeriksaan kesehatan API Gateway Production..."
             sleep 5
             docker compose -p mojiji-prod ps
