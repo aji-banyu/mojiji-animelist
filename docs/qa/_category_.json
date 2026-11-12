@@ -1,0 +1,9 @@
+{
+  "label": "Quality Assurance",
+  "position": 5,
+  "link": {
+    "type": "generated-index",
+    "description": "Dokumentasi standar pengujian perangkat lunak, rencana pengujian alur inti, laporan eksekusi API Postman, dan matriks verifikasi kriteria keberterimaan (AC & NFR) MOJIJI."
+  }
+}
+

@@ -45,6 +45,13 @@ const updateTrackerStatusSchema = z.object({
       message: "Status tidak valid. Pilihan status: plan, watching, reading, completed, on_hold, dropped",
     }),
   }),
+  progress: z
+    .number({
+      invalid_type_error: "Progres harus berupa angka bulat",
+    })
+    .int("Progres harus berupa bilangan bulat")
+    .min(0, "Progres tidak boleh kurang dari 0")
+    .optional(),
 });
 
 const uuidParamSchema = z

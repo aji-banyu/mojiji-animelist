@@ -231,16 +231,16 @@ Seluruh berkas dokumentasi di folder `docs/` telah dipasangi metadata frontmatte
 
 ## Tim Pengembang & Struktur Peran
 
-Proyek ini dikembangkan secara kolaboratif oleh tim mahasiswa mata kuliah Pemrograman Web Framework:
+Proyek Mojiji AnimeList dikembangkan secara kolaboratif oleh tim mahasiswa mata kuliah Pemrograman Web Framework:
 
-| Nama Pengembang | Peran Utama | Tanggung Jawab Inti |
+| Anggota Tim | Peran Utama | Lingkup Tanggung Jawab |
 | :--- | :--- | :--- |
-| **Aji Banyu Rizqi** | DevOps Engineer & Admin | Provisioning VPS, CI/CD pipeline, keamanan jaringan, mitigasi kuota hosting, serta secondary testing. |
-| **Syafii Nurradha** | Backend Lead | Arsitektur microservices Express.js, autentikasi sesi cookie, dan koordinasi rilis backend. |
-| **Andika Abdilah Said** | Backend Developer | Integrasi Tenrai API, logika katalog, caching Upstash Redis, dan endpoint tracker. |
-| **Ryan** | Database Administrator | Perancangan skema database multi-schema, migrasi Dbmate, indexing query, dan Supabase pooler. |
-| **Rian** | Frontend Developer | Antarmuka web Next.js 15, integrasi UI komponen Shadcn, dan konsumsi API client-side. |
-| **Nadia** | Quality Assurance (QA) | Perancangan test case, smoke testing, regresi fungsional, dan validasi kriteria penerimaan (AC). |
+| **Aji** | DevOps Engineer & Admin | Mengelola server VPS, otomatisasi alur deploy (CI/CD), web server Caddy (HTTPS), dan kontainer Docker. |
+| **Syafii** | Backend Developer | Mengembangkan layanan backend (microservices), API Gateway, sistem login, dan keamanan sesi pengguna. |
+| **Andika** | Frontend Developer | Mengembangkan tampilan web Next.js, komponen antarmuka, dan menghubungkan web dengan backend. |
+| **Ryan** | Database Administrator (DBA) | Merancang struktur database PostgreSQL, migrasi tabel data, dan koneksi database Supabase. |
+| **Ichsan** | UI/UX Designer | Merancang desain tampilan, alur pengguna (*user flow*), dan prototipe aplikasi di Figma. |
+| **Nadia** | Quality Assurance (QA) | Menguji fitur aplikasi, memastikan sistem bebas error, dan menguji API menggunakan Postman. |
 
 ---
 

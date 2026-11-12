@@ -1,6 +1,6 @@
 # Panduan Kontribusi Tim Pengembang Mojiji AnimeList
 
-Dokumen ini merupakan panduan rekayasa dan konvensi standar (*Engineering Guidelines*) yang wajib dipatuhi oleh seluruh anggota tim pengembang proyek **Mojiji AnimeList** (DevOps, Backend, DBA, Frontend, QA, UI/UX). Kepatuhan terhadap panduan ini menjamin konsistensi kode, integritas riwayat git, keamanan rahasia sistem, serta kesiapan otomatisasi pengujian dan peluncuran layanan.
+Dokumen ini merupakan panduan rekayasa dan konvensi standar (*Engineering Guidelines*) yang wajib dipatuhi oleh seluruh anggota tim pengembang proyek **Mojiji AnimeList** (Aji, Syafii, Andika, Ryan, Ichsan, Nadia). Kepatuhan terhadap panduan ini menjamin konsistensi kode, integritas riwayat git, keamanan rahasia sistem, serta kesiapan otomatisasi pengujian dan peluncuran layanan.
 
 ---
 
@@ -54,6 +54,17 @@ sequenceDiagram
     Develop->>Main: Pull Request Rilis Resmi ke branch main
     Note over Main: Otomatis Backup DB & Deploy ke Production (mojiji.web.id)
 ```
+
+### Status Progres & Lingkungan Aktif
+
+Per Milestone UTS (Minggu 8), proyek telah mencapai tonggak rilis resmi:
+* **Increment 1 (Sprint 1 - Rilis MVP `v1.0.0-mvp`):**
+  * Seluruh fitur inti MVP (Autentikasi Pengguna dengan cookie `HttpOnly`, Pencarian Anime & Manga dengan Debounce + Upstash Redis Cache, Halaman Detail Terpadu, dan Tracker Watchlist) telah selesai diuji dan dirilis live.
+  * **Lingkungan Produksi:** Aktif di **`https://mojiji.web.id`** (basis branch `main`).
+  * **Lingkungan Staging:** Aktif di **`https://staging.mojiji.web.id`** (basis branch `develop`).
+* **Increment 2 (Sprint 2 - Pasca-UTS):**
+  * Fokus pada pengembangan fitur tambahan: Komentar Komunitas, Profil Pengguna, Toggle Tema Dark/Light Mode, dan Sistem Notifikasi/Reminder.
+  * Seluruh kontributor wajib membuat branch fitur baru dari branch `develop` terbaru (`git pull origin develop`).
 
 ---
 
@@ -139,13 +150,14 @@ docs(api): perbarui kontrak respon katalog pada skema swagger [MJ-098]
 
 Untuk menjaga akuntabilitas, setiap direktori dalam repositori memiliki penanggung jawab utama:
 
-| Direktori Repositori | Pemilik Utama | Anggota Tim | Tanggung Jawab Review |
+| Direktori Repositori | Pemilik Utama | Penanggung Jawab | Tanggung Jawab Review |
 | :--- | :--- | :--- | :--- |
-| `apps/web/` | Frontend Developer | Rian | Review perubahan antarmuka, komponen React, styling Tailwind, dan performa client. |
-| `services/` | Backend Engineers | Syafii & Dika | Review logika bisnis Express.js, keamanan routing, enkripsi, dan integrasi API pihak ketiga. |
-| `database/` | Database Administrator | Ryan | Review integritas DDL migrasi Dbmate, query indexing, dan backward-compatibility. |
-| `tests/`, `docs/qa/` | Quality Assurance (QA) | Nadia | Review cakupan skenario pengujian, koleksi Postman/Newman, dan verifikasi bug fix. |
-| `infra/`, `.github/`, `docs/deployment/` | DevOps Engineer | Aji | Review konfigurasi Docker, Caddyfile, alur CI/CD, alokasi memori, dan keamanan server. |
+| `apps/web/` | Frontend Developer | Andika | Review perubahan antarmuka, komponen React, styling Tailwind, dan performa client-side. |
+| `services/` | Backend Developer | Syafii | Review logika bisnis Express.js, arsitektur routing API Gateway, keamanan sesi, dan integrasi API eksternal. |
+| `database/` | Database Administrator (DBA) | Ryan | Review integritas DDL migrasi Dbmate, indexing query, dan kompatibilitas skema PostgreSQL. |
+| `tests/`, `docs/qa/` | Quality Assurance (QA) | Nadia | Review cakupan skenario pengujian, koleksi Postman/Newman, dan verifikasi kriteria penerimaan (AC). |
+| `infra/`, `.github/`, `docs/deployment/` | DevOps Engineer & Admin | Aji | Review konfigurasi Docker, Caddyfile, alur CI/CD GitHub Actions, alokasi memori, dan keamanan server VPS. |
+| Desain & Mockup (Figma / `docs/`) | UI/UX Designer | Ichsan | Review keselarasan antarmuka visual, user flow, sistem desain, dan kepatuhan prototipe di Figma. |
 
 *Catatan:* Anggota tim diperbolehkan membantu pengerjaan pada direktori di luar peran utamanya, namun perubahan tersebut **wajib** disetujui (*approved*) oleh pemilik direktori terkait sebelum di-merge.
 
@@ -201,3 +213,17 @@ Jika suatu pekerjaan selesai dan menjadi prasyarat bagi pekerjaan rekan lain:
 > **Tiket Dependen:** [MJ-xxx]  
 > **Artefak yang Diserahkan:** [Tautan berkas / URL staging / branch]  
 > **Catatan Penting:** [Konfigurasi khusus, variabel baru, atau batasan sistem]
+
+---
+
+## 10. Otomasi Operasional Peladen (Ops Workflows via GitHub Actions)
+
+Untuk memudahkan anggota tim melakukan pemeliharaan server tanpa memerlukan akses terminal SSH atau kredensial langsung ke VPS, repositori menyediakan alur kerja manual berbasis `workflow_dispatch` di tab **Actions**:
+
+| Nama Workflow | Berkas Konfigurasi | Kapan Digunakan | Cara Menjalankan |
+| :--- | :--- | :--- | :--- |
+| **Staging Environment Toggle** | `.github/workflows/staging-toggle.yml` | Menghemat RAM VPS (2 GB) saat staging tidak dipakai. Mematikan 4 mikroservis backend (`DOWN`) atau menyalakannya kembali saat pengujian (`UP`). | Tab **Actions** &rarr; Pilih *Staging Environment Toggle* &rarr; Klik **Run workflow** &rarr; Pilih aksi `UP` atau `DOWN`. |
+| **Ops - Caddy Server Control** | `.github/workflows/ops-restart-caddy.yml` | Menyegarkan reverse proxy Caddy secara instan (mengatasi desinkronisasi berkas mount/inode) atau memuat ulang konfigurasi *zero-downtime*. | Tab **Actions** &rarr; Pilih *Ops - Caddy Server Control* &rarr; Klik **Run workflow** &rarr; Pilih opsi `restart` (default) atau `reload`. |
+| **Production Pipeline (Otomatis & Cadangan Manual)** | `.github/workflows/production.yml` | **Utamanya Otomatis:** Berjalan saat PR di-merge ke branch `main`.<br>**Cadangan Manual:** Memicu rilis ulang produksi secara instan jika ada kegagalan jaringan atau perubahan rahasia (*secrets*) tanpa perlu membuat commit baru. | **Otomatis:** Merge PR ke `main`.<br>**Manual:** Tab **Actions** &rarr; Pilih *Production Pipeline* &rarr; Klik **Run workflow** (branch `main`). |
+
+*Catatan Keamanan & Arsitektur:* Alur kerja operasional di atas dirancang dengan pengenalan kontainer dinamis (*Dynamic Auto-Detect*) sehingga aman dijalankan dan tetap kompatibel saat struktur Caddy dipindahkan ke `mojiji-infra` pada Sprint 2.

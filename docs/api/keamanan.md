@@ -1,3 +1,9 @@
+---
+title: "Audit Keamanan Akses Data & Integrasi (MJ-097)"
+sidebar_position: 2
+tags: [backend, security, auth, anti-spoofing, cookies, docusaurus]
+---
+
 # Laporan Audit Keamanan Akses Data dan Integrasi MVP — Mojiji AnimeList
 
 ## 1. Informasi Dokumen
@@ -20,6 +26,32 @@ Dokumen ini mencatat hasil audit keamanan, penguatan pertahanan akses data pengg
 ---
 
 ## 3. Ringkasan Hasil Audit Keamanan
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Attacker as Penyerang Eksternal
+    participant Gateway as API Gateway (:4000)
+    participant Tracker as Tracker Service (:4003)
+    participant DB as Database PostgreSQL
+
+    Note over Attacker,Gateway: Skenario 1: Header Spoofing Attack
+    Attacker->>Gateway: POST /api/tracker + Header Palsu [X-User-Id: korban-uuid]
+    Note over Gateway: Gateway membuang X-User-Id eksternal (Sanitize Headers)
+    Gateway-->>Attacker: 401 Unauthorized (Ditolak: Sesi cookie tidak ditemukan)
+
+    Note over Attacker,Gateway: Skenario 2: ID Manipulation / Enumeration Attack
+    Attacker->>Gateway: PATCH /api/tracker/id-milik-user-lain (Membawa Cookie Sah Sendiri)
+    Gateway->>Tracker: Forward + Inject X-User-Id: attacker-uuid
+    Tracker->>DB: SELECT WHERE id = tracker_id
+    DB-->>Tracker: user_id != attacker-uuid
+    Tracker-->>Gateway: 404 Not Found (Bukan 403, keberadaan data dirahasiakan)
+    Gateway-->>Attacker: 404 Not Found
+```
+
+> [!IMPORTANT]
+> Seluruh operasi data pribadi (*multi-tenant data isolation*) wajib memverifikasi kepemilikan (`WHERE user_id = $1`). Upaya manipulasi ID tracker pengguna lain selalu mengembalikan status HTTP 404 Not Found untuk mencegah *resource enumeration*.
+
 
 ### 3.1 Penegakan Akses Data & Kepemilikan (Strict Ownership Enforcement)
 

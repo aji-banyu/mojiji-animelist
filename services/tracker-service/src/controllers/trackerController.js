@@ -358,6 +358,7 @@ async function updateTrackerStatus(req, res) {
       });
     }
     const newStatus = bodyResult.data.status;
+    const reqProgress = bodyResult.data.progress;
 
     // 4. Verifikasi keberadaan dan kepemilikan data (Owner Verification)
     const checkQuery = `
@@ -378,11 +379,11 @@ async function updateTrackerStatus(req, res) {
     }
 
     const currentTracker = checkResult.rows[0];
-    let newProgress = currentTracker.progress;
+    let newProgress = typeof reqProgress === "number" ? reqProgress : currentTracker.progress;
 
-    // Jika status diubah menjadi 'completed' dan total diketahui (> 0) serta progress masih 0,
+    // Jika status diubah menjadi 'completed' dan total diketahui (> 0) serta progress masih 0 dan tidak diberikan progres eksplisit,
     // otomatis samakan progres ke total
-    if (newStatus === "completed" && currentTracker.total > 0 && currentTracker.progress === 0) {
+    if (newStatus === "completed" && currentTracker.total > 0 && currentTracker.progress === 0 && typeof reqProgress !== "number") {
       newProgress = currentTracker.total;
     }
 

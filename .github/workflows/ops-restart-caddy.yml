@@ -1,0 +1,70 @@
+name: Ops - Caddy Server Control
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Tindakan kontrol pada Caddy Server'
+        required: true
+        default: 'restart'
+        type: choice
+        options:
+          - restart
+          - reload
+
+jobs:
+  control-caddy:
+    name: Caddy Control (${{ inputs.action }})
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute Caddy Control via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST_VPS }}
+          username: ${{ secrets.USERNAME_VPS }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 20125
+          script_stop: true
+          script: |
+            echo "=================================================="
+            echo " [MOJIJI OPS] Kontrol Caddy Reverse Proxy"
+            echo "=================================================="
+
+            # Deteksi nama kontainer Caddy secara dinamis (Auto-Detect)
+            echo "Mencari kontainer Caddy yang sedang aktif..."
+            CADDY_CONTAINER=$(docker ps --filter "name=caddy" --format "{{.Names}}" | head -n 1)
+
+            if [ -z "$CADDY_CONTAINER" ]; then
+              echo "❌ Error: Kontainer Caddy tidak ditemukan di sistem!"
+              echo "Daftar seluruh kontainer yang aktif:"
+              docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+              exit 1
+            fi
+
+            echo "✅ Ditemukan kontainer Caddy aktif: $CADDY_CONTAINER"
+
+            if [ "${{ inputs.action }}" = "restart" ]; then
+              echo "Menjalankan restart pada kontainer $CADDY_CONTAINER..."
+              docker restart "$CADDY_CONTAINER"
+              echo "Menunggu kontainer stabil..."
+              sleep 2
+            else
+              echo "Menjalankan reload konfigurasi Caddy (zero-downtime)..."
+              docker exec "$CADDY_CONTAINER" caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile
+            fi
+
+            echo ""
+            echo "=================================================="
+            echo " Status Kontainer Caddy:"
+            echo "=================================================="
+            docker ps --filter "name=$CADDY_CONTAINER" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+            echo ""
+            echo "=================================================="
+            echo " Log Terakhir Kontainer Caddy:"
+            echo "=================================================="
+            docker logs --tail 20 "$CADDY_CONTAINER"
+
+            echo ""
+            echo "✅ Operasi ${{ inputs.action }} pada Caddy berhasil diselesaikan!"
+

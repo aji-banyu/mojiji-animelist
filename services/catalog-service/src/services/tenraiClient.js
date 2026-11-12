@@ -129,13 +129,47 @@ async function searchCatalog(type, query, page = 1, limit = 20) {
 }
 
 /**
- * Mengambil detail satu anime atau manga berdasarkan MAL ID dari Tenrai API
- * @param {'anime' | 'manga'} type 
- * @param {number} malId 
+ * Mengambil detail penuh judul; fallback ke endpoint dasar jika /full mengembalikan 404
+ */
+async function fetchDetailWithFullFallback(type, malId) {
+  try {
+    return await fetchTenrai(`/${type}/${malId}/full`);
+  } catch (err) {
+    if (err.code === "NOT_FOUND") {
+      return await fetchTenrai(`/${type}/${malId}`);
+    }
+    throw err;
+  }
+}
+
+/**
+ * Mengambil detail lengkap satu anime atau manga (beserta characters & staff) dari Tenrai API
+ * @param {'anime' | 'manga'} type
+ * @param {number} malId
  */
 async function getCatalogDetail(type, malId) {
-  const endpoint = `/${type}/${malId}`;
-  return await fetchTenrai(endpoint);
+  const [mainRes, charsRes, staffRes] = await Promise.allSettled([
+    fetchDetailWithFullFallback(type, malId),
+    fetchTenrai(`/${type}/${malId}/characters`),
+    type === "anime" ? fetchTenrai(`/anime/${malId}/staff`) : Promise.resolve(null),
+  ]);
+
+  if (mainRes.status === "rejected") {
+    throw mainRes.reason;
+  }
+
+  const basePayload = mainRes.value || {};
+  return {
+    ...basePayload,
+    characters:
+      charsRes.status === "fulfilled" && Array.isArray(charsRes.value?.data)
+        ? charsRes.value.data
+        : null,
+    staff:
+      staffRes.status === "fulfilled" && Array.isArray(staffRes.value?.data)
+        ? staffRes.value.data
+        : null,
+  };
 }
 
 module.exports = {

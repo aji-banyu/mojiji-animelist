@@ -1,3 +1,9 @@
+---
+title: "Eksperimen Tenrai API & Caching (MJ-009)"
+sidebar_position: 3
+tags: [backend, catalog, tenrai, caching, redis, docusaurus]
+---
+
 # Tenrai API Experiment — MJ-009
 
 ## 1. Informasi Pengujian
@@ -31,7 +37,7 @@ Pengujian difokuskan pada:
 **Endpoint**
 
 ```http
-GET https://api.tenrai.org/v1/anime—q=naruto&limit=5&sfw
+GET https://api.tenrai.org/v1/anime?q=naruto&limit=5&sfw
 ```
 
 **Parameter**
@@ -116,6 +122,24 @@ Tidak semua field harus selalu memiliki nilai. Beberapa field dapat berisi `null
 Sebelum data digunakan oleh fitur aplikasi, Catalog Service perlu menentukan field yang akan diteruskan ke frontend dan menangani field yang tidak tersedia.
 
 ## 5. Peninjauan Batas Permintaan API
+
+```mermaid
+flowchart TD
+    A["Klien / Frontend"] -->|GET /api/catalog/search| B["Catalog Service"]
+    B --> C{"Cek Redis Cache<br/>(Upstash)"}
+    C -->|Cache HIT| D["Return Data Instan (< 15 ms)<br/>Header X-Cache: HIT"]
+    C -->|Cache MISS| E["Antrean Tenrai API Client<br/>(Throttling Max 4 req/sec)"]
+    E --> F{"Respons Tenrai"}
+    F -->|Sukses 200| G["Normalisasi Data Mojiji<br/>+ Simpan ke Redis (TTL 1 Jam)"]
+    G --> H["Return Response<br/>Header X-Cache: MISS"]
+    F -->|Error / Timeout / 429| I{"Cek Salinan Stale<br/>di Redis (TTL 7 Hari)"}
+    I -->|Stale Ada| J["Return Data Stale Cadangan<br/>Header X-Cache: STALE"]
+    I -->|Stale Tidak Ada| K["Return Error Terstandar<br/>(429 / 502 / 504)"]
+```
+
+> [!WARNING]
+> Kuota publik Tenrai API dibatasi maksimum 4 request/detik dan 120 request/menit per IP. Seluruh pengguna Mojiji berbagi 1 IP server yang sama di VPS, sehingga implementasi Redis Caching dan throttling antrean bersifat wajib (*mandatory*).
+
 
 Berdasarkan dokumentasi resmi Tenrai API yang ditinjau, batas permintaan publik yang didokumentasikan adalah:
 

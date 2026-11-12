@@ -5,99 +5,88 @@ import Link from "next/link";
 import {
   Film,
   BookOpen,
-  Plus,
-  Trash2,
   CheckCircle2,
   AlertCircle,
   X,
-  Search,
-  ExternalLink,
-  ChevronDown,
   RefreshCw,
-  Sparkles,
-  Check,
-  Clock,
-  Pause,
-  XCircle,
+  LayoutGrid,
+  List,
 } from "lucide-react";
+import Pagination from "@/components/ui/Pagination";
+import SearchInput from "@/components/ui/SearchInput";
+import SegmentedSwitch from "@/components/ui/SegmentedSwitch";
+import Tag from "@/components/ui/Tag";
+import { Button } from "@/components/ui/button";
+import TrackerEditModal from "@/components/TrackerEditModal";
 import {
-  getTrackerListApi,
-  updateTrackerStatusApi,
-  incrementProgressApi,
-  deleteTrackerApi,
-} from "@/lib/api";
+  TrackerGridCard,
+  TrackerListRow,
+  getStatusLabel,
+} from "@/components/tracker/TrackerCards";
+import {
+  resolveTrackerTotal,
+  calculateProgressPercent,
+} from "@/lib/trackerHelper";
+import useFilterStore from "@/store/filterStore";
+import useTrackerStore from "@/store/trackerStore";
 
+// Status filter tabs dalam Bahasa Inggris (Urutan: All - Plan - Watching - Reading - On-Hold - Completed)
 const STATUS_FILTERS = [
-  { key: "all", label: "Semua Status" },
-  { key: "watching", label: "Sedang Menonton" },
-  { key: "reading", label: "Sedang Membaca" },
-  { key: "completed", label: "Selesai" },
-  { key: "plan", label: "Rencana" },
-  { key: "on_hold", label: "Ditunda" },
-  { key: "dropped", label: "Dibatalkan" },
+  { key: "all", label: "All" },
+  { key: "plan", label: "Plan" },
+  { key: "watching", label: "Watching" },
+  { key: "reading", label: "Reading" },
+  { key: "on_hold", label: "On-Hold" },
+  { key: "completed", label: "Completed" },
 ];
 
 const TYPE_FILTERS = [
-  { key: "all", label: "Semua Tipe" },
-  { key: "anime", label: "Anime" },
-  { key: "manga", label: "Manga" },
+  { id: "all", label: "Semua" },
+  { id: "anime", label: "Anime" },
+  { id: "manga", label: "Manga" },
 ];
 
-const STATUS_OPTIONS_ANIME = [
-  { value: "watching", label: "Sedang Menonton" },
-  { value: "plan", label: "Rencana Nonton" },
-  { value: "completed", label: "Selesai Ditonton" },
-  { value: "on_hold", label: "Ditunda (On-Hold)" },
-  { value: "dropped", label: "Dibatalkan (Dropped)" },
+const VIEW_MODES = [
+  { id: "grid", label: <LayoutGrid size={16} />, ariaLabel: "Tampilan Grid", title: "Tampilan Grid" },
+  { id: "list", label: <List size={16} />, ariaLabel: "Tampilan List", title: "Tampilan List" },
 ];
 
-const STATUS_OPTIONS_MANGA = [
-  { value: "reading", label: "Sedang Membaca" },
-  { value: "plan", label: "Rencana Baca" },
-  { value: "completed", label: "Selesai Dibaca" },
-  { value: "on_hold", label: "Ditunda (On-Hold)" },
-  { value: "dropped", label: "Dibatalkan (Dropped)" },
-];
-
-function getStatusBadgeConfig(status) {
-  const norm = String(status || "").toLowerCase();
-  switch (norm) {
-    case "watching":
-      return { label: "Menonton", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", icon: Film };
-    case "reading":
-      return { label: "Membaca", color: "bg-teal-500/15 text-teal-400 border-teal-500/30", icon: BookOpen };
-    case "completed":
-      return { label: "Selesai", color: "bg-blue-500/15 text-blue-400 border-blue-500/30", icon: Check };
-    case "plan":
-    case "plan_to_watch":
-    case "planned":
-      return { label: "Rencana", color: "bg-purple-500/15 text-purple-400 border-purple-500/30", icon: Clock };
-    case "on_hold":
-    case "paused":
-      return { label: "Ditunda", color: "bg-amber-500/15 text-amber-400 border-amber-500/30", icon: Pause };
-    case "dropped":
-      return { label: "Dibatalkan", color: "bg-red-500/15 text-red-400 border-red-500/30", icon: XCircle };
-    default:
-      return { label: norm, color: "bg-neutral-500/15 text-neutral-400 border-neutral-500/30", icon: Film };
-  }
-}
-
-function getStatusLabel(status, mediaType) {
-  const options = mediaType === "manga" ? STATUS_OPTIONS_MANGA : STATUS_OPTIONS_ANIME;
-  const found = options.find((opt) => opt.value === status);
-  return found ? found.label : status;
-}
+const ITEMS_PER_PAGE = 24;
 
 export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
-  const [items, setItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [activeStatus, setActiveStatus] = useState("all");
-  const [activeType, setActiveType] = useState("all");
+  const items = useTrackerStore((state) => state.items);
+  const hasFetched = useTrackerStore((state) => state.hasFetched);
+  const isLoading = useTrackerStore((state) => state.isLoading);
+  const isRefreshing = useTrackerStore((state) => state.isRefreshing);
+  const error = useTrackerStore((state) => state.error);
+  const fetchTrackerList = useTrackerStore((state) => state.fetchTrackerList);
+  const updateTrackerItem = useTrackerStore((state) => state.updateTrackerItem);
+  const deleteTrackerItem = useTrackerStore((state) => state.deleteTrackerItem);
+
+  const showLoading = isLoading || (!hasFetched && !error);
+
+  const trackerFilters = useFilterStore((state) => state.trackerFilters);
+  const hydrateTrackerFilters = useFilterStore(
+    (state) => state.hydrateTrackerFilters
+  );
+  const setTrackerFilters = useFilterStore((state) => state.setTrackerFilters);
+  const { activeStatus, activeType, viewMode } = trackerFilters;
   const [searchQuery, setSearchQuery] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
+  const [itemToDelete, setItemToDelete] = useState(null);
   const [toast, setToast] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  useEffect(() => {
+    hydrateTrackerFilters();
+  }, [hydrateTrackerFilters]);
+
+  // Sinkronkan item modal aktif dengan data terbaru di state items
+  const activeModalItem = useMemo(() => {
+    if (!editingItem) return null;
+    return items.find((it) => it.id === editingItem.id) || editingItem;
+  }, [items, editingItem]);
 
   // Auto-dismiss toast
   useEffect(() => {
@@ -106,164 +95,78 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  // Ambil data tracker dari API Gateway (GET /api/tracker)
-  const fetchTrackers = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await getTrackerListApi();
-      if (response && response.success && Array.isArray(response.data)) {
-        setItems(response.data);
-      } else {
-        setItems([]);
-      }
-    } catch (err) {
-      setError(
-        err?.error?.message ||
-          "Gagal memuat daftar tracker. Pastikan server tracker service sedang aktif."
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  // Ambil data tracker terpusat dari store (manfaatkan cache jika masih segar)
+  const handleRefreshTrackers = useCallback(() => {
+    fetchTrackerList({ force: true }).catch(() => {});
+  }, [fetchTrackerList]);
 
   useEffect(() => {
-    fetchTrackers();
-  }, [fetchTrackers]);
+    fetchTrackerList().catch(() => {});
+  }, [fetchTrackerList]);
 
-  // Hitung statistik dan kirim ke parent jika disediakan
-  useEffect(() => {
+  // Hitung statistik realtime untuk 4 Kartu Metrik Dashboard
+  const stats = useMemo(() => {
     const total = items.length;
+    const animeCount = items.filter((i) => (i.mediaType || i.media_type || "anime").toLowerCase() === "anime").length;
+    const mangaCount = items.filter((i) => (i.mediaType || i.media_type) === "manga").length;
     const watching = items.filter((i) => i.status === "watching").length;
     const reading = items.filter((i) => i.status === "reading").length;
+    const activeCount = watching + reading;
     const completed = items.filter((i) => i.status === "completed").length;
     const plan = items.filter((i) => ["plan", "plan_to_watch", "planned"].includes(i.status)).length;
+    const onHold = items.filter((i) => ["on_hold", "paused"].includes(i.status)).length;
+    const queueCount = plan + onHold;
+    return {
+      total,
+      animeCount,
+      mangaCount,
+      activeCount,
+      watching,
+      reading,
+      completed,
+      queueCount,
+      plan,
+      onHold,
+    };
+  }, [items]);
+
+  // Kirim statistik ke parent jika disediakan
+  useEffect(() => {
     if (onStatsChange) {
-      onStatsChange({ total, watching, reading, completed, plan });
+      onStatsChange(stats);
     }
-  }, [items, onStatsChange]);
+  }, [stats, onStatsChange]);
 
-  // Langkah 2: Menu ubah status memanggil PATCH /api/tracker/:id
-  const handleStatusChange = async (item, newStatus) => {
-    if (item.status === newStatus) return;
+  // Simpan perubahan resmi dari modal TrackerEditModal dalam SATU request tunggal via store
+  const handleSaveTracker = async (item, newStatus, newProgress) => {
+    const statusChanged = item.status !== newStatus;
+    const progressChanged = Number(item.progress) !== Number(newProgress);
 
-    setActionLoadingId(item.id);
+    // Jika tidak ada perubahan sama sekali, tidak perlu memanggil API
+    if (!statusChanged && !progressChanged) return;
+
+    const nextProgress = Number(newProgress) || 0;
     const mediaType = (item.mediaType || item.media_type || "anime").toLowerCase();
-    const oldStatus = item.status;
-    const totalCount = Number(item.total) || 0;
+    const resolvedTotal = item.total || resolveTrackerTotal(item);
 
-    // Optimistic UI update
-    setItems((prev) =>
-      prev.map((it) => {
-        if (it.id === item.id) {
-          const nextProgress =
-            newStatus === "completed" && totalCount > 0 && Number(it.progress) === 0
-              ? totalCount
-              : it.progress;
-          return { ...it, status: newStatus, progress: nextProgress };
-        }
-        return it;
-      })
-    );
-
-    try {
-      await updateTrackerStatusApi(item.id, newStatus);
-      setToast({
-        type: "success",
-        message: `Status "${item.title}" diubah menjadi "${getStatusLabel(newStatus, mediaType)}"!`,
-      });
-    } catch (err) {
-      // Rollback jika gagal
-      setItems((prev) =>
-        prev.map((it) => (it.id === item.id ? { ...it, status: oldStatus } : it))
-      );
-      setToast({
-        type: "error",
-        message: err?.error?.message || "Gagal mengubah status item tracker.",
-      });
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
-  // Tambah progres +1 episode/chapter dengan Optimistic UI & Rollback (Tiket MJ-077 - AC US-004)
-  const handleIncrement = async (item) => {
-    const totalCount = Number(item.total) || 0;
-    const previousProgress = Number(item.progress) || 0;
-    const previousStatus = item.status;
-
-    // Langkah 4: Nonaktifkan saat progres sudah mencapai total maksimal
-    if (totalCount > 0 && previousProgress >= totalCount) {
-      setToast({
-        type: "info",
-        message: `Progres sudah mencapai total maksimal (${totalCount}).`,
-      });
-      return;
-    }
-
-    const optimisticProgress = previousProgress + 1;
-    const optimisticStatus =
-      totalCount > 0 && optimisticProgress >= totalCount ? "completed" : previousStatus;
-
-    // Langkah 2: Optimistic UI — Langsung naikkan angka di layar seketika (0 ms)
-    setItems((prev) =>
-      prev.map((it) =>
-        it.id === item.id
-          ? {
-              ...it,
-              progress: optimisticProgress,
-              status: optimisticStatus,
-            }
-          : it
-      )
-    );
-
-    // Langkah 4: Kunci tombol agar tidak diklik ganda selama permintaan berjalan
     setActionLoadingId(item.id);
 
     try {
-      // Langkah 2: Panggil POST /api/tracker/:id/increment di latar belakang
-      const res = await incrementProgressApi(item.id);
-      const updated = res?.data;
+      await updateTrackerItem(item.id, newStatus, nextProgress, resolvedTotal);
 
-      // Sinkronkan jika server mengembalikan update resmi
-      if (updated) {
-        setItems((prev) =>
-          prev.map((it) =>
-            it.id === item.id
-              ? {
-                  ...it,
-                  progress: updated.progress ?? optimisticProgress,
-                  status: updated.status ?? optimisticStatus,
-                }
-              : it
-          )
-        );
-      }
-
-      const unit = (item.mediaType || item.media_type) === "manga" ? "Chapter" : "Episode";
+      const unit = mediaType === "manga" ? "Chapter" : "Episode";
       setToast({
         type: "success",
-        message: `+1 ${unit} berhasil disimpan (${optimisticProgress}/${totalCount > 0 ? totalCount : "TBA"})!`,
+        message: `Perubahan "${item.title || "Item"}" berhasil disimpan (${getStatusLabel(
+          newStatus,
+          mediaType
+        )}, ${unit} ${nextProgress})!`,
       });
     } catch (err) {
-      // Langkah 3: ROLLBACK bila gagal — Kembalikan angka ke semula & tampilkan pesan error (AC US-004)
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === item.id
-            ? {
-                ...it,
-                progress: previousProgress,
-                status: previousStatus,
-              }
-            : it
-        )
-      );
-
       const errorMessage =
         err?.isOffline || err?.status === 503 || err?.error?.code === "SERVER_OFFLINE"
-          ? "Koneksi terputus. Progres dikembalikan ke semula."
-          : err?.error?.message || "Gagal menyimpan progres. Angka dikembalikan ke semula.";
+          ? "Koneksi terputus. Perubahan dibatalkan."
+          : err?.error?.message || "Gagal menyimpan perubahan status & progres.";
 
       setToast({
         type: "error",
@@ -274,13 +177,15 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
     }
   };
 
-  // Langkah 3: Hapus dengan konfirmasi memanggil DELETE
+  // Hapus memanggil DELETE /api/tracker/:id via store
   const handleDelete = async (id, title) => {
     setActionLoadingId(id);
     try {
-      await deleteTrackerApi(id);
-      setItems((prev) => prev.filter((it) => it.id !== id));
-      setDeletingId(null);
+      await deleteTrackerItem(id);
+      setItemToDelete(null);
+      if (editingItem?.id === id) {
+        setEditingItem(null);
+      }
       setToast({
         type: "success",
         message: `"${title || "Item"}" berhasil dihapus dari tracker.`,
@@ -295,14 +200,23 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
     }
   };
 
-  // Langkah 1: Saring berdasarkan status, tipe, dan kata kunci
+  // Saring berdasarkan status, tipe, dan kata kunci
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       // Filter Status
-      const statusMatch =
-        activeStatus === "all"
-          ? true
-          : String(item.status || "").toLowerCase() === activeStatus;
+      const itemStatus = String(item.status || "").toLowerCase();
+      let statusMatch = true;
+      if (activeStatus === "all") {
+        statusMatch = true;
+      } else if (activeStatus === "plan") {
+        statusMatch = ["plan", "plan_to_watch", "planned"].includes(itemStatus);
+      } else if (activeStatus === "on_hold") {
+        statusMatch = ["on_hold", "paused"].includes(itemStatus);
+      } else if (activeStatus === "completed") {
+        statusMatch = ["completed", "finished"].includes(itemStatus);
+      } else {
+        statusMatch = itemStatus === activeStatus;
+      }
 
       // Filter Tipe (Anime vs Manga)
       const mediaType = (item.mediaType || item.media_type || "anime").toLowerCase();
@@ -318,349 +232,560 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
     });
   }, [items, activeStatus, activeType, searchQuery]);
 
+  // Filter status yang relevan dengan tipe yang aktif (Anime -> Watching, Manga -> Reading)
+  const availableStatusFilters = useMemo(() => {
+    return STATUS_FILTERS.filter((tab) => {
+      if (activeType === "anime" && tab.key === "reading") return false;
+      if (activeType === "manga" && tab.key === "watching") return false;
+      return true;
+    });
+  }, [activeType]);
+
+  // Pagination client-side (20 item per halaman agar Grid & List tetap rapi)
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+
+  const paginatedItems = useMemo(() => {
+    const startIndex = (safeCurrentPage - 1) * ITEMS_PER_PAGE;
+    return filteredItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredItems, safeCurrentPage]);
+
+  const handlePageChange = (page) => {
+    const bounded = Math.min(Math.max(1, page), totalPages);
+    setCurrentPage(bounded);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  // Cek apakah ada minimal 1 item di tracker untuk tipe yang aktif (Semua/Anime/Manga)
+  const hasTypeItems = useMemo(() => {
+    if (activeType === "all") return items.length > 0;
+    return items.some(
+      (item) => (item.mediaType || item.media_type || "anime").toLowerCase() === activeType
+    );
+  }, [items, activeType]);
+
+  // Jika belum ada item sama sekali di tipe aktif, kunci status ke "all"
+  useEffect(() => {
+    if (!showLoading && !hasTypeItems && activeStatus !== "all") {
+      setTrackerFilters({ activeStatus: "all" });
+    }
+  }, [showLoading, hasTypeItems, activeStatus, setTrackerFilters]);
+
+  // Tutup konfirmasi hapus modal dengan tombol Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && itemToDelete) {
+        setItemToDelete(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [itemToDelete]);
+
+  // Handler ganti tipe (Semua / Anime / Manga): otomatis sesuaikan status menonton/membaca
+  const handleTypeChange = (newType) => {
+    const patch = { activeType: newType };
+    if (newType === "anime" && activeStatus === "reading") {
+      patch.activeStatus = "watching";
+    } else if (newType === "manga" && activeStatus === "watching") {
+      patch.activeStatus = "reading";
+    }
+    setTrackerFilters(patch);
+    setCurrentPage(1);
+  };
+
+  // Konten Empty State dinamis: membedakan saat belum ada item vs saat filter status kosong
+  const getEmptyStateContent = () => {
+    const isManga = activeType === "manga";
+    const isAll = activeType === "all";
+    const mediaName = isAll ? "anime maupun manga" : isManga ? "manga" : "anime";
+
+    // Kasus 1: Tracker benar-benar masih kosong sama sekali (items.length === 0)
+    if (items.length === 0) {
+      return {
+        title: "Tidak ada item di tracker",
+        description: null,
+        action: (
+          <Link
+            href="/explore/"
+            onClick={onEmptyExploreClick}
+            className="inline-flex items-center gap-2 rounded-xl bg-accent hover:bg-primary-hover px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition-all active:scale-95 cursor-pointer"
+          >
+            <span>Jelajahi Katalog</span>
+          </Link>
+        ),
+      };
+    }
+
+    // Kasus 2: User sudah punya item di tracker, namun tipe yang dipilih (Anime/Manga) belum ada
+    if (!hasTypeItems) {
+      return {
+        title: `Belum ada ${mediaName} di tracker Anda`,
+        description: null,
+        action: null,
+      };
+    }
+
+    // Kasus 3: Hasil pencarian kata kunci kosong
+    if (searchQuery) {
+      return {
+        title: "Tidak ada hasil pencarian",
+        description: null,
+        action: (
+          <Button
+            variant="surface"
+            size="sm"
+            onClick={() => {
+              setSearchQuery("");
+              setCurrentPage(1);
+            }}
+            className="rounded-xl font-semibold"
+          >
+            Hapus Pencarian
+          </Button>
+        ),
+      };
+    }
+
+    // Kasus 4: Filter status aktif tidak memiliki item sama sekali
+    const targetSubject = isAll ? "koleksi" : mediaName;
+    const statusMap = {
+      plan: {
+        title: `Belum ada ${targetSubject} di Plan`,
+      },
+      watching: {
+        title: "Belum ada anime yang sedang ditonton",
+      },
+      reading: {
+        title: "Belum ada manga yang sedang dibaca",
+      },
+      on_hold: {
+        title: `Belum ada ${targetSubject} yang ditunda`,
+      },
+      completed: {
+        title: `Belum ada ${targetSubject} yang selesai`,
+      },
+    };
+
+    const currentStatusInfo = statusMap[activeStatus] || {
+      title: `Tidak ada ${targetSubject} di status ini`,
+    };
+
+    return {
+      title: currentStatusInfo.title,
+      description: null,
+      action: (
+        <Button
+          variant="surface"
+          size="sm"
+          onClick={() => {
+            setTrackerFilters({ activeStatus: "all" });
+            setCurrentPage(1);
+          }}
+          className="rounded-xl font-semibold"
+        >
+          <span>Tampilkan Semua {isAll ? "Koleksi" : isManga ? "Manga" : "Anime"}</span>
+        </Button>
+      ),
+    };
+  };
+
   return (
     <div className="space-y-6">
+      {/* Header Halaman Selaras dengan Beranda & Jelajah */}
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3 flex-wrap">
+          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight font-['Bricolage_Grotesque'] select-none">
+            Koleksi Tracker
+          </h1>
+          <Tag variant="secondary" size="pill">
+            {activeType === "all"
+              ? "Campuran Anime & Manga"
+              : activeType === "anime"
+              ? "Koleksi Anime"
+              : "Koleksi Manga"}
+          </Tag>
+        </div>
+      </header>
+
       {/* Toast Notification Floating Feedback */}
       {toast && (
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl border px-4 py-3 text-xs font-semibold shadow-2xl backdrop-blur-md transition-all sm:text-sm ${
-            toast.type === "success"
-              ? "border-emerald-500/40 bg-emerald-950/90 text-emerald-200"
-              : toast.type === "info"
-              ? "border-amber-500/40 bg-amber-950/90 text-amber-200"
-              : "border-red-500/40 bg-red-950/90 text-red-200"
-          }`}
+          className="fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-xl border border-border/60 bg-surface px-4 py-3 text-xs font-semibold text-text shadow-sm backdrop-blur-md transition-all sm:text-sm"
         >
           {toast.type === "success" ? (
-            <CheckCircle2 size={18} className="text-emerald-400 shrink-0" />
+            <CheckCircle2 size={16} className="text-accent" />
+          ) : toast.type === "info" ? (
+            <AlertCircle size={16} className="text-accent" />
           ) : (
-            <AlertCircle size={18} className="shrink-0" />
+            <AlertCircle size={16} className="text-destructive" />
           )}
-          <span className="max-w-xs sm:max-w-sm">{toast.message}</span>
+          <span>{toast.message}</span>
           <button
             type="button"
             onClick={() => setToast(null)}
-            className="ml-2 rounded-lg p-1 text-neutral-400 hover:bg-white/10 hover:text-white cursor-pointer"
+            className="ml-2 rounded-lg p-1 text-text-2 hover:bg-surface-2 hover:text-text cursor-pointer"
+            aria-label="Tutup notifikasi"
           >
             <X size={14} />
           </button>
         </div>
       )}
 
-      {/* Bar Kontrol Filter Status, Tipe, & Pencarian (Langkah 1 MJ-076) */}
-      <div className="space-y-3 rounded-2xl border border-white/10 bg-[#181A20] p-4 shadow-md">
-        {/* Row 1: Tipe Switcher & Refresh */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-[#12141A] p-1">
-            {TYPE_FILTERS.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => setActiveType(t.key)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-all cursor-pointer ${
-                  activeType === t.key
-                    ? "bg-[#FF4655] text-white shadow-sm"
-                    : "text-neutral-400 hover:text-white"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
+      {/* Bar Kontrol Filter Status, Tipe, & Pencarian */}
+      {!showLoading && (
+        <div className="space-y-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
+          {/* Row 1: Tipe Switcher (Reusable SegmentedSwitch selaras Beranda & Jelajah) */}
+          <div className="flex items-center">
+            <SegmentedSwitch
+              options={TYPE_FILTERS}
+              value={activeType}
+              onChange={handleTypeChange}
+              disabled={items.length === 0}
+              disabledTitle="Tambahkan setidaknya 1 item ke tracker untuk beralih tipe"
+              className="w-full sm:w-56"
+              ariaLabel="Filter Tipe Koleksi"
+            />
           </div>
 
-          <div className="flex items-center gap-3">
-            {/* Quick Search Input */}
-            <div className="relative flex-1 sm:w-60">
-              <Search
-                size={14}
-                className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
-              />
-              <input
-                type="text"
-                placeholder="Cari judul tracker..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-[#12141A] py-1.5 pl-8 pr-7 text-xs text-white placeholder-neutral-500 focus:border-[#FF4655] focus:outline-none focus:ring-1 focus:ring-[#FF4655]"
-              />
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white cursor-pointer"
-                >
-                  <X size={12} />
-                </button>
-              )}
+          {/* Row 2: Status Filter Tabs (Kiri) & Saring Koleksi + Toggle Grid/List View (Pojok Kanan) */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-t border-border pt-3">
+            {/* Status Filter Tabs (Reusable Tag selaras Jelajah) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:pb-0 min-w-0 lg:shrink-0">
+              {availableStatusFilters.map((tab) => {
+                const isActive = activeStatus === tab.key;
+                const isAccessible = hasTypeItems;
+                return (
+                  <Tag
+                    key={tab.key}
+                    as="button"
+                    type="button"
+                    size="default"
+                    variant={!isAccessible ? "outline" : isActive ? "active" : "filter"}
+                    disabled={!isAccessible}
+                    aria-pressed={isActive}
+                    onClick={() => {
+                      if (isAccessible) {
+                        setTrackerFilters({ activeStatus: tab.key });
+                        setCurrentPage(1);
+                      }
+                    }}
+                    className={`shrink-0 whitespace-nowrap px-3 py-1.5 transition-all ${
+                      !isAccessible
+                        ? "opacity-40 cursor-not-allowed select-none pointer-events-none"
+                        : "cursor-pointer active:scale-95"
+                    }`}
+                    title={
+                      !isAccessible
+                        ? "Tambahkan setidaknya 1 item ke tracker untuk mengakses filter status"
+                        : undefined
+                    }
+                  >
+                    {tab.label}
+                  </Tag>
+                );
+              })}
             </div>
 
-            <button
-              type="button"
-              onClick={fetchTrackers}
-              disabled={isLoading}
-              className="rounded-xl border border-white/10 bg-[#12141A] p-2 text-neutral-300 hover:border-white/20 hover:text-white active:scale-95 disabled:opacity-50 cursor-pointer"
-              title="Perbarui daftar tracker"
-            >
-              <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-            </button>
+            {/* Kontrol Saring Koleksi & Toggle Grid/List View di Pojok Kanan */}
+            <div className="flex items-center gap-2.5 flex-1 min-w-0 w-full lg:w-auto justify-between lg:justify-end">
+              {/* Input Saring Koleksi Compact (Reusable soft SearchInput selaras Jelajah) */}
+              <SearchInput
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                onClear={() => {
+                  setSearchQuery("");
+                  setCurrentPage(1);
+                }}
+                disabled={items.length === 0}
+                placeholder="Saring koleksi..."
+                clearAriaLabel="Hapus pencarian koleksi"
+                className="flex-1 min-w-0"
+                title={
+                  items.length === 0
+                    ? "Tambahkan setidaknya 1 item ke tracker untuk menyaring koleksi"
+                    : undefined
+                }
+              />
+
+              {/* Toggle Grid/List View di Pojok Kanan dengan Reusable SegmentedSwitch */}
+              <SegmentedSwitch
+                options={VIEW_MODES}
+                value={viewMode}
+                onChange={(nextMode) => setTrackerFilters({ viewMode: nextMode })}
+                size="md"
+                disabled={items.length === 0}
+                disabledTitle="Tambahkan setidaknya 1 item ke tracker untuk mengubah tampilan"
+                className="w-20 shrink-0"
+                ariaLabel="Mode Tampilan Koleksi"
+              />
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Row 2: Status Filter Tabs */}
-        <div className="flex flex-wrap items-center gap-1.5 border-t border-white/5 pt-3 overflow-x-auto">
-          {STATUS_FILTERS.map((tab) => {
-            const isActive = activeStatus === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveStatus(tab.key)}
-                className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
-                  isActive
-                    ? "bg-white/15 text-white font-bold border border-white/20 shadow-sm"
-                    : "bg-white/5 text-neutral-400 hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Langkah 4: State Error */}
+      {/* State Error */}
       {error && (
-        <div className="flex items-center gap-3 rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-xs text-red-200">
-          <AlertCircle size={18} className="shrink-0 text-red-400" />
-          <span className="flex-1">{error}</span>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-destructive/30 bg-surface p-4 text-xs sm:text-sm text-text shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-destructive/10 text-destructive border border-destructive/30">
+              <AlertCircle size={18} />
+            </div>
+            <span className="font-medium leading-relaxed">{error}</span>
+          </div>
           <button
             type="button"
-            onClick={fetchTrackers}
-            className="rounded-lg bg-red-500/20 px-3 py-1 font-bold text-red-200 hover:bg-red-500/30 cursor-pointer"
+            onClick={handleRefreshTrackers}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-destructive hover:bg-destructive/90 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
           >
-            Coba Lagi
+            <RefreshCw size={12} className={isLoading || isRefreshing ? "animate-spin" : ""} />
+            <span>Coba Lagi</span>
           </button>
         </div>
       )}
 
-      {/* Langkah 4: State Memuat (Loading Shimmer Skeleton) */}
-      {isLoading && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="flex gap-4 rounded-2xl border border-white/10 bg-[#181A20] p-4 animate-pulse"
-            >
-              <div className="h-32 w-24 rounded-xl bg-neutral-800 shrink-0" />
-              <div className="flex-1 space-y-3 py-1">
-                <div className="h-5 w-3/4 rounded bg-neutral-800" />
-                <div className="h-4 w-1/3 rounded bg-neutral-800/60" />
-                <div className="h-2 w-full rounded bg-neutral-800/40 mt-4" />
-                <div className="h-8 w-full rounded bg-neutral-800/50 mt-2" />
+      {/* State Memuat (Loading Shimmer Skeleton - Menyesuaikan Mode Grid / List) */}
+      {showLoading &&
+        (viewMode === "list" ? (
+          <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm divide-y divide-border">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div
+                key={i}
+                className="flex items-center gap-3 px-3 py-2.5 sm:px-4 sm:py-3 animate-pulse"
+              >
+                <div className="h-14 w-10 sm:h-15 sm:w-11 shrink-0 rounded-lg bg-surface-2" />
+                <div className="flex-1 space-y-2 min-w-0">
+                  <div className="h-4 w-2/3 sm:w-1/3 rounded bg-surface-2" />
+                  <div className="h-3 w-1/3 sm:w-1/5 rounded bg-surface-2/60" />
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <div className="h-8 w-8 sm:w-20 rounded-xl bg-surface-2/70" />
+                  <div className="h-8 w-8 sm:w-18 rounded-xl bg-surface-2/50" />
+                  <div className="h-8 w-8 rounded-xl bg-surface-2/50" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
+              <div
+                key={i}
+                className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm animate-pulse"
+              >
+                <div className="aspect-[4/5] w-full bg-surface-2" />
+                <div className="space-y-1.5 border-t border-border p-2.5">
+                  <div className="h-3.5 w-4/5 rounded bg-surface-2" />
+                  <div className="h-3 w-1/2 rounded bg-surface-2/60" />
+                  <div className="h-1 w-full rounded-full bg-surface-2/50" />
+                  <div className="flex gap-1.5 pt-0.5">
+                    <div className="h-7 flex-1 rounded-lg bg-surface-2/70" />
+                    <div className="h-7 w-7 rounded-lg bg-surface-2/50" />
+                    <div className="h-7 w-7 rounded-lg bg-surface-2/50" />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+
+      {/* State Kosong (Dinamis - Hanya Judul & Tombol Aksi) */}
+      {!showLoading && !error && filteredItems.length === 0 && (() => {
+        const emptyState = getEmptyStateContent();
+        return (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface px-4 py-14 text-center shadow-sm">
+            <h3 className="text-base font-black text-text sm:text-lg tracking-tight font-['Bricolage_Grotesque']">
+              {emptyState.title}
+            </h3>
+            {emptyState.action && (
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+                {emptyState.action}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Kartu Tracker — Grid / List Mode & Pagination */}
+      {!showLoading && filteredItems.length > 0 && (() => {
+        const RowOrCard = viewMode === "list" ? TrackerListRow : TrackerGridCard;
+        const itemNodes = paginatedItems.map((item) => {
+          const mediaType = (item.mediaType || item.media_type || "anime").toLowerCase();
+          const malId = item.malId || item.mal_id;
+          const poster = item.imageUrl || item.image_url;
+          const progress = Number(item.progress) || 0;
+          const resolvedTotal = resolveTrackerTotal(item);
+          const total = resolvedTotal > 0 ? resolvedTotal : Number(item.total) || 0;
+          const percent = calculateProgressPercent(progress, total, item.status);
+
+          return (
+            <RowOrCard
+              key={item.id}
+              item={item}
+              mediaType={mediaType}
+              detailHref={`/detail/?type=${mediaType}&id=${malId}`}
+              poster={poster}
+              progress={progress}
+              total={total}
+              percent={percent}
+              isActionLoading={actionLoadingId === item.id}
+              onEdit={setEditingItem}
+              onDelete={setItemToDelete}
+            />
+          );
+        });
+
+        return (
+          <div className="space-y-2">
+            {viewMode === "list" ? (
+              <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+                {/* Header Kolom Tabel untuk Desktop */}
+                <div className="hidden md:grid md:grid-cols-[minmax(0,1fr)_130px_175px_215px] items-center gap-4 border-b border-border bg-surface-2/70 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-text-3">
+                  <span>Judul</span>
+                  <span>Status</span>
+                  <span>Progres</span>
+                  <span className="text-right">Aksi</span>
+                </div>
+
+                <div className="divide-y divide-border">{itemNodes}</div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-3.5 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                {itemNodes}
+              </div>
+            )}
+
+            <Pagination
+              currentPage={safeCurrentPage}
+              totalPages={totalPages}
+              totalItems={filteredItems.length}
+              itemsPerPage={ITEMS_PER_PAGE}
+              onPageChange={handlePageChange}
+              activeColor="secondary"
+              ariaLabel="Navigasi Halaman Tracker"
+              className="space-y-3 pt-4 pb-2"
+            />
+          </div>
+        );
+      })()}
+
+      {/* Pop-up Dialog Modal Konfirmasi Hapus Tracker */}
+      {itemToDelete && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => !actionLoadingId && setItemToDelete(null)}
+        >
+          <div
+            className="relative w-full max-w-sm rounded-xl border border-border bg-surface p-5 sm:p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header Dialog: Judul, Penjelasan & Tombol Tutup */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1.5">
+                <h3
+                  id="delete-dialog-title"
+                  className="text-base sm:text-lg font-bold text-text tracking-tight font-heading"
+                >
+                  Hapus dari Tracker?
+                </h3>
+                <p className="text-xs text-text-2 leading-relaxed">
+                  Item ini beserta riwayat progresnya akan dihapus permanen dari daftar tracker Anda.
+                </p>
+              </div>
+              <Button
+                variant="surface"
+                size="icon"
+                onClick={() => setItemToDelete(null)}
+                disabled={actionLoadingId === itemToDelete.id}
+                className="rounded-xl shrink-0"
+                aria-label="Tutup dialog"
+              >
+                <X size={16} />
+              </Button>
+            </div>
+
+            {/* Kartu Pratinjau Item yang Akan Dihapus */}
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-surface-2 p-2.5">
+              <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded-lg border border-border bg-surface">
+                {(itemToDelete.imageUrl || itemToDelete.image_url) ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={itemToDelete.imageUrl || itemToDelete.image_url}
+                    alt={itemToDelete.title || "Poster"}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-text-3">
+                    {(itemToDelete.mediaType || itemToDelete.media_type) === "manga" ? (
+                      <BookOpen size={16} />
+                    ) : (
+                      <Film size={16} />
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0 flex-1 space-y-0.5">
+                <span className="inline-block rounded-full bg-surface border border-border/80 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-text-2">
+                  {(itemToDelete.mediaType || itemToDelete.media_type || "anime").toLowerCase()}
+                </span>
+                <h4 className="truncate text-xs sm:text-sm font-bold text-text" title={itemToDelete.title}>
+                  {itemToDelete.title || "Untitled"}
+                </h4>
+                <p className="text-[11px] font-mono text-text-3">
+                  Progres: {(itemToDelete.mediaType || itemToDelete.media_type) === "manga" ? "Ch" : "Ep"} {itemToDelete.progress || 0}
+                </p>
               </div>
             </div>
-          ))}
-        </div>
-      )}
 
-      {/* Langkah 4: State Kosong (Empty State) */}
-      {!isLoading && filteredItems.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12141A] px-6 py-14 text-center shadow-lg">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/5 text-neutral-400 border border-white/10">
-            <Sparkles size={24} className="text-[#FF4655]" />
-          </div>
-          <h3 className="mt-4 text-base font-bold text-white">
-            {items.length === 0 ? "Tracker Kamu Masih Kosong" : "Tidak Ada Judul yang Cocok"}
-          </h3>
-          <p className="mt-1 max-w-sm text-xs text-neutral-400 leading-relaxed">
-            {items.length === 0
-              ? "Mulai cari dan tambahkan anime atau manga favoritmu ke daftar pelacakan!"
-              : `Tidak ditemukan item dengan filter tipe "${activeType}" dan status "${activeStatus}".`}
-          </p>
-          {items.length === 0 && onEmptyExploreClick && (
-            <div className="mt-5">
+            {/* Tombol Aksi: Batal & Ya, Hapus */}
+            <div className="flex items-center gap-2.5 pt-1">
+              <Button
+                variant="surface"
+                size="md"
+                onClick={() => setItemToDelete(null)}
+                disabled={actionLoadingId === itemToDelete.id}
+                className="flex-1 text-xs font-semibold"
+              >
+                Batal
+              </Button>
               <button
                 type="button"
-                onClick={onEmptyExploreClick}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#FF4655] px-4 py-2 text-xs font-bold text-white shadow-md transition-all hover:bg-[#e03d4a] active:scale-95 cursor-pointer"
+                onClick={() => handleDelete(itemToDelete.id, itemToDelete.title)}
+                disabled={actionLoadingId === itemToDelete.id}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-destructive hover:bg-destructive/90 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all active:scale-95 cursor-pointer text-center disabled:opacity-50"
               >
-                <Plus size={14} />
-                <span>Jelajahi Katalog Sekarang</span>
+                {actionLoadingId === itemToDelete.id ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin" />
+                    <span>Menghapus...</span>
+                  </>
+                ) : (
+                  <span>Ya, Hapus</span>
+                )}
               </button>
             </div>
-          )}
+          </div>
         </div>
       )}
 
-      {/* Grid Kartu Tracker (Langkah 1, 2, 3, 5 MJ-076) */}
-      {!isLoading && filteredItems.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredItems.map((item) => {
-            const mediaType = (item.mediaType || item.media_type || "anime").toLowerCase();
-            const malId = item.malId || item.mal_id;
-            const poster = item.imageUrl || item.image_url;
-            const progress = Number(item.progress) || 0;
-            const total = Number(item.total) || 0;
-            const percent =
-              total > 0 ? Math.min(100, Math.round((progress / total) * 100)) : 0;
-            const statusConfig = getStatusBadgeConfig(item.status);
-            const statusOptions =
-              mediaType === "manga" ? STATUS_OPTIONS_MANGA : STATUS_OPTIONS_ANIME;
-            const isActionLoading = actionLoadingId === item.id;
-            const isDeleting = deletingId === item.id;
-
-            return (
-              <div
-                key={item.id}
-                className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-[#181A20] p-4 shadow-md transition-all hover:border-white/20 hover:shadow-xl"
-              >
-                <div className="flex gap-4">
-                  {/* Thumbnail Poster */}
-                  <Link
-                    href={`/detail?type=${mediaType}&id=${malId}`}
-                    className="relative h-32 w-24 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-neutral-900 shadow-sm"
-                  >
-                    {poster ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={poster}
-                        alt={item.title || "Poster"}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-neutral-600">
-                        {mediaType === "manga" ? <BookOpen size={24} /> : <Film size={24} />}
-                      </div>
-                    )}
-                  </Link>
-
-                  {/* Info, Tipe & Menu Ubah Status (Langkah 2) */}
-                  <div className="flex flex-1 flex-col justify-between overflow-hidden">
-                    <div className="space-y-1.5">
-                      {/* Row Badge Tipe & Dropdown Ubah Status Inline (Langkah 2 - Opsi 1) */}
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="rounded-full bg-[#FF4655]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#FF4655] border border-[#FF4655]/30">
-                          {mediaType}
-                        </span>
-
-                        {/* Menu Ubah Status Dropdown Inline */}
-                        <div className="relative inline-flex items-center">
-                          <select
-                            value={item.status || "plan"}
-                            onChange={(e) => handleStatusChange(item, e.target.value)}
-                            disabled={isActionLoading}
-                            aria-label="Ubah status tracker"
-                            className={`appearance-none rounded-full border py-0.5 pl-2 pr-5 text-[10px] font-semibold transition-all cursor-pointer focus:outline-none focus:ring-1 focus:ring-white/40 disabled:opacity-50 ${statusConfig.color} bg-[#12141A]`}
-                          >
-                            {statusOptions.map((opt) => (
-                              <option
-                                key={opt.value}
-                                value={opt.value}
-                                className="bg-[#181A20] text-white text-xs"
-                              >
-                                {opt.label}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown
-                            size={10}
-                            className="pointer-events-none absolute right-1.5 text-neutral-400"
-                          />
-                        </div>
-                      </div>
-
-                      {/* Judul Anime/Manga */}
-                      <Link
-                        href={`/detail?type=${mediaType}&id=${malId}`}
-                        className="block line-clamp-2 text-sm font-bold text-white transition-colors hover:text-[#FF4655]"
-                        title={item.title}
-                      >
-                        {item.title || "Untitled"}
-                      </Link>
-                    </div>
-
-                    {/* Progress Bar & Counter */}
-                    <div className="mt-2 space-y-1.5">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-400">
-                        <span>
-                          {mediaType === "manga" ? "Ch" : "Ep"} {progress} / {total > 0 ? total : "TBA"}
-                        </span>
-                        <span className="text-white/60">{percent}%</span>
-                      </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-[#FF4655] to-amber-500 transition-all duration-300"
-                          style={{ width: `${percent}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Footer Kartu: Link Detail, Hapus (Langkah 3), & +1 Progres */}
-                <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
-                  <Link
-                    href={`/detail?type=${mediaType}&id=${malId}`}
-                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-neutral-400 transition-colors hover:text-white"
-                  >
-                    <span>Detail</span>
-                    <ExternalLink size={11} />
-                  </Link>
-
-                  <div className="flex items-center gap-2">
-                    {/* Langkah 3: Hapus dengan Konfirmasi */}
-                    {isDeleting ? (
-                      <div className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-950/60 px-2 py-1 text-[11px]">
-                        <span className="text-red-300">Yakin?</span>
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(item.id, item.title)}
-                          disabled={isActionLoading}
-                          className="font-bold text-red-400 hover:text-red-200 cursor-pointer"
-                        >
-                          Ya
-                        </button>
-                        <span className="text-neutral-500">|</span>
-                        <button
-                          type="button"
-                          onClick={() => setDeletingId(null)}
-                          className="text-neutral-400 hover:text-white cursor-pointer"
-                        >
-                          Batal
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setDeletingId(item.id)}
-                        disabled={isActionLoading}
-                        className="rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
-                        title="Hapus dari tracker"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    )}
-
-                    {/* Tombol Cepat +1 Progres */}
-                    <button
-                      type="button"
-                      onClick={() => handleIncrement(item)}
-                      disabled={isActionLoading || (total > 0 && progress >= total)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-[#FF4655]/30 bg-[#FF4655]/15 px-3 py-1 text-xs font-bold text-[#FF4655] transition-all hover:bg-[#FF4655] hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                      title={`Tambah progres ${mediaType === "manga" ? "Chapter" : "Episode"} +1`}
-                    >
-                      <Plus size={13} />
-                      <span>+1 {mediaType === "manga" ? "Ch" : "Ep"}</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      {/* Pop-up Modal Cepat Ubah Status & Kelola Progres */}
+      {activeModalItem && (
+        <TrackerEditModal
+          item={activeModalItem}
+          onClose={() => setEditingItem(null)}
+          onSave={handleSaveTracker}
+          onDelete={handleDelete}
+          isLoading={actionLoadingId === activeModalItem.id}
+        />
       )}
     </div>
   );
 }
-

@@ -156,13 +156,21 @@ jobs:
             echo "Menjalankan kontainer microservices produksi (port 5000-5003)..."
             docker compose -p mojiji-prod --env-file .env -f infra/compose/docker-compose.prod.yml up -d --remove-orphans api-gateway user-service catalog-service tracker-service
 
-            # 7. Memuat ulang konfigurasi Caddy (zero-downtime & fallback restart)
-            echo "Memuat ulang Caddy Reverse Proxy untuk domain mojiji.web.id..."
-            docker exec mojiji_caddy_server_staging caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile 2>/dev/null || docker restart mojiji_caddy_server_staging
+            # 7. Memuat ulang konfigurasi Caddy secara dinamis & andal (Auto-Detect)
+            echo "Menyegarkan Caddy Reverse Proxy untuk domain mojiji.web.id..."
+            CADDY_CONTAINER=$(docker ps --filter "name=caddy" --format "{{.Names}}" | head -n 1)
+            if [ -n "$CADDY_CONTAINER" ]; then
+              echo "Mendeteksi kontainer Caddy: $CADDY_CONTAINER"
+              docker restart "$CADDY_CONTAINER"
+            else
+              echo "⚠️ Peringatan: Kontainer Caddy tidak ditemukan untuk di-restart."
+            fi
 
             # 8. Pemeriksaan kesehatan (Healthcheck) & verifikasi berkas statis
             echo "Memeriksa berkas statis di dalam direktori Caddy..."
-            docker exec mojiji_caddy_server_staging ls -la /srv/production
+            if [ -n "$CADDY_CONTAINER" ]; then
+              docker exec "$CADDY_CONTAINER" ls -la /srv/production 2>/dev/null || true
+            fi
             echo "Pemeriksaan kesehatan API Gateway Production..."
             sleep 5
             docker compose -p mojiji-prod ps

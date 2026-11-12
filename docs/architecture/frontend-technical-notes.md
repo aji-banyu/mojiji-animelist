@@ -2,7 +2,7 @@
 
 **Dokumen:** `docs/architecture/frontend-technical-notes.md`
 **Tiket:** MJ-005
-**Role:** Frontend (Dika)
+**Role:** Frontend (Andika)
 **Tanggal:** 2026-10-07
 **Versi:** 1.0
 
@@ -241,7 +241,7 @@ NEXT_PUBLIC_API_URL=http://localhost:4000
 
 | Kebutuhan Frontend | Dari Role | Status |
 |---|---|---|
-| Desain halaman (wireframe / mockup) tiap page | UI/UX — Ican | ASSUMPTION: dikerjakan paralel di Sprint 1 |
+| Desain halaman (wireframe / mockup) tiap page | UI/UX — Ichsan | ASSUMPTION: dikerjakan paralel di Sprint 1 |
 | Kontrak API seluruh endpoint Sprint 1 | Backend — Syafii | ASSUMPTION: selesai sebelum implementasi fitur |
 | Konfirmasi port dan prefix path API Gateway | Backend — Syafii | **DECISION NEEDED** |
 | Konfirmasi skema field objek `tracker` item | Backend (Syafii) + DBA (Ryan) | **DECISION NEEDED** |

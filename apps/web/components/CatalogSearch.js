@@ -1,92 +1,149 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
-import { Search, X, Star, Film, BookOpen, AlertCircle, Loader2, Sparkles, Compass } from "lucide-react";
+import {
+  AlertCircle,
+  RotateCcw,
+  WifiOff,
+} from "lucide-react";
+import CatalogCard from "@/components/CatalogCard";
+import SegmentedSwitch from "@/components/ui/SegmentedSwitch";
+import SearchInput from "@/components/ui/SearchInput";
 import { searchCatalogApi } from "@/lib/api";
 
-export default function CatalogSearch({ initialType = "anime" }) {
-  const [type, setType] = useState(initialType); // "anime" | "manga"
-  const [query, setQuery] = useState("");
+const SEARCH_TYPE_OPTIONS = [
+  { id: "anime", label: "Anime" },
+  { id: "manga", label: "Manga" },
+];
+
+function formatCatalogViews(members) {
+  if (!members || typeof members !== "number") return undefined;
+  if (members >= 1000000) return `${(members / 1000000).toFixed(1)}m`;
+  if (members >= 1000) return `${Math.round(members / 1000)}k`;
+  return String(members);
+}
+
+function normalizeSearchResultItem(item, contentType) {
+  const id = item.mal_id || item.id;
+  const mediaType = item.type || contentType;
+  const episodes =
+    item.episodes ||
+    (item.chapters ? `${item.chapters} Ch` : item.format) ||
+    undefined;
+
+  return {
+    ...item,
+    id,
+    malId: id,
+    type: mediaType,
+    image: item.image || item.image_url || "",
+    episodes,
+    views: item.views || formatCatalogViews(item.members),
+  };
+}
+
+export default function CatalogSearch({ initialType = "anime", initialQuery = "" }) {
+  const [type, setType] = useState(initialType === "manga" ? "manga" : "anime");
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Ref untuk AbortController (Membatalkan permintaan lama jika pengguna mengetik lagi - Langkah 3)
+  const prevInitialQueryRef = useRef(initialQuery);
+  const prevInitialTypeRef = useRef(initialType);
+
+  useEffect(() => {
+    if (initialQuery && initialQuery !== prevInitialQueryRef.current) {
+      prevInitialQueryRef.current = initialQuery;
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
+
+  useEffect(() => {
+    if (initialType && initialType !== prevInitialTypeRef.current) {
+      prevInitialTypeRef.current = initialType;
+      setType(initialType === "manga" ? "manga" : "anime");
+    }
+  }, [initialType]);
+
   const abortControllerRef = useRef(null);
 
-  // Fungsi eksekusi pencarian ke Catalog Service
-  const executeSearch = useCallback(
-    async (searchTerm, contentType) => {
-      const trimmed = searchTerm.trim();
+  const executeSearch = useCallback(async (searchTerm, contentType) => {
+    const trimmed = searchTerm.trim();
 
-      // Langkah 2: Syarat minimal 3 huruf sebelum memanggil API
-      if (trimmed.length < 3) {
+    if (trimmed.length < 3) {
+      setResults([]);
+      setIsLoading(false);
+      setError(null);
+      setHasSearched(false);
+      return;
+    }
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setIsLoading(true);
+    setError(null);
+    setHasSearched(true);
+
+    try {
+      const response = await searchCatalogApi(
+        {
+          q: trimmed,
+          type: contentType,
+          limit: 20,
+        },
+        controller.signal
+      );
+
+      if (response && response.success) {
+        const list = Array.isArray(response.data) ? response.data : [];
+        setResults(list.map((it) => normalizeSearchResultItem(it, contentType)));
+      } else {
         setResults([]);
-        setIsLoading(false);
-        setError(null);
-        setHasSearched(false);
+      }
+    } catch (err) {
+      if (
+        err?.name === "AbortError" ||
+        err?.name === "CanceledError" ||
+        err?.code === "ERR_CANCELED"
+      ) {
         return;
       }
 
-      // Langkah 3: Batalkan permintaan sebelumnya yang masih berjalan (in-flight)
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
+      let errorMsg = "Gagal memuat katalog. Silakan coba lagi.";
+      let errorType = "general";
+
+      if (
+        err?.status === 429 ||
+        err?.error?.code === "RATE_LIMIT_EXCEEDED" ||
+        err?.error?.code === "RATE_LIMITED"
+      ) {
+        errorType = "rate_limit";
+        errorMsg = "Batas permintaan tercapai. Tunggu beberapa detik lalu coba lagi.";
+      } else if (
+        err?.isOffline ||
+        err?.status === 503 ||
+        err?.error?.code === "SERVER_OFFLINE" ||
+        err?.code === "ERR_NETWORK"
+      ) {
+        errorType = "offline";
+        errorMsg = "Tidak dapat terhubung ke server. Periksa koneksi internet Anda.";
+      } else if (err?.error?.message) {
+        errorMsg = err.error.message;
       }
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
 
-      setIsLoading(true);
-      setError(null);
-      setHasSearched(true);
+      setError({ message: errorMsg, type: errorType });
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-      try {
-        const response = await searchCatalogApi(
-          {
-            q: trimmed,
-            type: contentType,
-            page: 1,
-            limit: 20,
-          },
-          controller.signal
-        );
-
-        if (response && response.success) {
-          setResults(Array.isArray(response.data) ? response.data : []);
-        } else {
-          setResults([]);
-        }
-      } catch (err) {
-        // Abaikan error akibat pembatalan request (AbortError / CanceledError)
-        if (
-          err?.name === "AbortError" ||
-          err?.name === "CanceledError" ||
-          err?.code === "ERR_CANCELED"
-        ) {
-          return;
-        }
-
-        // Tangani pesan error spesifik dari backend (Langkah 4: 429 Rate Limit / Server Error)
-        let errorMsg = "Terjadi kendala saat mencari katalog. Silakan coba beberapa saat lagi.";
-        if (err?.status === 429 || err?.error?.code === "RATE_LIMIT_EXCEEDED" || err?.error?.code === "RATE_LIMITED") {
-          errorMsg = "Terlalu banyak permintaan (Batas kuota tercapai). Harap tunggu beberapa detik sebelum mencoba kembali.";
-        } else if (err?.isOffline || err?.status === 503 || err?.error?.code === "SERVER_OFFLINE") {
-          errorMsg = "Tidak dapat terhubung ke server Catalog. Pastikan service API Gateway dan Docker backend aktif.";
-        } else if (err?.error?.message) {
-          errorMsg = err.error.message;
-        }
-
-        setError(errorMsg);
-        setResults([]);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
-
-  // Langkah 2: Debounce 400 ms sebelum memanggil API pencarian
   useEffect(() => {
     const trimmed = query.trim();
 
@@ -109,7 +166,6 @@ export default function CatalogSearch({ initialType = "anime" }) {
     return () => clearTimeout(timer);
   }, [query, type, executeSearch]);
 
-  // Handler saat tab tipe (Anime/Manga) diganti
   const handleTypeChange = (newType) => {
     if (newType === type) return;
     setType(newType);
@@ -118,7 +174,6 @@ export default function CatalogSearch({ initialType = "anime" }) {
     }
   };
 
-  // Handler pembersihan input pencarian (Tombol X)
   const handleClear = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -130,217 +185,133 @@ export default function CatalogSearch({ initialType = "anime" }) {
     setHasSearched(false);
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (query.trim().length >= 3) {
+        executeSearch(query, type);
+      }
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
-      {/* === 1. Baris Kontrol: Tab Tipe (Anime / Manga) & Kotak Input Pencarian === */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#12141A]/90 p-4 shadow-xl sm:flex-row sm:items-center sm:justify-between sm:p-5">
-        {/* Toggle Pill: Anime vs Manga */}
-        <div className="flex items-center gap-1 rounded-xl border border-white/10 bg-black/40 p-1">
-          <button
-            type="button"
-            onClick={() => handleTypeChange("anime")}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all cursor-pointer ${
-              type === "anime"
-                ? "bg-[#FF4655] text-white shadow-md shadow-[#FF4655]/30"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            <Film size={15} />
-            <span>Anime</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleTypeChange("manga")}
-            className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-all cursor-pointer ${
-              type === "manga"
-                ? "bg-[#FF4655] text-white shadow-md shadow-[#FF4655]/30"
-                : "text-neutral-400 hover:text-white"
-            }`}
-          >
-            <BookOpen size={15} />
-            <span>Manga</span>
-          </button>
-        </div>
+      {/* Bar Kontrol Seragam: Sliding SegmentedSwitch + SearchInput */}
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface p-3.5 sm:p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <SegmentedSwitch
+          options={SEARCH_TYPE_OPTIONS}
+          value={type}
+          onChange={handleTypeChange}
+          size="md"
+          className="w-full sm:w-48 shrink-0"
+          ariaLabel="Filter Tipe Pencarian"
+        />
 
-        {/* Kolom Input Pencarian dengan Jeda Mengetik (Debounce) */}
-        <div className="relative flex-1">
-          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-neutral-400">
-            {isLoading ? (
-              <Loader2 size={18} className="animate-spin text-[#FF4655]" />
-            ) : (
-              <Search size={18} />
-            )}
-          </div>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={
-              type === "anime"
-                ? "Cari anime (misal: Naruto, One Piece, Attack on Titan)..."
-                : "Cari manga (misal: Monster, Berserk, One Piece)..."
-            }
-            className="w-full rounded-xl border border-white/15 bg-black/50 py-2.5 pl-10 pr-10 text-sm font-medium text-white placeholder-neutral-500 outline-none transition-all focus:border-[#FF4655] focus:ring-2 focus:ring-[#FF4655]/20"
-          />
-          {query && (
-            <button
-              type="button"
-              onClick={handleClear}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-neutral-400 hover:text-white cursor-pointer"
-              title="Bersihkan pencarian"
-              aria-label="Bersihkan pencarian"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
+        <SearchInput
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onClear={handleClear}
+          placeholder={
+            type === "anime"
+              ? "Cari anime... (contoh: Naruto, One Piece, Frieren)"
+              : "Cari manga... (contoh: Berserk, Monster, Chainsaw Man)"
+          }
+          clearAriaLabel="Bersihkan pencarian"
+          className="flex-1 min-w-0"
+        />
       </div>
 
-      {/* === 2. Banner Notifikasi Error (Status 429 Rate Limit / 503 Offline) === */}
+      {/* State Error */}
       {error && (
-        <div className="flex items-start gap-3 rounded-xl border border-red-500/40 bg-red-950/40 p-4 text-sm text-red-300 shadow-lg">
-          <AlertCircle size={20} className="mt-0.5 shrink-0 text-red-400" />
-          <div className="flex-1">
-            <p className="font-semibold">Terjadi Kendala</p>
-            <p className="mt-0.5 text-xs text-red-300/90">{error}</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-xl border border-destructive/30 bg-destructive/10 p-5 text-sm text-text shadow-sm backdrop-blur-sm">
+          <div className="flex items-start gap-3.5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-destructive/15 text-destructive border border-destructive/30">
+              {error.type === "offline" ? <WifiOff size={20} /> : <AlertCircle size={20} />}
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-bold text-text text-base">
+                {error.type === "rate_limit"
+                  ? "Batas Kuota Tercapai"
+                  : error.type === "offline"
+                  ? "Koneksi Terputus"
+                  : "Kendala Pencarian"}
+              </p>
+              <p className="text-xs sm:text-sm text-text-2 leading-relaxed max-w-xl">
+                {error.message || error}
+              </p>
+            </div>
           </div>
           <button
             type="button"
             onClick={() => executeSearch(query, type)}
-            className="rounded-lg bg-red-500/20 px-3 py-1 text-xs font-semibold text-red-300 transition-colors hover:bg-red-500/30 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-destructive-hover active:scale-95 cursor-pointer shrink-0"
           >
-            Coba Lagi
+            <RotateCcw size={14} />
+            <span>Coba Lagi</span>
           </button>
         </div>
       )}
 
-      {/* === 3. State: Loading Skeleton Grid === */}
+      {/* Loading Skeleton Grid (Selaras dengan Explore) */}
       {isLoading && (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
           {Array.from({ length: 10 }).map((_, idx) => (
             <div
               key={idx}
-              className="flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#181A20] animate-pulse"
+              className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface animate-pulse"
             >
-              <div className="aspect-[3/4] w-full bg-neutral-800/60" />
-              <div className="space-y-2 p-3">
-                <div className="h-4 w-3/4 rounded bg-neutral-800/80" />
-                <div className="h-3 w-1/2 rounded bg-neutral-800/60" />
+              <div className="aspect-[2/3] w-full bg-surface-2" />
+              <div className="p-3 space-y-2 border-t border-border">
+                <div className="h-3.5 w-3/4 rounded bg-surface-2" />
+                <div className="h-2.5 w-1/2 rounded bg-surface-2/60" />
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* === 4. State: Hasil Ditemukan (Grid Kartu Anime/Manga) === */}
+      {/* Hasil Pencarian menggunakan CatalogCard seragam */}
       {!isLoading && !error && results.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between text-xs text-neutral-400">
-            <span>
-              Menampilkan {results.length} hasil untuk &quot;
-              <strong className="text-white">{query.trim()}</strong>&quot; ({type}):
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            {results.map((item) => {
-              const itemId = item.malId || item.mal_id || item.id;
-              const poster = item.image || item.image_url;
-              const episodeOrChapter =
-                type === "anime"
-                  ? item.totalEpisodes
-                    ? `${item.totalEpisodes} Eps`
-                    : "TBA"
-                  : item.totalChapters
-                  ? `${item.totalChapters} Ch`
-                  : "TBA";
-
-              return (
-                <Link
-                  key={`${type}-${itemId}`}
-                  href={`/detail?type=${type}&id=${itemId}`}
-                  className="group relative flex flex-col overflow-hidden rounded-xl border border-white/10 bg-[#181A20] shadow-md transition-all duration-300 hover:-translate-y-1 hover:border-[#FF4655]/60 hover:shadow-xl hover:shadow-[#FF4655]/20"
-                >
-                  {/* Poster Gambar */}
-                  <div className="relative aspect-[3/4] w-full overflow-hidden bg-neutral-900">
-                    {poster ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={poster}
-                        alt={item.title || "Poster"}
-                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center bg-neutral-800 text-neutral-600">
-                        {type === "anime" ? <Film size={32} /> : <BookOpen size={32} />}
-                      </div>
-                    )}
-
-                    {/* Badge Rating & Total Episode/Chapter */}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-2.5">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-white">
-                        <span className="flex items-center gap-1 text-amber-400">
-                          <Star size={12} className="fill-amber-400" />
-                          {typeof item.score === "number" ? item.score.toFixed(1) : "-"}
-                        </span>
-                        <span className="rounded bg-black/60 px-1.5 py-0.5 text-neutral-300 backdrop-blur-sm">
-                          {episodeOrChapter}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Keterangan Judul */}
-                  <div className="flex flex-1 flex-col justify-between p-3">
-                    <h3
-                      className="line-clamp-2 text-sm font-semibold text-neutral-200 transition-colors group-hover:text-[#FF4655]"
-                      title={item.title}
-                    >
-                      {item.title}
-                    </h3>
-                    <p className="mt-1 text-[11px] uppercase tracking-wider text-neutral-400">
-                      {item.status || type}
-                    </p>
-                  </div>
-                </Link>
-              );
-            })}
+        <div className="space-y-4">
+          <p className="text-xs sm:text-sm text-text-2">
+            Menampilkan{" "}
+            <span className="font-bold text-text">{results.length}</span> hasil{" "}
+            {type === "anime" ? "anime" : "manga"} untuk &ldquo;
+            <span className="font-semibold text-text">{query.trim()}</span>&rdquo;
+          </p>
+          <div className="grid grid-cols-2 gap-3.5 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5">
+            {results.map((item) => (
+              <CatalogCard key={`${item.type}-${item.id}`} item={item} />
+            ))}
           </div>
         </div>
       )}
 
-      {/* === 5. State: 'Tidak ada hasil' (Langkah 4 & AC US-001) === */}
-      {!isLoading && !error && hasSearched && results.length === 0 && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-white/10 bg-[#12141A]/60 px-6 py-16 text-center shadow-lg">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/5 text-neutral-400 border border-white/10">
-            <Search size={28} />
-          </div>
-          <h3 className="mt-4 text-lg font-bold text-white">Tidak ada hasil ditemukan</h3>
-          <p className="mt-1 max-w-md text-xs leading-relaxed text-neutral-400 sm:text-sm">
-            Tidak dapat menemukan {type} dengan judul &quot;
-            <span className="text-white font-medium">{query.trim()}</span>&quot;.
-            Coba periksa ejaan judul atau gunakan kata kunci pencarian yang lain.
+      {/* Initial Welcome State (< 3 karakter) */}
+      {!isLoading && !error && query.trim().length < 3 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface px-4 py-14 text-center shadow-sm">
+          <h3 className="text-base font-bold text-text sm:text-lg">
+            Temukan {type === "anime" ? "Anime" : "Manga"} Favoritmu!
+          </h3>
+          <p className="mt-1.5 max-w-md text-xs sm:text-sm text-text-2 leading-relaxed">
+            Ketik minimal 3 karakter judul {type === "anime" ? "anime" : "manga"} untuk mulai mencari di katalog.
           </p>
         </div>
       )}
 
-      {/* === 6. State: Idle / Panduan Awal (Sebelum Mengetik / < 3 Karakter) === */}
-      {!isLoading && !error && !hasSearched && (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-[#12141A]/40 px-6 py-14 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#FF4655]/10 text-[#FF4655] border border-[#FF4655]/20">
-            <Compass size={26} />
-          </div>
-          <h3 className="mt-3 text-base font-bold text-white flex items-center gap-1.5">
-            <span>Eksplorasi Katalog {type === "anime" ? "Anime" : "Manga"}</span>
-            <Sparkles size={16} className="text-amber-400" />
+      {/* Tidak ada hasil */}
+      {!isLoading && !error && hasSearched && results.length === 0 && (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface px-4 py-14 text-center shadow-sm">
+          <h3 className="text-base font-bold text-text sm:text-lg">
+            Tidak ada hasil ditemukan
           </h3>
-          <p className="mt-1 max-w-sm text-xs leading-relaxed text-neutral-400">
-            Ketik minimal 3 karakter judul di kolom atas untuk mulai mencari dari jutaan database {type}.
+          <p className="mt-1.5 max-w-md text-xs sm:text-sm text-text-2 leading-relaxed">
+            Tidak ditemukan {type} untuk &ldquo;
+            <span className="text-text font-semibold">{query.trim()}</span>&rdquo;. Coba kata kunci lain.
           </p>
         </div>
       )}
     </div>
   );
 }
-

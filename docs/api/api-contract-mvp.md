@@ -1,14 +1,48 @@
+---
+title: "Kontrak API MVP Final (MJ-098)"
+sidebar_position: 1
+tags: [backend, api, contract, rest-api, mvp, docusaurus]
+---
+
 # API Contract MVP — Mojiji AnimeList
 
 * **Status:** Final MVP (Terverifikasi & Sesuai Kode Produksi)
 * **Scope:** Authentication, User Profile, Catalog Discovery, Tracker Service, dan Health Check
 * **Acuan:** Mojiji PRD Revisi 4, bagian 18 — API Overview & Tiket MJ-098
 * **Pemilik Dokumen:** Syafii (Backend)
-* **Reviewer:** Dika (Frontend), Nadia (QA)
+* **Reviewer:** Andika (Frontend), Nadia (QA)
 
 ---
 
 ## 1. Konvensi Umum
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Klien / Browser
+    participant Caddy as Caddy Reverse Proxy
+    participant Gateway as API Gateway (:4000)
+    participant Service as Microservices (:4001 - :4003)
+    participant Storage as PostgreSQL / Redis / Tenrai
+
+    User->>Caddy: Permintaan HTTPS (/api/*)
+    Caddy->>Gateway: Reverse Proxy (Penerusan Lokal)
+    Note over Gateway: 1. Pembersihan Header Spoofing<br/>2. Ekstraksi & Verifikasi JWT Sesi
+    alt Sesi Valid / Endpoint Publik
+        Gateway->>Service: Teruskan + Inject X-User-Id & X-Internal-Key
+        Service->>Storage: Operasi DB / Cache / Tenrai API
+        Storage-->>Service: Hasil Data / Eksternal
+        Service-->>Gateway: Response Standar JSON
+        Gateway-->>Caddy: Forward Response
+        Caddy-->>User: Hasil Respons Akhir
+    else Sesi Tidak Valid (Endpoint Privat)
+        Gateway-->>User: 401 Unauthorized (Ditolak)
+    end
+```
+
+> [!IMPORTANT]
+> Seluruh endpoint privat (`/api/users/me`, `/api/tracker/*`) wajib melalui verifikasi sesi terpusat di API Gateway. Klien eksternal dilarang memanipulasi header identitas (`X-User-Id`) secara langsung.
+
 
 1. **Prefix API:** Seluruh endpoint publik disajikan melalui API Gateway dengan prefix `/api`.
 2. **Format Data:** Request body dan response body selalu menggunakan format `application/json` berkarakter UTF-8 (kecuali `DELETE /api/tracker/:id` yang mengembalikan `204 No Content` tanpa body).

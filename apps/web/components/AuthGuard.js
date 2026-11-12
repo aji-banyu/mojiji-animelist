@@ -13,13 +13,17 @@ import useAuthStore from "@/store/authStore";
  * 3. Jika belum login → otomatis redirect ke /login.
  * 4. Jika sudah login → render halaman (children).
  */
+// Flag modul agar navigasi SPA antar halaman tidak memicu ulang layar loading setelah hidrasi awal
+let hasClientMounted = false;
+
 export default function AuthGuard({ children }) {
   const user = useAuthStore((s) => s.user);
   const isLoading = useAuthStore((s) => s.isLoading);
   const router = useRouter();
-  const [mounted, setMounted] = useState(false);
+  const [mounted, setMounted] = useState(() => hasClientMounted);
 
   useEffect(() => {
+    hasClientMounted = true;
     setMounted(true);
   }, []);
 
@@ -27,15 +31,15 @@ export default function AuthGuard({ children }) {
     if (!mounted || isLoading) return;
 
     if (!user) {
-      router.replace("/login");
+      router.replace("/login/");
     }
   }, [user, isLoading, router, mounted]);
 
   // Tampilkan loading saat proses mount & pengecekan sesi
   if (!mounted || isLoading) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-[#0F1015]">
-        <p className="text-sm text-neutral-400 animate-pulse">Memeriksa sesi...</p>
+      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-bg">
+        <p className="text-sm text-text-2 animate-pulse">Memeriksa sesi...</p>
       </div>
     );
   }
@@ -43,8 +47,8 @@ export default function AuthGuard({ children }) {
   // Jika belum login, jangan render apapun (sedang proses redirect)
   if (!user) {
     return (
-      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-[#0F1015]">
-        <p className="text-sm text-neutral-400">Mengalihkan ke login...</p>
+      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-bg">
+        <p className="text-sm text-text-2">Mengalihkan ke login...</p>
       </div>
     );
   }
