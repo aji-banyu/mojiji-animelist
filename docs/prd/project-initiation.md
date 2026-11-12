@@ -27,7 +27,7 @@ Berdasarkan Mini PRD Bagian 5 & 7:
   2. Mempermudah pengguna menemukan informasi judul anime/manga secara akurat.
   3. Memberikan ruang berbagi opini melalui fitur komentar (Sprint 2).
   4. Menjaga aplikasi tetap cepat dan stabil dengan *caching* Redis pada data Tenrai API.
-  5. Membangun fondasi arsitektur microservices yang ringan dan efisien untuk spesifikasi peladen kecil (VPS 1 GB RAM).
+  5. Membangun fondasi arsitektur microservices yang ringan dan efisien untuk spesifikasi peladen VPS (2 GB RAM fisik + 2 GB Swap).
 
 ---
 
@@ -79,7 +79,7 @@ Berdasarkan Mini PRD Bagian 3:
 | **Data Eksternal** | **Tenrai API v1** | Penyedia metadata anime & manga (pengganti Jikan API); gratis, stabil, tanpa autentikasi login. |
 | **Reverse Proxy** | **Caddy Server 2** | Penerbitan sertifikat SSL HTTPS otomatis Let's Encrypt; menyajikan situs statis dan meneruskan `/api` ke API Gateway. |
 | **CI/CD** | **GitHub Actions + GHCR** | Kompilasi build di cloud GitHub (bukan di VPS), lalu deploy otomatis tanpa membebani CPU peladen. |
-| **Spesifikasi Server** | **1 VPS 1 GB RAM (+ 2 GB Swap)** | Staging dan production berjalan di VPS yang sama dengan konfigurasi Docker Compose terpisah. |
+| **Spesifikasi Server** | **1 VPS 2 GB RAM fisik (+ 2 GB Swap)** | Staging dan production berjalan di VPS yang sama dengan konfigurasi Docker Compose terpisah. |
 
 ---
 

@@ -19,7 +19,7 @@ Berdasarkan Mini PRD Bagian 4 Tabel Tim:
 | **Syafii** | **Backend** | DevOps | Mengembangkan Express.js microservices (User, Catalog, Tracker), REST API, autentikasi cookie JWT, dan integrasi Redis. |
 | **Ryan** | **DBA** | Backend | Mengelola PostgreSQL di Supabase (staging & production), skema relasional, migrasi berkas Dbmate, dan optimasi pooler. |
 | **Nadia** | **QA** | UI/UX | Menyusun test plan, skenario pengujian AC, pengujian regresi API otomatis dengan Postman / Newman CLI, dan review UI. |
-| **Aji** | **DevOps** | Frontend | Menyiapkan 1 VPS Xeon 1 GB RAM, Caddy reverse proxy HTTPS, GitHub Actions CI/CD, Docker Compose, dan bantuan UI. |
+| **Aji** | **DevOps** | Frontend | Menyiapkan 1 VPS Xeon 2 GB RAM fisik (+ 2 GB Swap), Caddy reverse proxy HTTPS, GitHub Actions CI/CD, Docker Compose, dan bantuan UI. |
 | **Ichsan** | **UI/UX** | Tester | Merancang alur mockup dan design system di Figma, tema Dark Glow, handoff aset ke frontend, dan usability testing. |
 
 ---

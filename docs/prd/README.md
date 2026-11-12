@@ -76,6 +76,6 @@ Tabel evaluasi baseline PRD yang diperbarui pada akhir setiap sprint:
 
 | Fase Sprint | Rencana Fitur (Plan) | Realisasi Aktual (Actual) | Alasan & Analisis (Reason) |
 | :--- | :--- | :--- | :--- |
-| **Sprint 1 (UTS)** | Register, Login, Pencarian, Detail, Tracker | **Selesai 100% (US-001, US-002, US-003, US-004, US-007, US-008, US-009) & Live di Produksi (`https://mojiji.web.id`, tag `v1.0.0-mvp`).** Seluruh Acceptance Criteria terverifikasi lulus via pengujian otomatis Postman Newman Staging dan Produksi. | **Tercapai tepat waktu.** Kendala teknis RAM peladen 1 GB dan reload Caddy berhasil diatasi dengan optimasi reverse proxy dinamis & Next.js static export. |
+| **Sprint 1 (UTS)** | Register, Login, Pencarian, Detail, Tracker | **Selesai 100% (US-001, US-002, US-003, US-004, US-007, US-008, US-009) & Live di Produksi (`https://mojiji.web.id`, tag `v1.0.0-mvp`).** Seluruh Acceptance Criteria terverifikasi lulus via pengujian otomatis Postman Newman Staging dan Produksi. | **Tercapai tepat waktu.** Optimasi reverse proxy dinamis & Next.js static export terbukti sangat efisien pada VPS 2 GB RAM (beban seluruh kontainer hanya ~91.6 MB / 4.6%). |
 | **Sprint 2** | Komentar, Profil, Dark/Light Mode, Reminder | *(Akan diisi pada akhir Sprint 2)* | — |
 | **Final Sprint (UAS)** | Deployment dan stabilization | *(Akan diisi pada akhir Final Sprint)* | — |
