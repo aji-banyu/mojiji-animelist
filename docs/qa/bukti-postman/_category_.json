@@ -1,0 +1,10 @@
+{
+  "label": "Bukti Uji Postman (Staging & Prod)",
+  "position": 7,
+  "collapsed": true,
+  "link": {
+    "type": "generated-index",
+    "description": "Laporan eksekusi pengujian otomatis 12 endpoint inti Core API MVP pada lingkungan Staging dan Production."
+  }
+}
+

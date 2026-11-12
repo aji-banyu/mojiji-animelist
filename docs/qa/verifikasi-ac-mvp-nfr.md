@@ -1,9 +1,14 @@
-# Laporan Pengujian MJ-103 — Verifikasi Acceptance Criteria (AC) MVP dan NFR
+---
+title: "Matriks Verifikasi Acceptance Criteria & NFR MVP"
+sidebar_position: 3
+tags: [qa, acceptance-criteria, nfr, quality-gate, verification]
+---
 
-> **Tiket:** MJ-103 | **Minggu:** 8 (Sprint 1 MVP) | **Role:** QA (Nadia)  
-> **Environment:** MOJIJI Staging (`https://staging.mojiji.web.id`)  
-> **Referensi:** Mini PRD Revisi 4 (v1.4) Bab 14 & 19; Skenario MVP (`docs/qa/skenario-mvp.md`); Laporan Regresi (`docs/qa/regression-m8.md`); Hasil Postman (`docs/qa/hasil-postman-mvp.md`)  
+# Matriks Verifikasi Acceptance Criteria (AC) dan NFR MVP
+
 > **Status Dokumen:** **LULUS / QA SIGN-OFF (SIAP RELEASE TO PRODUCTION)**  
+> **Environment:** MOJIJI Staging (`https://staging.mojiji.web.id`)  
+> **Referensi:** Mini PRD Revisi 4 (v1.4) Bab 14 & 19; Skenario MVP (`docs/qa/skenario-mvp.md`); Laporan Regresi (`docs/qa/arsip-tiket/regression-m8.md`); Hasil Postman (`docs/qa/hasil-postman-mvp.md`)  
 > **Tanggal:** 7 November 2026  
 
 ---

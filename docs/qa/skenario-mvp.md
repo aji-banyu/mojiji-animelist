@@ -1,8 +1,14 @@
-# MJ-030 — Skenario Pengujian MVP MOJIJI
+---
+title: "Master Test Plan & Skenario Pengujian Alur Inti MVP"
+sidebar_position: 1
+tags: [qa, test-plan, skenario-uji, mvp, acceptance-criteria]
+---
 
-> **Status:** Draft untuk review Frontend dan Backend — **belum dieksekusi**.  
+# Master Test Plan & Skenario Pengujian Alur Inti MVP
+
+> **Status:** **DISETUJUI & DIEKSEKUSI (100% LULUS PADA SPRINT 1)**  
 > **Dasar:** Mini PRD MOJIJI Revisi 4, Versi 1.4 (Docker/Migration Update), bagian 13–14 (User Story dan Acceptance Criteria).  
-> **Tiket:** MJ-030 | **Dependency:** MJ-014 | **Lokasi dokumen:** `docs/qa/skenario-mvp.md`.
+> **Tiket:** MJ-030 (Dasar Skenario), dieksekusi penuh pada MJ-102 & MJ-103 | **Lokasi:** `docs/qa/skenario-mvp.md`.
 
 ## Tujuan dan batasan
 
