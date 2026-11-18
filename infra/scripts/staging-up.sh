@@ -27,6 +27,9 @@ if [ ! -f "$COMPOSE_FILE" ]; then
   exit 1
 fi
 
+# Buat dummy directory services agar Docker Compose tidak error saat validasi build path
+mkdir -p services/api-gateway services/user-service services/catalog-service services/tracker-service 2>/dev/null || true
+
 # Ambil seluruh service KECUALI container migrate agar tidak muncul status Exited (2)
 SERVICES_TO_START=$(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --services 2>/dev/null | grep -v -E '^migrate$' || true)
 
@@ -66,7 +69,7 @@ echo ""
 echo "=================================================="
 echo " Status Container Staging Terkini:"
 echo "=================================================="
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
+docker ps --filter "name=_staging"
 
 echo ""
 echo "Pemeriksaan Memori Host:"
