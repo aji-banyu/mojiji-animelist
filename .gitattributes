@@ -1,2 +1,4 @@
-# Enforce LF for all shell scripts
+# Enforce LF for all shell scripts and workflows
 *.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
