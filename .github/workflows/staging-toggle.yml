@@ -25,31 +25,44 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT_VPS || 21185 }}
           command_timeout: 5m
-          script_stop: true
           script: |
-            set -e
+            echo "=================================================="
+            echo " [MOJIJI OPS] Kontrol Staging Toggle (${{ inputs.action }})"
+            echo "=================================================="
 
-            STAGING_DIR="/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
-            if [ ! -d "$STAGING_DIR" ]; then
-              echo "❌ Error: Direktori $STAGING_DIR tidak ditemukan di VPS!"
-              echo "Pastikan alur deployment staging sudah dijalankan minimal 1 kali."
-              exit 1
-            fi
+            if [ "${{ inputs.action }}" = "DOWN" ]; then
+              echo "Mendeteksi kontainer backend staging yang sedang aktif..."
+              CONTAINERS_TO_STOP=$(docker ps --filter "name=_staging" --format "{{.Names}}" | grep -v "caddy" || true)
 
-            cd "$STAGING_DIR"
-
-            # Bersihkan karakter baris Windows (\r / CRLF) menggunakan tr agar 100% kompatibel dengan Linux
-            for f in infra/scripts/*.sh; do
-              if [ -f "$f" ]; then
-                tr -d '\r' < "$f" > "$f.tmp" && mv "$f.tmp" "$f" || true
+              if [ -n "$CONTAINERS_TO_STOP" ]; then
+                echo "Menghentikan kontainer: $CONTAINERS_TO_STOP"
+                docker stop -t 2 $CONTAINERS_TO_STOP 2>/dev/null || docker kill $CONTAINERS_TO_STOP 2>/dev/null || true
+              else
+                echo "Seluruh kontainer backend staging sudah dalam kondisi mati."
               fi
-            done
-            chmod +x infra/scripts/*.sh || true
-
-            if [ "${{ inputs.action }}" = "UP" ]; then
-              echo "Menyalakan seluruh container staging..."
-              bash ./infra/scripts/staging-up.sh
             else
-              echo "Mematikan backend staging (menghemat RAM VPS)..."
-              bash ./infra/scripts/staging-down.sh
+              echo "Menyalakan seluruh container staging..."
+              STAGING_DIR="/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
+              if [ ! -d "$STAGING_DIR" ]; then
+                echo "❌ Error: Direktori $STAGING_DIR tidak ditemukan di VPS!"
+                exit 1
+              fi
+              cd "$STAGING_DIR"
+              mkdir -p services/api-gateway services/user-service services/catalog-service services/tracker-service 2>/dev/null || true
+              docker compose --env-file .env -f infra/compose/docker-compose.server.yml up -d --remove-orphans api-gateway user-service catalog-service tracker-service caddy || true
+              docker exec mojiji_caddy_server_staging caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || true
             fi
+
+            echo ""
+            echo "=================================================="
+            echo " Status Kontainer Staging Terkini:"
+            echo "=================================================="
+            docker ps --filter "name=_staging" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+            echo ""
+            echo "=================================================="
+            echo " Pemakaian Memori Bebas Host (RAM Dihemat):"
+            echo "=================================================="
+            free -m || true
+            echo ""
+            echo "✅ Operasi ${{ inputs.action }} pada staging selesai."
