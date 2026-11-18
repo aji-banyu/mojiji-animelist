@@ -69,6 +69,11 @@ if (!trackerServiceUrl) {
   trackerServiceUrl = process.platform === "win32" ? "http://localhost:4003" : "http://tracker-service:4003";
 }
 
+let interactionServiceUrl = process.env.INTERACTION_SERVICE_URL;
+if (!interactionServiceUrl) {
+  interactionServiceUrl = process.platform === "win32" ? "http://localhost:4004" : "http://interaction-service:4004";
+}
+
 // Handler event proxy umum
 const createServiceProxyOptions = (serviceName, targetUrl) => ({
   target: targetUrl,
@@ -141,6 +146,17 @@ app.use(
   createProxyMiddleware(createServiceProxyOptions("Tracker Service", `${trackerServiceUrl}/api/tracker`))
 );
 
+// Daftarkan rute proxy ke Interaction Service (Komentar - Tiket MJ-117)
+app.use(
+  "/api/interaction",
+  createProxyMiddleware(createServiceProxyOptions("Interaction Service", `${interactionServiceUrl}/api/interaction`))
+);
+
+app.use(
+  "/api/comments",
+  createProxyMiddleware(createServiceProxyOptions("Interaction Service", `${interactionServiceUrl}/api/comments`))
+);
+
 // Handler 404 jika route tidak ditemukan di gateway
 app.use((req, res) => {
   res.status(404).json({
@@ -171,6 +187,7 @@ app.listen(PORT, () => {
   console.log(`Routing /api/auth and /api/users to ${userServiceUrl}`);
   console.log(`Routing /api/catalog to ${catalogServiceUrl}`);
   console.log(`Routing /api/tracker to ${trackerServiceUrl}`);
+  console.log(`Routing /api/interaction and /api/comments to ${interactionServiceUrl}`);
 });
 
 module.exports = app;
