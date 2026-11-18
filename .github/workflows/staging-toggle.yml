@@ -44,8 +44,8 @@ jobs:
 
             if [ "${{ inputs.action }}" = "UP" ]; then
               echo "Menyalakan seluruh container staging..."
-              ./infra/scripts/staging-up.sh
+              bash ./infra/scripts/staging-up.sh
             else
               echo "Mematikan backend staging (menghemat RAM VPS)..."
-              ./infra/scripts/staging-down.sh
+              bash ./infra/scripts/staging-down.sh
             fi

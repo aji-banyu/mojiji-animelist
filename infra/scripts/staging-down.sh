@@ -13,41 +13,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$BASE_DIR"
 
-COMPOSE_FILE="infra/compose/docker-compose.server.yml"
-ENV_FILE=".env"
+# Buat dummy directory services agar Docker tidak komplain validasi build path
+mkdir -p services/api-gateway services/user-service services/catalog-service services/tracker-service 2>/dev/null || true
 
-if [ ! -f "$ENV_FILE" ]; then
-  echo "Error: Berkas $ENV_FILE tidak ditemukan di $BASE_DIR!"
-  exit 1
+# Hentikan seluruh kontainer backend staging secara langsung via Docker Engine
+# Cara ini kebal dari masalah validasi compose file, cepat, dan Caddy tetap hidup
+echo "Mendeteksi kontainer backend staging yang sedang aktif..."
+CONTAINERS_TO_STOP=$(docker ps --filter "name=_staging" --format "{{.Names}}" | grep -v "caddy" || true)
+
+if [ -n "$CONTAINERS_TO_STOP" ]; then
+  echo "Menghentikan kontainer: $CONTAINERS_TO_STOP"
+  docker stop -t 2 $CONTAINERS_TO_STOP 2>/dev/null || docker kill $CONTAINERS_TO_STOP 2>/dev/null || true
+else
+  echo "Seluruh kontainer backend staging sudah dalam kondisi mati."
 fi
-
-if [ ! -f "$COMPOSE_FILE" ]; then
-  echo "Error: Berkas $COMPOSE_FILE tidak ditemukan di $BASE_DIR!"
-  exit 1
-fi
-
-# Menghentikan seluruh microservices backend untuk membebaskan alokasi RAM
-# Reverse proxy Caddy tetap dibiarkan menyala agar tidak memutuskan koneksi domain
-echo "Mendeteksi seluruh microservices backend di $COMPOSE_FILE..."
-SERVICES_TO_STOP=$(docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" config --services 2>/dev/null | grep -v -E '^(caddy|migrate)$' || true)
-
-# Fallback aman jika parsing otomatis kosong
-if [ -z "$SERVICES_TO_STOP" ]; then
-  SERVICES_TO_STOP="api-gateway user-service catalog-service tracker-service interaction-service"
-fi
-
-echo "Menghentikan backend microservices: $SERVICES_TO_STOP"
-# Gunakan timeout stop 2 detik (-t 2) agar Node.js tidak menggantung grace period 10 detik
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" stop -t 2 $SERVICES_TO_STOP || {
-  echo "⚠️ Peringatan: Stop standar mengalami kendala, mematikan kontainer secara paksa..."
-  docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" kill $SERVICES_TO_STOP 2>/dev/null || true
-}
 
 echo ""
 echo "=================================================="
-echo " Status Container Setelah Penghentian:"
+echo " Status Container Staging Terkini:"
 echo "=================================================="
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
+docker ps --filter "name=_staging"
 
 echo ""
 echo "Pemeriksaan Memori Bebas Host (RAM Dihemat):"
