@@ -213,9 +213,9 @@ flowchart TD
 ### A. Prosedur Rollback Cepat via Skrip VPS
 1. Masuk ke terminal VPS via SSH:
    ```bash
-   ssh -p 20125 deploy@103.147.32.27
+   ssh -p 21185 aji@31.59.119.246
    # atau via domain:
-   ssh -p 20125 deploy@mojiji.web.id
+   ssh -p 21185 aji@mojiji.web.id
    ```
 2. Jalankan skrip pemulihan darurat:
    ```bash

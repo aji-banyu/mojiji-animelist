@@ -75,9 +75,9 @@ Jika terjadi insiden darurat di mana aplikasi rilis terbaru harus segera dikemba
 ### Langkah 1: Hubungkan Diri ke Server VPS via SSH
 Gunakan kunci SSH privat yang terdaftar pada akun `deploy`:
 ```bash
-ssh -p 20125 deploy@103.147.32.27
+ssh -p 21185 aji@31.59.119.246
 # atau via domain:
-ssh -p 20125 deploy@mojiji.web.id
+ssh -p 21185 aji@mojiji.web.id
 ```
 
 ### Langkah 2: Masuk ke Direktori Kerja Proyek

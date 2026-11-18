@@ -21,7 +21,7 @@ flowchart TD
         ApiUser["Klien Aplikasi Mobile / Postman"]
     end
 
-    subgraph PROVIDER_EDGE ["Router Edge Provider NAT VPS (103.147.32.27)"]
+    subgraph PROVIDER_EDGE ["Router Edge Provider NAT VPS (31.59.119.246)"]
         EDGE_ROUTER{"SNI Domain Ingress Router\n(Port 80/443)"}
         IP_BLOCK["Akses Raw IP 80/443 -> DIBLOKIR"]
     end
@@ -41,7 +41,7 @@ flowchart TD
     ApiUser -->|HTTPS mojiji.web.id/api/*| EDGE_ROUTER
     EDGE_ROUTER -->|Teruskan Traffic Domain ke VPS| TLS
     
-    WebUser -.->|Akses Langsung http://103.147.32.27| IP_BLOCK
+    WebUser -.->|Akses Langsung http://31.59.119.246| IP_BLOCK
     
     TLS --> GZIP --> ROUTER
     ROUTER -->|Jika Awalan /api/*| GATEWAY
@@ -58,12 +58,12 @@ flowchart TD
 Proyek Mojiji menggunakan domain lokal Indonesia tingkat dua (**`.web.id`**), yaitu **`mojiji.web.id`**, yang terdaftar di bawah regulasi PANDI (*Pengelola Nama Domain Internet Indonesia*).
 
 ### A. Konfigurasi DNS A-Record (DomaiNesia DNS Management)
-Dua buah A-Record diarahkan ke alamat IP Publik bersama VPS peladen (`103.147.32.27`):
+Dua buah A-Record diarahkan ke alamat IP Publik bersama VPS peladen (`31.59.119.246`):
 
 | Host / Subdomain | Tipe Record | Alamat Tujuan (IP VPS) | TTL | Peruntukan Lingkungan |
 | :--- | :---: | :---: | :---: | :--- |
-| **`@` (Root Domain)** | `A` | `103.147.32.27` | 3600 | Domain Utama Production (`mojiji.web.id`) |
-| **`staging`** | `A` | `103.147.32.27` | 3600 | Lingkungan Staging (`staging.mojiji.web.id`) |
+| **`@` (Root Domain)** | `A` | `31.59.119.246` | 3600 | Domain Utama Production (`mojiji.web.id`) |
+| **`staging`** | `A` | `31.59.119.246` | 3600 | Lingkungan Staging (`staging.mojiji.web.id`) |
 
 > [!NOTE] Strategi Single-Origin Path Routing:
 > Pada perancangan awal sempat dipertimbangkan subdomain terpisah `api.mojiji.web.id`. Namun, untuk mengeliminasi kendala **CORS (*Cross-Origin Resource Sharing*)** serta pembatasan pemblokiran *Third-Party Cookies* pada peramban modern (Safari, Chrome), tim memutuskan strategi **Single-Origin Path-Based Routing**: `/api/*` diteruskan ke API Gateway pada domain yang sama.
