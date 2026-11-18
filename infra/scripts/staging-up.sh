@@ -69,11 +69,11 @@ echo ""
 echo "=================================================="
 echo " Status Container Staging Terkini:"
 echo "=================================================="
-docker ps --filter "name=_staging"
+docker ps --filter "name=_staging" || true
 
 echo ""
 echo "Pemeriksaan Memori Host:"
-free -m
+free -m || true
 echo ""
 
 if [ "$HEALTH_OK" = true ]; then
