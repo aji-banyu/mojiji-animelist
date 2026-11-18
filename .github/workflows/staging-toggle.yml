@@ -24,9 +24,22 @@ jobs:
           username: ${{ secrets.USERNAME_VPS }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT_VPS || 21185 }}
+          command_timeout: 5m
           script_stop: true
           script: |
-            cd /home/${{ secrets.USERNAME_VPS }}/mojiji-staging
+            set -e
+
+            STAGING_DIR="/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
+            if [ ! -d "$STAGING_DIR" ]; then
+              echo "❌ Error: Direktori $STAGING_DIR tidak ditemukan di VPS!"
+              echo "Pastikan alur deployment staging sudah dijalankan minimal 1 kali."
+              exit 1
+            fi
+
+            cd "$STAGING_DIR"
+
+            # Pastikan berkas skrip bebas karakter CRLF dan memiliki izin eksekusi
+            sed -i 's/\r$//' infra/scripts/*.sh 2>/dev/null || true
             chmod +x infra/scripts/*.sh || true
 
             if [ "${{ inputs.action }}" = "UP" ]; then
@@ -36,4 +49,3 @@ jobs:
               echo "Mematikan backend staging (menghemat RAM VPS)..."
               ./infra/scripts/staging-down.sh
             fi
-
