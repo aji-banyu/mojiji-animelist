@@ -32,10 +32,10 @@ echo ""
 echo "=================================================="
 echo " Status Container Staging Terkini:"
 echo "=================================================="
-docker ps --filter "name=_staging"
+docker ps --filter "name=_staging" || true
 
 echo ""
 echo "Pemeriksaan Memori Bebas Host (RAM Dihemat):"
-free -m
+free -m || true
 echo ""
 echo "🛑 Seluruh service backend staging berhasil dimatikan (Caddy tetap aktif)."
