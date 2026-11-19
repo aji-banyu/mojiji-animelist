@@ -22,10 +22,10 @@ flowchart TD
         DevOps["Aji (DevOps Engineer via SSH)"]
     end
 
-    subgraph PROVIDER_EDGE ["Lapisan 1: Router Edge Provider (Shared IP: 103.147.32.27)"]
+    subgraph PROVIDER_EDGE ["Lapisan 1: Router Edge Provider (Shared IP: 31.59.119.246)"]
         direction TB
         SNI_ROUTER{"SNI Domain Router (Port 80/443)"}
-        NAT_FORWARD{"NAT Port Forwarding (Port 20125)"}
+        NAT_FORWARD{"NAT Port Forwarding (Port 21185)"}
         BLOCKED_PORTS["Port DIBLOKIR Provider:\n• SMTP 25, 465, 587\n• Raw IP 80/443\n• FTP 21, cPanel 2082-2096\n• ICMP ping"]
     end
 
@@ -55,7 +55,7 @@ flowchart TD
     User -->|Akses Domain: staging.mojiji.web.id / mojiji.web.id| SNI_ROUTER
     SNI_ROUTER -->|Teruskan Traffic Domain| FW_HTTP & FW_HTTPS --> CADDY
     
-    DevOps -->|ssh -p 20125 deploy@103.147.32.27| NAT_FORWARD
+    DevOps -->|ssh -p 21185 aji@31.59.119.246| NAT_FORWARD
     NAT_FORWARD -->|Forward ke Port 22| FW_SSH --> SSH_DAEMON --> USER_DEPLOY
     
     Hacker -.->|Scan Raw IP 80/443 atau Port Tertutup| BLOCKED_PORTS
@@ -80,8 +80,8 @@ Berdasarkan data operasional aktual pada dashboard peladen `mojiji (#1966)`:
 | **Memori Fisik (RAM)** | **2.048 MB (2 GB)** | Terdeteksi ~1.967 MB oleh kernel |
 | **Memori Virtual (Swap)** | **2.048 MB (2 GB)** | Aktif pada `/swapfile` dengan `vm.swappiness=10` |
 | **Penyimpanan Disk** | **20 GB NVMe Disk** | Partisi root SSD NVMe performa tinggi |
-| **Alamat IP Publik** | **`103.147.32.27`** | Shared Public IPv4 bersama |
-| **Port Akses SSH Publik** | **`20125`** | NAT Forwarding ke port 22 lokal di VPS |
+| **Alamat IP Publik** | **`31.59.119.246`** | Shared Public IPv4 bersama |
+| **Port Akses SSH Publik** | **`21185`** | NAT Forwarding ke port 22 lokal di VPS |
 | **Akses Web HTTP/HTTPS** | **Domain-Only (Port 80 & 443)** | Akses via Raw IP dinonaktifkan oleh provider |
 
 ---
@@ -111,11 +111,11 @@ sudo chown -R deploy:deploy /home/deploy/.ssh
 ### B. Penguncian Akses SSH Daemon (*SSH Hardening*)
 > [!WARNING] Uji Koneksi Sebelum Restart SSH!
 > Sebelum me-restart SSH daemon, uji koneksi di jendela terminal terpisah dengan perintah:
-> `ssh -p 20125 deploy@103.147.32.27`
+> `ssh -p 21185 aji@31.59.119.246`
 
 Konfigurasi pada berkas `/etc/ssh/sshd_config.d/99-hardening.conf` atau `/etc/ssh/sshd_config`:
 ```ini
-# Port internal tetap mendengarkan port 22 (NAT provider memetakan 20125 -> 22)
+# Port internal tetap mendengarkan port 22 (NAT provider memetakan 21185 -> 22)
 Port 22
 
 # Nonaktifkan login langsung root
@@ -150,7 +150,7 @@ Meskipun router edge provider telah menyaring port publik, peladen host tetap wa
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 
-# 2. Izinkan port SSH internal (port 22 yang menerima forward dari port 20125)
+# 2. Izinkan port SSH internal (port 22 yang menerima forward dari port 21185)
 sudo ufw allow 22/tcp comment 'SSH Internal NAT'
 
 # 3. Izinkan port Web untuk trafik domain Caddy
@@ -223,14 +223,14 @@ sudo systemctl restart docker
 
 ## 7. Prosedur Akses Terminal Harian DevOps
 
-Untuk masuk ke peladen VPS Mojiji, selalu sertakan parameter port **`20125`**:
+Untuk masuk ke peladen VPS Mojiji, selalu sertakan parameter port **`21185`**:
 
 ```bash
 # Opsi 1: Menggunakan domain terdaftar
-ssh -p 20125 deploy@mojiji.web.id
+ssh -p 21185 aji@mojiji.web.id
 
 # Opsi 2: Menggunakan IP Publik langsung
-ssh -p 20125 deploy@103.147.32.27
+ssh -p 21185 aji@31.59.119.246
 ```
 
 ---

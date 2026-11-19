@@ -79,7 +79,7 @@ jobs:
           host: ${{ secrets.HOST_VPS }}
           username: ${{ secrets.USERNAME_VPS }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 20125
+          port: ${{ secrets.PORT_VPS || 21185 }}
           source: "infra/, frontend-build/, database/"
           target: "/home/${{ secrets.USERNAME_VPS }}/mojiji-staging"
 
@@ -93,7 +93,7 @@ jobs:
           host: ${{ secrets.HOST_VPS }}
           username: ${{ secrets.USERNAME_VPS }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 20125
+          port: ${{ secrets.PORT_VPS || 21185 }}
           script_stop: true
           script: |
             set -e

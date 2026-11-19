@@ -120,7 +120,7 @@ flowchart TD
 | **Database Migrations** | [Dbmate](https://github.com/amacneil/dbmate) | 2.x | Manajemen migrasi DDL skema database yang independen dari ORM. |
 | **Kontainerisasi** | [Docker](https://docs.docker.com/) | 27.x | Isolasi lingkungan pengembangan lokal dan server produksi. |
 | **Otomatisasi CI/CD** | [GitHub Actions](https://docs.github.com/en/actions) | Cloud | Pipeline pengujian unit, linter, Newman API test, dan deploy otomatis. |
-| **Sistem Operasi Server** | [Ubuntu Server](https://ubuntu.com/server/docs) | 24.04 LTS | Host VPS Xeon Shared (2 vCPU, 2 GB RAM, 2 GB Swap, 20 GB NVMe, SSH NAT Port 20125). |
+| **Sistem Operasi Server** | [Ubuntu Server](https://ubuntu.com/server/docs) | 24.04 LTS | Host VPS Xeon Shared (2 vCPU, 2 GB RAM, 2 GB Swap, 20 GB NVMe, SSH NAT Port 21185). |
 
 ---
 

@@ -20,7 +20,7 @@ Pengukuran memori dilakukan langsung pada peladen VPS (*Virtual Private Server*)
 * **Total RAM Fisik:** 2.048 MB (2.0 GB / terdeteksi 1.967 MB oleh kernel Linux)
 * **Partisi Virtual Memory (Swap):** 2.048 MB (2.0 GB) aktif dengan parameter kernel `vm.swappiness=10`
 * **Penyimpanan:** 20 GB NVMe Disk
-* **Alamat IP & Port:** Shared IP `103.147.32.27` dengan SSH Port NAT `20125`
+* **Alamat IP & Port:** Shared IP `31.59.119.246` dengan SSH Port NAT `21185`
 * **Docker Runtime:** Docker Engine Community v27+ dengan driver isolasi memori *cgroups v2*
 
 ---
@@ -190,7 +190,7 @@ graph TD
 
 ## 8. Panduan Perintah Pemantauan Harian DevOps
 
-Untuk memantau stabilitas memori di server VPS via SSH Port `20125`:
+Untuk memantau stabilitas memori di server VPS via SSH Port `21185`:
 
 ```bash
 # 1. Cek ringkasan penggunaan RAM dan Swap fisik server
