@@ -29,6 +29,12 @@ app.get("/api/health", healthHandler);
 app.get("/api/interaction/health", healthHandler);
 app.get("/api/comments/health", healthHandler);
 
+// Rute Komentar (Tiket MJ-118 - US-005)
+const commentRoutes = require("./routes/commentRoutes");
+app.use("/api/comments", commentRoutes);
+app.use("/comments", commentRoutes);
+app.use("/api/interaction", commentRoutes);
+
 // Handler 404 jika route belum diimplementasikan atau tidak ditemukan
 app.use((req, res) => {
   res.status(404).json({
@@ -65,25 +71,32 @@ app.use((err, req, res, next) => {
   });
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Interaction Service running on port ${PORT}`);
-});
-
-// Penutupan rapi saat SIGTERM / SIGINT (Graceful Shutdown)
-const gracefulShutdown = (signal) => {
-  console.log(`Menerima sinyal ${signal}, menutup Interaction Service secara rapi...`);
-  server.close(async () => {
-    try {
-      await pool.end();
-      console.log("Pool database Interaction Service berhasil ditutup.");
-    } catch (err) {
-      console.error("Gagal menutup pool database:", err.message);
-    }
-    process.exit(0);
+let server;
+if (require.main === module) {
+  server = app.listen(PORT, () => {
+    console.log(`Interaction Service running on port ${PORT}`);
   });
-};
 
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+  // Penutupan rapi saat SIGTERM / SIGINT (Graceful Shutdown)
+  const gracefulShutdown = (signal) => {
+    console.log(`Menerima sinyal ${signal}, menutup Interaction Service secara rapi...`);
+    if (server) {
+      server.close(async () => {
+        try {
+          await pool.end();
+          console.log("Pool database Interaction Service berhasil ditutup.");
+        } catch (err) {
+          console.error("Gagal menutup pool database:", err.message);
+        }
+        process.exit(0);
+      });
+    } else {
+      process.exit(0);
+    }
+  };
+
+  process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+}
 
 module.exports = app;
