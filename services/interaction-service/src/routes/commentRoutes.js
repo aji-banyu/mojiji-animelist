@@ -1,18 +1,24 @@
 const express = require("express");
-const { createComment } = require("../controllers/commentController");
+const { getComments, createComment } = require("../controllers/commentController");
 const { requireAuth } = require("../middlewares/authMiddleware");
 const { commentRateLimiter } = require("../middlewares/rateLimiter");
 
 const router = express.Router();
 
 /**
- * Endpoint POST Komentar:
+ * Endpoint Publik: Membaca Komentar (US-005)
+ * Mendukung path /:mediaType/:malId atau query string (?type=&malId=)
+ */
+router.get("/:mediaType/:malId", getComments);
+router.get("/comments/:mediaType/:malId", getComments);
+router.get("/", getComments);
+router.get("/comments", getComments);
+
+/**
+ * Endpoint Privat (Wajib Login): Menulis Komentar (US-005)
  * POST /api/comments/:mediaType/:malId
- * Tiket: MJ-118
  */
 router.post("/:mediaType/:malId", requireAuth, commentRateLimiter, createComment);
-
-// Alias rute jika diakses via prefix /api/interaction/comments/...
 router.post("/comments/:mediaType/:malId", requireAuth, commentRateLimiter, createComment);
 
 module.exports = router;
