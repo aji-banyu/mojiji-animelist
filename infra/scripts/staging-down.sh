@@ -14,7 +14,7 @@ BASE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$BASE_DIR"
 
 # Buat dummy directory services agar Docker tidak komplain validasi build path
-mkdir -p services/api-gateway services/user-service services/catalog-service services/tracker-service 2>/dev/null || true
+mkdir -p services/api-gateway services/user-service services/catalog-service services/tracker-service services/interaction-service services/notification-service 2>/dev/null || true
 
 # Hentikan seluruh kontainer backend staging secara langsung via Docker Engine
 # Cara ini kebal dari masalah validasi compose file, cepat, dan Caddy tetap hidup

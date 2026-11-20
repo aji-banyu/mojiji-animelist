@@ -35,7 +35,7 @@ echo "Tag stabil aktif saat ini: $PREV_TAG"
 
 # 2. Unduh image aplikasi yang sudah dibangun oleh GitHub Actions (Zero-Build VPS)
 echo "Mengunduh image aplikasi terbaru..."
-TAG="$APP_TAG" docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull api-gateway user-service catalog-service tracker-service
+TAG="$APP_TAG" docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull api-gateway user-service catalog-service tracker-service interaction-service notification-service
 
 # 3. Jalankan backup otomatis pg_dump jika target adalah production (sebelum migrasi)
 if [ "$TARGET_ENV" = "production" ]; then

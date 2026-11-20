@@ -89,5 +89,33 @@ services:
       - db
       - redis
 
+  interaction-service:
+    build: 
+      context: ../../services/interaction-service
+    container_name: mojiji_interaction_dev
+    env_file:
+      - ../../.env
+    environment:
+      - PORT=${PORT_INTERACTION:-4004}
+    ports:
+      - "4004:4004"
+    depends_on:
+      - db
+      - redis
+
+  notification-service:
+    build: 
+      context: ../../services/notification-service
+    container_name: mojiji_notification_dev
+    env_file:
+      - ../../.env
+    environment:
+      - PORT=${PORT_NOTIFICATION:-4005}
+    ports:
+      - "4005:4005"
+    depends_on:
+      - db
+      - redis
+
 volumes:
   pgdata_dev:

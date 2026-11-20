@@ -40,6 +40,8 @@ services:
       USER_SERVICE_URL: http://user-service:4001
       CATALOG_SERVICE_URL: http://catalog-service:4002
       TRACKER_SERVICE_URL: http://tracker-service:4003
+      INTERACTION_SERVICE_URL: http://interaction-service:4004
+      NOTIFICATION_SERVICE_URL: http://notification-service:4005
       NODE_OPTIONS: "--max-old-space-size=64"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/health"]
@@ -107,6 +109,46 @@ services:
       NODE_OPTIONS: "--max-old-space-size=64"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4003/health"]
+      interval: 30s
+      retries: 3
+
+  interaction-service:
+    build:
+      context: ../../services/interaction-service
+    image: ghcr.io/aji-banyu/mojiji-interaction-service:${TAG:-latest}
+    container_name: mojiji_interaction_server_${APP_ENV}
+    restart: unless-stopped
+    mem_limit: 96m
+    environment:
+      APP_ENV: ${APP_ENV}
+      PORT: ${PORT_INTERACTION:-4004}
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_KEY: ${INTERNAL_KEY}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
+      NODE_OPTIONS: "--max-old-space-size=64"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4004/health"]
+      interval: 30s
+      retries: 3
+
+  notification-service:
+    build:
+      context: ../../services/notification-service
+    image: ghcr.io/aji-banyu/mojiji-notification-service:${TAG:-latest}
+    container_name: mojiji_notification_server_${APP_ENV}
+    restart: unless-stopped
+    mem_limit: 96m
+    environment:
+      APP_ENV: ${APP_ENV}
+      PORT: ${PORT_NOTIFICATION:-4005}
+      DATABASE_URL: ${DATABASE_URL}
+      INTERNAL_KEY: ${INTERNAL_KEY}
+      REDIS_URL: ${REDIS_URL}
+      REDIS_KEY_PREFIX: ${REDIS_KEY_PREFIX}
+      NODE_OPTIONS: "--max-old-space-size=64"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4005/health"]
       interval: 30s
       retries: 3
 

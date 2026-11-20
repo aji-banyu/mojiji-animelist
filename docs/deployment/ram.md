@@ -88,8 +88,10 @@ Hasil inspeksi langsung terhadap kontainer yang sedang berjalan di VPS:
 | `mojiji_user_service_staging` | **19.43 MiB** | 96 MiB | 20.24% | 0.00% |
 | `mojiji_catalog_service_staging` | **19.73 MiB** | 96 MiB | 20.55% | 0.00% |
 | `mojiji_tracker_service_staging` | **20.48 MiB** | 96 MiB | 21.33% | 0.00% |
+| mojiji_interaction_service_staging *(Sprint 2)* | **~19.50 MiB** *(est)* | 96 MiB | 20.31% | 0.00% |
+| mojiji_notification_service_staging *(Sprint 2)* | **~15.00 MiB** *(est)* | 96 MiB | 15.62% | 0.00% |
 | `mojiji_caddy_server_staging` | **18.20 MiB** | 64 MiB | 28.44% | 0.01% |
-| **TOTAL SEMUA KONTAINER** | **91.59 MiB** | **448 MiB** | **20.44% (Rata-rata)** | - |
+| **TOTAL SEMUA 7 KONTAINER (SPRINT 2)** | **~126.09 MiB** | **640 MiB** | **19.70% (Rata-rata)** | - |
 
 > [!TIP] Efisiensi Node.js Express & Zero-Build:
 > Konsumsi memori 4 microservices backend hanya menyentuh **~73 MiB**, jauh lebih hemat dibanding estimasi awal. Hal ini disebabkan oleh:
