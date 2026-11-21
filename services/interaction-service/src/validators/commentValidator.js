@@ -19,6 +19,25 @@ const commentParamsSchema = z.object({
 });
 
 /**
+ * Skema validasi query string paginasi: ?page=1&limit=20
+ */
+const commentQuerySchema = z.object({
+  page: z.coerce
+    .number()
+    .int("page harus berupa bilangan bulat")
+    .positive("page harus bernilai minimal 1")
+    .optional()
+    .default(1),
+  limit: z.coerce
+    .number()
+    .int("limit harus berupa bilangan bulat")
+    .min(1, "limit minimal 1")
+    .max(50, "limit maksimal 50")
+    .optional()
+    .default(20),
+});
+
+/**
  * Skema validasi request body: { "content": "..." }
  * Batasan:
  * - 1 s.d. 500 karakter setelah di-trim
@@ -37,10 +56,7 @@ const commentBodySchema = z.object({
 });
 
 /**
- * Fungsi pembantu untuk memvalidasi parameter dan body komentar
- * @param {object} params - req.params
- * @param {object} body - req.body
- * @returns {object} { success: boolean, data?: object, errors?: string[] }
+ * Fungsi pembantu untuk memvalidasi pembuatan komentar (POST)
  */
 function validateCreateComment(params, body) {
   const errors = [];
@@ -83,8 +99,52 @@ function validateCreateComment(params, body) {
   };
 }
 
+/**
+ * Fungsi pembantu untuk memvalidasi pengambilan komentar (GET)
+ */
+function validateGetComments(params, query = {}) {
+  const errors = [];
+
+  // Mendukung parameter path atau query fallback (?type=&malId=)
+  const normalizedParams = {
+    mediaType: params.mediaType || query.mediaType || query.type,
+    malId: params.malId !== undefined ? params.malId : query.malId || query.mal_id,
+  };
+
+  const paramsResult = commentParamsSchema.safeParse(normalizedParams);
+  if (!paramsResult.success) {
+    const issues = paramsResult.error.issues || [];
+    issues.forEach((issue) => errors.push(issue.message));
+  }
+
+  const queryResult = commentQuerySchema.safeParse(query);
+  if (!queryResult.success) {
+    const issues = queryResult.error.issues || [];
+    issues.forEach((issue) => errors.push(issue.message));
+  }
+
+  if (errors.length > 0) {
+    return {
+      success: false,
+      errors: errors,
+    };
+  }
+
+  return {
+    success: true,
+    data: {
+      mediaType: paramsResult.data.mediaType,
+      malId: paramsResult.data.malId,
+      page: queryResult.data.page,
+      limit: queryResult.data.limit,
+    },
+  };
+}
+
 module.exports = {
   commentParamsSchema,
+  commentQuerySchema,
   commentBodySchema,
   validateCreateComment,
+  validateGetComments,
 };

@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const pool = require("../config/db");
-const { validateCreateComment } = require("../validators/commentValidator");
+const { validateCreateComment, validateGetComments } = require("../validators/commentValidator");
 
 /**
  * Penyimpanan in-memory cadangan jika PostgreSQL lokal sedang offline (Dev Fallback)
@@ -58,8 +58,118 @@ async function ensureTableExists() {
 }
 
 /**
+ * GET /api/comments/:mediaType/:malId
+ * Mengambil daftar komentar publik per judul anime/manga (Tiket MJ-118 - US-005)
+ */
+async function getComments(req, res) {
+  try {
+    const validation = validateGetComments(req.params, req.query);
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: {
+          code: "VALIDATION_ERROR",
+          message: "Parameter permintaan tidak valid",
+          details: validation.errors,
+        },
+      });
+    }
+
+    const { mediaType, malId, page, limit } = validation.data;
+    const offset = (page - 1) * limit;
+
+    try {
+      await ensureTableExists();
+
+      // Hitung total komentar untuk judul terkait
+      const countQuery = `
+        SELECT COUNT(*) AS total 
+        FROM interaction_service.comments 
+        WHERE media_type = $1 AND mal_id = $2;
+      `;
+      const countRes = await pool.query(countQuery, [mediaType, malId]);
+      const total = parseInt(countRes.rows[0].total, 10) || 0;
+      const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+
+      // Ambil komentar berpaginasi diurutkan dari terbaru (descending)
+      const selectQuery = `
+        SELECT 
+          id, 
+          user_id AS "userId", 
+          username, 
+          media_type AS "mediaType", 
+          mal_id AS "malId", 
+          content, 
+          created_at AS "createdAt", 
+          updated_at AS "updatedAt"
+        FROM interaction_service.comments 
+        WHERE media_type = $1 AND mal_id = $2
+        ORDER BY created_at DESC
+        LIMIT $3 OFFSET $4;
+      `;
+      const { rows } = await pool.query(selectQuery, [mediaType, malId, limit, offset]);
+
+      return res.status(200).json({
+        success: true,
+        data: {
+          comments: rows,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages,
+          },
+        },
+      });
+    } catch (dbError) {
+      const isConnectionError =
+        dbError.code === "ECONNREFUSED" ||
+        dbError.code === "ENOTFOUND" ||
+        (dbError.errors && dbError.errors.some((e) => e.code === "ECONNREFUSED")) ||
+        String(dbError.message).includes("ECONNREFUSED");
+
+      if (isConnectionError) {
+        // Fallback in-memory
+        const filtered = inMemoryComments
+          .filter((c) => c.mediaType === mediaType && c.malId === malId)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        const total = filtered.length;
+        const totalPages = total > 0 ? Math.ceil(total / limit) : 0;
+        const pagedComments = filtered.slice(offset, offset + limit);
+
+        return res.status(200).json({
+          success: true,
+          data: {
+            comments: pagedComments,
+            pagination: {
+              page,
+              limit,
+              total,
+              totalPages,
+            },
+          },
+        });
+      }
+
+      throw dbError;
+    }
+  } catch (error) {
+    console.error("[Get Comments Error]", error);
+    return res.status(500).json({
+      success: false,
+      error: {
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Terjadi kesalahan pada server saat mengambil komentar",
+        details: [error.message],
+      },
+    });
+  }
+}
+
+/**
  * POST /api/comments/:mediaType/:malId
- * Menambahkan komentar baru pada judul anime atau manga (Tiket MJ-118)
+ * Menambahkan komentar baru pada judul anime atau manga (Tiket MJ-118 - US-005)
  */
 async function createComment(req, res) {
   try {
@@ -155,6 +265,7 @@ async function createComment(req, res) {
 }
 
 module.exports = {
+  getComments,
   createComment,
   ensureTableExists,
 };
