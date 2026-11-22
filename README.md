@@ -68,6 +68,8 @@ flowchart TD
             APIGateway -->|Routing Auth & Profil| UserService["User Service (Port 4001)"]
             APIGateway -->|Routing Katalog & Detail| CatalogService["Catalog Service (Port 4002)"]
             APIGateway -->|Routing Watchlist| TrackerService["Tracker Service (Port 4003)"]
+            APIGateway -->|Routing Interaksi & Komentar| InteractionService["Interaction Service (Port 4004)"]
+            APIGateway -->|Routing Notifikasi & Pengingat| NotificationService["Notification Service (Port 4005)"]
         end
     end
 
@@ -134,7 +136,9 @@ mojiji-animelist/
 │   ├── api-gateway/             # Resepsionis, verifikasi cookie, & routing
 │   ├── user-service/            # Registrasi, autentikasi, & profil user
 │   ├── catalog-service/         # Integrasi Tenrai API & Upstash cache
-│   └── tracker-service/         # Logika bisnis pelacakan watchlist
+│   ├── tracker-service/         # Logika bisnis pelacakan watchlist
+│   ├── interaction-service/     # Fitur komentar & interaksi pengguna
+│   └── notification-service/    # Notifikasi & pengingat jadwal rilis
 ├── database/                    # Berkas DDL Dbmate & migrasi skema
 │   └── migrations/
 ├── infra/                       # Konfigurasi infrastruktur peladen
@@ -188,6 +192,8 @@ mojiji-animelist/
    * **User Service:** `http://localhost:4001/health`
    * **Catalog Service:** `http://localhost:4002/health`
    * **Tracker Service:** `http://localhost:4003/health`
+   * **Interaction Service:** `http://localhost:4004/health`
+   * **Notification Service:** `http://localhost:4005/health`
 
 5. **Menghentikan Layanan:**
    Untuk menghentikan kontainer tanpa menghapus data database lokal:

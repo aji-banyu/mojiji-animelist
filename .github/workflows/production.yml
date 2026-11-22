@@ -99,7 +99,6 @@ jobs:
           username: ${{ secrets.USERNAME_VPS }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.PORT_VPS || 21185 }}
-          script_stop: true
           script: |
             set -e
 
@@ -139,6 +138,10 @@ jobs:
             cp -f infra/caddy/Caddyfile /home/${{ secrets.USERNAME_VPS }}/mojiji-staging/infra/caddy/Caddyfile
 
             # 4. Pull image backend production terbaru dari GHCR
+            echo "Menyiapkan direktori konteks & jaringan Docker..."
+            mkdir -p services/api-gateway services/user-service services/catalog-service services/tracker-service services/interaction-service services/notification-service 2>/dev/null || true
+            docker network create compose_default 2>/dev/null || true
+
             echo "Mengunduh image kontainer backend produksi dari GHCR..."
             docker compose --env-file .env -f infra/compose/docker-compose.prod.yml pull api-gateway user-service catalog-service tracker-service interaction-service notification-service
 
@@ -146,7 +149,7 @@ jobs:
             if [ -n "${{ secrets.PROD_DATABASE_URL }}" ]; then
               echo "Melakukan backup data production sebelum migrasi..."
               TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-              docker run --rm -e DATABASE_URL="${{ secrets.PROD_DATABASE_URL }}" postgres:16-alpine pg_dump "$DATABASE_URL" > "backups/mojiji_prod_backup_${TIMESTAMP}.sql" 2>/dev/null || true
+              docker run --rm -e DATABASE_URL="${{ secrets.PROD_DATABASE_URL }}" postgres:17-alpine pg_dump "$DATABASE_URL" > "backups/mojiji_prod_backup_${TIMESTAMP}.sql" 2>/dev/null || true
 
               echo "Menjalankan migrasi database production (dbmate up)..."
               docker compose --env-file .env -f infra/compose/docker-compose.prod.yml run --rm -e DATABASE_URL="${{ secrets.PROD_DATABASE_URL }}" migrate --migrations-dir /db/migrations up

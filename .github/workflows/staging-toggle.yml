@@ -48,8 +48,23 @@ jobs:
                 exit 1
               fi
               cd "$STAGING_DIR"
-              mkdir -p services/api-gateway services/user-service services/catalog-service services/tracker-service 2>/dev/null || true
-              docker compose --env-file .env -f infra/compose/docker-compose.server.yml up -d --remove-orphans api-gateway user-service catalog-service tracker-service caddy || true
+
+              # Deteksi seluruh service di compose secara dinamis (otomatis kecualikan kontainer migrate)
+              SERVICES_TO_START=$(docker compose --env-file .env -f infra/compose/docker-compose.server.yml config --services 2>/dev/null | grep -v -E '^migrate$' || true)
+
+              # Siapkan folder dummy secara dinamis untuk setiap service yang terdeteksi
+              for svc in $SERVICES_TO_START; do
+                mkdir -p "services/$svc" 2>/dev/null || true
+              done
+
+              if [ -n "$SERVICES_TO_START" ]; then
+                echo "Menjalankan service: $SERVICES_TO_START"
+                docker compose --env-file .env -f infra/compose/docker-compose.server.yml up -d --remove-orphans $SERVICES_TO_START || true
+              else
+                echo "Menjalankan seluruh service staging..."
+                docker compose --env-file .env -f infra/compose/docker-compose.server.yml up -d --remove-orphans || true
+              fi
+
               docker exec mojiji_caddy_server_staging caddy reload --config /etc/caddy/Caddyfile 2>/dev/null || true
             fi
 

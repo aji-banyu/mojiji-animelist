@@ -61,7 +61,7 @@ sequenceDiagram
 
     Dev->>GH: Merge Pull Request (Ke develop / main)
     GH->>GHA: Trigger Pipeline Deployment
-    Note over GHA: 1. Jalankan Linter & Unit Test<br/>2. docker build 4 Microservices<br/>3. npm run build (Next.js Static Export)
+    Note over GHA: 1. Jalankan Linter & Unit Test<br/>2. docker build 6 Microservices (Sprint 2)<br/>3. npm run build (Next.js Static Export)
     GHA->>GHCR: Push Docker Images (:staging-<sha> atau :latest)
     GHA->>VPS: Kirim File Statis Web & Salin Compose via SSH / rsync
     
