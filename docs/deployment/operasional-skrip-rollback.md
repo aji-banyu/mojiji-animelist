@@ -18,8 +18,8 @@ Seluruh skrip otomasi disimpan di dalam direktori `infra/scripts/` pada reposito
 infra/scripts/
 ├── deploy.sh          # Orkestrator deployment otomatis (pull, migrasi, switch, healthcheck, auto-rollback)
 ├── rollback.sh        # Skrip darurat manual on-demand untuk kembali ke .last_good_tag
-├── staging-up.sh      # Menyalakan 4 microservices staging & reload konfigurasi Caddy
-└── staging-down.sh    # Mematikan 4 microservices staging guna membebaskan RAM saat mode hemat
+├── staging-up.sh      # Menyalakan 6 microservices staging & reload konfigurasi Caddy
+└── staging-down.sh    # Mematikan 6 microservices staging guna membebaskan RAM saat mode hemat
 ```
 
 ### Tabel Rangkuman Peran & Penggunaan Skrip

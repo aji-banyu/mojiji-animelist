@@ -110,6 +110,8 @@ Format pesan commit wajib mengikuti standar baku agar mudah ditelusuri pada riwa
 * `user`: Perubahan pada User Service (`services/user-service`).
 * `catalog`: Perubahan pada Catalog Service (`services/catalog-service`).
 * `tracker`: Perubahan pada Tracker Service (`services/tracker-service`).
+* `interaction`: Perubahan pada Interaction Service (`services/interaction-service`).
+* `notification`: Perubahan pada Notification Service (`services/notification-service`).
 * `db`: Perubahan skema DDL atau seeder database (`database/`).
 * `infra`: Perubahan konfigurasi Docker, Caddy, atau skrip peladen (`infra/`).
 * `ci`: Perubahan pada alur kerja GitHub Actions (`.github/workflows/`).

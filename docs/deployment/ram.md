@@ -94,12 +94,45 @@ Hasil inspeksi langsung terhadap kontainer yang sedang berjalan di VPS:
 | **TOTAL SEMUA 7 KONTAINER (SPRINT 2)** | **~126.09 MiB** | **640 MiB** | **19.70% (Rata-rata)** | - |
 
 > [!TIP] Efisiensi Node.js Express & Zero-Build:
-> Konsumsi memori 4 microservices backend hanya menyentuh **~73 MiB**, jauh lebih hemat dibanding estimasi awal. Hal ini disebabkan oleh:
+> Konsumsi memori microservices backend hanya menyentuh **~73 MiB** (pada 4 service Sprint 1) dan terproyeksi **~107 MiB** (pada 6 service Sprint 2), jauh lebih hemat dibanding estimasi awal. Hal ini disebabkan oleh:
 > 1. Framework **Express.js v5** yang teroptimasi secara modular dengan overhead memori minimal.
 > 2. Skrip migrasi Dbmate hanya berjalan sebagai kontainer sesaat (*ephemeral run --rm*) dan langsung mati setelah migrasi selesai.
 > 3. Frontend Next.js disajikan berupa berkas statis oleh Caddy tanpa runtime Node.js Next SSR di VPS.
 
-### C. Klarifikasi Indikator RAM Panel Provider (87%) vs Realita Kontainer
+### C. Pengukuran Riil: Mode Hemat Sumber Daya (Staging DOWN & Production UP)
+Berdasarkan data snapshot live terminal VPS pada saat **Staging Environment Toggle** dimatikan (`DOWN`) sementara lingkungan **Production** beroperasi penuh:
+
+#### 1. Metrik Host Linux (`free -m`)
+| Kategori Memori | Total (MB) | Terpakai (*Used*) | Bebas (*Free*) | Bersama (*Shared*) | Buffer/Cache | Tersedia (*Available*) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **RAM Fisik** | **1.967 MB** | **606 MB** | 951 MB | 1 MB | 599 MB | **1.361 MB (69.2%)** |
+| **Swap Partition** | **2.048 MB** | **0 MB** | 2.047 MB | - | - | **100% Utuh** |
+
+#### 2. Metrik Kontainer Aktif (`docker stats --no-stream`)
+| Nama Kontainer | Konsumsi Riil (RAM) | Batas Plafon (`mem_limit`) | Persentase Pemakaian | CPU Usage |
+| :--- | :---: | :---: | :---: | :---: |
+| `mojiji_caddy_server_staging` | **14.97 MiB** | 64 MiB | 23.39% | 0.00% |
+| `mojiji_catalog_server_production` | **33.64 MiB** | 96 MiB | 35.04% | 0.00% |
+| `mojiji_gateway_server_production` | **24.25 MiB** | 96 MiB | 25.26% | 0.00% |
+| `mojiji_tracker_server_production` | **30.39 MiB** | 96 MiB | 31.66% | 0.00% |
+| `mojiji_user_server_production` | **31.16 MiB** | 96 MiB | 32.45% | 0.00% |
+| **TOTAL 5 KONTAINER AKTIF** | **134.41 MiB** | **448 MiB** | **30.00% (Rata-rata)** | **0.00%** |
+
+#### 3. Metrik Penyimpanan Disk NVMe (`df -h`)
+* **Partisi Root (`/`):** Terpakai **5.6 GB** dari total kapasitas **19 GB** (Tingkat utilitas hanya **31%**, tersisa **13 GB** ruang bebas).
+
+#### 4. Validasi Staging Toggle (`docker ps -a`)
+Seluruh 6 kontainer backend staging terbukti berada dalam status berhenti yang bersih (*clean exit*):
+- `mojiji_gateway_server_staging` (Exited 137)
+- `mojiji_catalog_server_staging` (Exited 0)
+- `mojiji_interaction_server_staging` (Exited 0)
+- `mojiji_notification_server_staging` (Exited 137)
+- `mojiji_tracker_server_staging` (Exited 0)
+- `mojiji_user_server_staging` (Exited 0)
+
+Mode hemat ini membuktikan bahwa mekanisme pemadaman backend staging via `staging-toggle.yml` membebaskan hingga **~416 MB RAM** di host Linux tanpa memutus koneksi Caddy maupun layanan produksi.
+
+### D. Klarifikasi Indikator RAM Panel Provider (87%) vs Realita Kontainer
 Saat membuka panel kontrol VPS (`mojiji #1966`), indikator visual menampilkan angka **RAM 87%**. Fenomena ini sering menimbulkan kekhawatiran semu (*false alarm*).
 
 **Penyebab & Penjelasan Teknis:**

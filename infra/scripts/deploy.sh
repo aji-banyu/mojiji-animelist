@@ -45,7 +45,7 @@ if [ "$TARGET_ENV" = "production" ]; then
   BACKUP_FILE="$BACKUP_DIR/mojiji_prod_$(date +%Y%m%d_%H%M%S).sql"
   
   if [ -n "$DATABASE_URL" ]; then
-    docker run --rm -e DATABASE_URL="$DATABASE_URL" postgres:16-alpine pg_dump "$DATABASE_URL" > "$BACKUP_FILE" || true
+    docker run --rm -e DATABASE_URL="$DATABASE_URL" postgres:17-alpine pg_dump "$DATABASE_URL" > "$BACKUP_FILE" || true
     if [ ! -s "$BACKUP_FILE" ]; then
       echo "❌ Error: Backup database gagal atau file kosong! Membatalkan deployment demi keamanan data."
       exit 1
