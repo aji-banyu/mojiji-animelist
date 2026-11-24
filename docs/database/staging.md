@@ -24,3 +24,13 @@ Dokumentasi ini mencatat hasil bootstrap dan eksekusi migrasi awal ke lingkungan
 - Bootstrap staging manual sekali via Session Pooler selesai. 
 - Selanjutnya, migrasi otomatis akan ditangani oleh sistem *deploy/pipeline* saat *merge* ke branch `develop`.
 - Notifikasi HANDOFF telah diteruskan kepada tim Backend dan DevOps.
+
+---
+
+## 4. Verifikasi Migrasi Otomatis Schema Interaction & Tabel Comment (MJ-121)
+- **Status Eksekusi:** Berhasil diterapkan secara otomatis melalui *workflow deploy staging* setelah merge PR MJ-120 ke branch `develop`.
+- **File Migrasi yang Dijalankan:** `004_schema_interaction_dan_tabel_komen.sql`
+- **Hasil Verifikasi di Supabase Staging (`mojiji-staging`):**
+  - Skema `interaction_svc` dan tabel `interaction_svc.comments` telah terpasang dengan lengkap (`id`, `user_id`, `username`, `media_type`, `mal_id`, `content`, `created_at`).
+  - Seluruh *check constraint* (validasi `media_type`, panjang `content` 1–500 karakter tidak kosong) serta *composite index* `idx_comments_media_mal_created` pada `(media_type, mal_id, created_at DESC)` terkonfirmasi valid melalui Table Editor.
+- **Status Handoff:** Notifikasi HANDOFF telah diteruskan kepada tim Backend bahwa tabel `interaction_svc.comments` di lingkungan staging sudah siap digunakan.
