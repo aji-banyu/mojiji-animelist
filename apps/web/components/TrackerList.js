@@ -70,13 +70,12 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
     (state) => state.hydrateTrackerFilters
   );
   const setTrackerFilters = useFilterStore((state) => state.setTrackerFilters);
-  const { activeStatus, activeType, viewMode } = trackerFilters;
+  const { activeStatus, activeType, viewMode, currentPage } = trackerFilters;
   const [searchQuery, setSearchQuery] = useState("");
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [toast, setToast] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     hydrateTrackerFilters();
@@ -252,7 +251,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
 
   const handlePageChange = (page) => {
     const bounded = Math.min(Math.max(1, page), totalPages);
-    setCurrentPage(bounded);
+    setTrackerFilters({ currentPage: bounded });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -267,7 +266,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
   // Jika belum ada item sama sekali di tipe aktif, kunci status ke "all"
   useEffect(() => {
     if (!showLoading && !hasTypeItems && activeStatus !== "all") {
-      setTrackerFilters({ activeStatus: "all" });
+      setTrackerFilters({ activeStatus: "all", currentPage: 1 });
     }
   }, [showLoading, hasTypeItems, activeStatus, setTrackerFilters]);
 
@@ -284,14 +283,13 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
 
   // Handler ganti tipe (Semua / Anime / Manga): otomatis sesuaikan status menonton/membaca
   const handleTypeChange = (newType) => {
-    const patch = { activeType: newType };
+    const patch = { activeType: newType, currentPage: 1 };
     if (newType === "anime" && activeStatus === "reading") {
       patch.activeStatus = "watching";
     } else if (newType === "manga" && activeStatus === "watching") {
       patch.activeStatus = "reading";
     }
     setTrackerFilters(patch);
-    setCurrentPage(1);
   };
 
   // Konten Empty State dinamis: membedakan saat belum ada item vs saat filter status kosong
@@ -309,7 +307,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
           <Link
             href="/explore/"
             onClick={onEmptyExploreClick}
-            className="inline-flex items-center gap-2 rounded-xl bg-accent hover:bg-primary-hover px-6 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-6 py-2.5 text-xs sm:text-sm font-bold text-primary-foreground shadow-sm shadow-primary/25 transition-all active:scale-95 cursor-pointer"
           >
             <span>Jelajahi Katalog</span>
           </Link>
@@ -394,18 +392,9 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
     <div className="space-y-6">
       {/* Header Halaman Selaras dengan Beranda & Jelajah */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight font-['Bricolage_Grotesque'] select-none">
-            Koleksi Tracker
-          </h1>
-          <Tag variant="secondary" size="pill">
-            {activeType === "all"
-              ? "Campuran Anime & Manga"
-              : activeType === "anime"
-              ? "Koleksi Anime"
-              : "Koleksi Manga"}
-          </Tag>
-        </div>
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-text tracking-tight leading-tight font-heading select-none">
+          Koleksi Tracker
+        </h1>
       </header>
 
       {/* Toast Notification Floating Feedback */}
@@ -436,7 +425,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
 
       {/* Bar Kontrol Filter Status, Tipe, & Pencarian */}
       {!showLoading && (
-        <div className="space-y-3 rounded-xl border border-border bg-surface p-4 shadow-sm">
+        <div className="space-y-3 rounded-xl border border-border/80 bg-transparent p-3.5 sm:p-4">
           {/* Row 1: Tipe Switcher (Reusable SegmentedSwitch selaras Beranda & Jelajah) */}
           <div className="flex items-center">
             <SegmentedSwitch
@@ -451,8 +440,8 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
           </div>
 
           {/* Row 2: Status Filter Tabs (Kiri) & Saring Koleksi + Toggle Grid/List View (Pojok Kanan) */}
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-t border-border pt-3">
-            {/* Status Filter Tabs (Reusable Tag selaras Jelajah) */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-t border-border/70 pt-3">
+            {/* Status Filter Tabs (Latar bg-surface netral selaras bar pencarian) */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap sm:pb-0 min-w-0 lg:shrink-0">
               {availableStatusFilters.map((tab) => {
                 const isActive = activeStatus === tab.key;
@@ -463,13 +452,12 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                     as="button"
                     type="button"
                     size="default"
-                    variant={!isAccessible ? "outline" : isActive ? "active" : "filter"}
+                    variant={!isAccessible ? "outline" : isActive ? "active" : "surface"}
                     disabled={!isAccessible}
                     aria-pressed={isActive}
                     onClick={() => {
                       if (isAccessible) {
-                        setTrackerFilters({ activeStatus: tab.key });
-                        setCurrentPage(1);
+                        setTrackerFilters({ activeStatus: tab.key, currentPage: 1 });
                       }
                     }}
                     className={`shrink-0 whitespace-nowrap px-3 py-1.5 transition-all ${
@@ -489,23 +477,28 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
               })}
             </div>
 
-            {/* Kontrol Saring Koleksi & Toggle Grid/List View di Pojok Kanan */}
-            <div className="flex items-center gap-2.5 flex-1 min-w-0 w-full lg:w-auto justify-between lg:justify-end">
-              {/* Input Saring Koleksi Compact (Reusable soft SearchInput selaras Jelajah) */}
+            {/* Kontrol Saring Koleksi Compact & Toggle Grid/List View di Pojok Kanan */}
+            <div className="flex items-center gap-2.5 w-full lg:w-auto justify-between lg:justify-end shrink-0">
+              {/* Input Saring Koleksi Compact (Latar bg-surface seperti bar search Navbar) */}
               <SearchInput
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
-                  setCurrentPage(1);
+                  if (currentPage !== 1) {
+                    setTrackerFilters({ currentPage: 1 });
+                  }
                 }}
                 onClear={() => {
                   setSearchQuery("");
-                  setCurrentPage(1);
+                  if (currentPage !== 1) {
+                    setTrackerFilters({ currentPage: 1 });
+                  }
                 }}
+                variant="surface"
                 disabled={items.length === 0}
                 placeholder="Saring koleksi..."
                 clearAriaLabel="Hapus pencarian koleksi"
-                className="flex-1 min-w-0"
+                className="flex-1 sm:flex-none sm:w-52 lg:w-56"
                 title={
                   items.length === 0
                     ? "Tambahkan setidaknya 1 item ke tracker untuk menyaring koleksi"
@@ -513,12 +506,13 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                 }
               />
 
-              {/* Toggle Grid/List View di Pojok Kanan dengan Reusable SegmentedSwitch */}
+              {/* Toggle Grid/List View di Pojok Kanan (Rounded dikurangi menjadi rounded-lg) */}
               <SegmentedSwitch
                 options={VIEW_MODES}
                 value={viewMode}
                 onChange={(nextMode) => setTrackerFilters({ viewMode: nextMode })}
                 size="md"
+                rounded="lg"
                 disabled={items.length === 0}
                 disabledTitle="Tambahkan setidaknya 1 item ke tracker untuk mengubah tampilan"
                 className="w-20 shrink-0"
@@ -541,7 +535,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
           <button
             type="button"
             onClick={handleRefreshTrackers}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-destructive hover:bg-destructive/90 px-4 py-2 text-xs font-bold text-white shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
+            className="inline-flex items-center gap-1.5 rounded-xl bg-destructive hover:bg-destructive/90 px-4 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-all active:scale-95 cursor-pointer shrink-0"
           >
             <RefreshCw size={12} className={isLoading || isRefreshing ? "animate-spin" : ""} />
             <span>Coba Lagi</span>
@@ -599,7 +593,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
         const emptyState = getEmptyStateContent();
         return (
           <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface px-4 py-14 text-center shadow-sm">
-            <h3 className="text-base font-black text-text sm:text-lg tracking-tight font-['Bricolage_Grotesque']">
+            <h3 className="text-base font-black text-text sm:text-lg tracking-tight font-heading">
               {emptyState.title}
             </h3>
             {emptyState.action && (
@@ -666,7 +660,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
               totalItems={filteredItems.length}
               itemsPerPage={ITEMS_PER_PAGE}
               onPageChange={handlePageChange}
-              activeColor="secondary"
+              activeColor="primary"
               ariaLabel="Navigasi Halaman Tracker"
               className="space-y-3 pt-4 pb-2"
             />
@@ -680,7 +674,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
           role="dialog"
           aria-modal="true"
           aria-labelledby="delete-dialog-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
           onClick={() => !actionLoadingId && setItemToDelete(null)}
         >
           <div
@@ -760,7 +754,7 @@ export default function TrackerList({ onStatsChange, onEmptyExploreClick }) {
                 type="button"
                 onClick={() => handleDelete(itemToDelete.id, itemToDelete.title)}
                 disabled={actionLoadingId === itemToDelete.id}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-destructive hover:bg-destructive/90 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition-all active:scale-95 cursor-pointer text-center disabled:opacity-50"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl bg-destructive hover:bg-destructive/90 px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-sm transition-all active:scale-95 cursor-pointer text-center disabled:opacity-50"
               >
                 {actionLoadingId === itemToDelete.id ? (
                   <>

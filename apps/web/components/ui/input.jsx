@@ -23,10 +23,10 @@ const Input = React.forwardRef(function Input(
         aria-invalid={error ? "true" : undefined}
         className={cn(
           "h-11 w-full rounded-lg border border-border bg-surface px-3.5 py-2 text-sm text-text placeholder:text-text-3 transition-colors outline-none",
-          "hover:border-border-hover focus:border-accent focus:ring-2 focus:ring-accent/30",
+          "hover:border-border-hover focus:border-primary focus:outline-none focus:ring-0",
           "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-45",
           isPassword && "pr-10",
-          error && "border-destructive focus:border-destructive focus:ring-destructive/30",
+          error && "border-destructive focus:border-destructive focus:ring-0",
           className
         )}
         {...props}

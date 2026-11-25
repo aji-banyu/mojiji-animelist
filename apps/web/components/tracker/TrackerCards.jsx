@@ -131,7 +131,7 @@ export function TrackerActionButtons({
       <button
         type="button"
         onClick={() => onEdit(item)}
-        className={`pointer-events-auto inline-flex items-center justify-center gap-1.5 border border-border bg-surface-2 font-semibold text-text transition-all duration-200 hover:border-secondary hover:bg-secondary hover:text-white cursor-pointer active:scale-95 shadow-xs group/btn ${
+        className={`pointer-events-auto inline-flex items-center justify-center gap-1.5 border border-border bg-surface-2 font-semibold text-text transition-all duration-200 hover:border-secondary hover:bg-secondary hover:text-secondary-foreground cursor-pointer active:scale-95 shadow-xs group/btn ${
           isGrid
             ? "h-7 flex-1 min-w-0 rounded-lg px-2 text-[11px]"
             : "h-8 shrink-0 rounded-xl px-2.5 text-xs"
@@ -140,7 +140,7 @@ export function TrackerActionButtons({
       >
         <SlidersHorizontal
           size={isGrid ? 12 : 13}
-          className="text-text-2 transition-colors duration-200 group-hover/btn:text-white shrink-0"
+          className="text-text-2 transition-colors duration-200 group-hover/btn:text-secondary-foreground shrink-0"
         />
         <span className={isGrid ? "truncate" : "hidden sm:inline"}>Kelola</span>
       </button>
@@ -226,7 +226,7 @@ export function TrackerGridCard({
         {/* Gradien halus di tepi atas agar badge overlay selalu terbaca jelas */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-black/35 via-black/10 to-transparent"
+          className="pointer-events-none absolute inset-x-0 top-0 h-12 bg-gradient-to-b from-background/40 via-background/15 to-transparent"
         />
 
         {/* Badge Overlay Atas: Kiri Tipe Media, Kanan Status Klik-Ubah */}

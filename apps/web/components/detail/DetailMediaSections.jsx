@@ -104,7 +104,7 @@ export default function DetailMediaSections({ data, isAnime, trailerHasError }) 
                 <VideoOff size={22} />
               </div>
               <div className="max-w-md space-y-1">
-                <p className="text-sm sm:text-base font-bold text-text font-['Bricolage_Grotesque']">
+                <p className="text-sm sm:text-base font-bold text-text font-heading">
                   Trailer Tidak Tersedia
                 </p>
                 <p className="text-xs sm:text-sm leading-relaxed text-text-2">
@@ -121,7 +121,7 @@ export default function DetailMediaSections({ data, isAnime, trailerHasError }) 
       {/* Characters */}
       <div className="space-y-4 rounded-xl border border-border bg-surface p-5 sm:p-6 shadow-sm">
         <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
-          <h3 className="text-lg sm:text-xl font-black tracking-tight text-text font-['Bricolage_Grotesque']">
+          <h3 className="text-lg sm:text-xl font-black tracking-tight text-text font-heading">
             {isAnime ? "Characters & Voice Actors" : "Characters"}
           </h3>
           {characterPagination.totalPages > 1 && (
@@ -136,7 +136,7 @@ export default function DetailMediaSections({ data, isAnime, trailerHasError }) 
               {characterPagination.paginatedItems.map((char, idx) => (
                 <div
                   key={`${characterPagination.safePage}-${idx}-${char.name}`}
-                  className="flex items-center justify-between rounded-lg border border-border bg-surface-2 p-3 sm:p-3.5 transition-colors hover:border-border-hover overflow-hidden min-w-0"
+                  className="flex items-center justify-between rounded-lg border border-border bg-surface-2 p-3 sm:p-3.5 overflow-hidden min-w-0"
                 >
                   <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="h-14 w-11 shrink-0 overflow-hidden rounded-md bg-surface border border-border">
@@ -197,6 +197,7 @@ export default function DetailMediaSections({ data, isAnime, trailerHasError }) 
 
             <Pagination
               size="sm"
+              activeColor="primary"
               currentPage={characterPagination.safePage}
               totalPages={characterPagination.totalPages}
               totalItems={characterPagination.totalItems}
@@ -218,7 +219,7 @@ export default function DetailMediaSections({ data, isAnime, trailerHasError }) 
       {(isAnime || staffPagination.totalItems > 0) && (
         <div className="space-y-4 rounded-xl border border-border bg-surface p-5 sm:p-6 shadow-sm">
           <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
-            <h3 className="text-lg sm:text-xl font-black tracking-tight text-text font-['Bricolage_Grotesque']">
+            <h3 className="text-lg sm:text-xl font-black tracking-tight text-text font-heading">
               Staff
             </h3>
             {staffPagination.totalPages > 1 && (
@@ -233,7 +234,7 @@ export default function DetailMediaSections({ data, isAnime, trailerHasError }) 
                 {staffPagination.paginatedItems.map((st, idx) => (
                   <div
                     key={`${staffPagination.safePage}-${idx}-${st.name}`}
-                    className="flex items-center gap-3.5 rounded-lg border border-border bg-surface-2 p-3 sm:p-3.5 transition-colors hover:border-border-hover overflow-hidden min-w-0"
+                    className="flex items-center gap-3.5 rounded-lg border border-border bg-surface-2 p-3 sm:p-3.5 overflow-hidden min-w-0"
                   >
                     <div className="h-12 w-10 shrink-0 overflow-hidden rounded-md bg-surface border border-border">
                       {st.image ? (
@@ -264,6 +265,7 @@ export default function DetailMediaSections({ data, isAnime, trailerHasError }) 
 
               <Pagination
                 size="sm"
+                activeColor="primary"
                 currentPage={staffPagination.safePage}
                 totalPages={staffPagination.totalPages}
                 totalItems={staffPagination.totalItems}
@@ -287,14 +289,14 @@ export default function DetailMediaSections({ data, isAnime, trailerHasError }) 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {data.openings?.length > 0 && (
             <div className="space-y-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-text font-['Bricolage_Grotesque'] border-b border-border pb-3">
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-text font-heading border-b border-border pb-3">
                 Opening Theme
               </h3>
               <div className="space-y-2 pt-1">
                 {data.openings.slice(0, 6).map((op, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 p-3 text-xs transition-colors hover:border-border-hover"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 p-3 text-xs"
                   >
                     <div className="flex items-center gap-2.5 overflow-hidden">
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent-text">
@@ -315,14 +317,14 @@ export default function DetailMediaSections({ data, isAnime, trailerHasError }) 
 
           {data.endings?.length > 0 && (
             <div className="space-y-3 rounded-xl border border-border bg-surface p-5 shadow-sm">
-              <h3 className="text-base sm:text-lg font-black tracking-tight text-text font-['Bricolage_Grotesque'] border-b border-border pb-3">
+              <h3 className="text-base sm:text-lg font-black tracking-tight text-text font-heading border-b border-border pb-3">
                 Ending Theme
               </h3>
               <div className="space-y-2 pt-1">
                 {data.endings.slice(0, 6).map((ed, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 p-3 text-xs transition-colors hover:border-border-hover"
+                    className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 p-3 text-xs"
                   >
                     <div className="flex items-center gap-2.5 overflow-hidden">
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-success-soft text-success">

@@ -43,6 +43,7 @@ const DEFAULT_TRACKER_FILTERS = {
   activeType: "all",
   activeStatus: "all",
   viewMode: "grid",
+  currentPage: 1,
 };
 
 function readSessionJson(key) {
@@ -76,12 +77,14 @@ function sanitizeHomeTabs(raw) {
 
 function sanitizeTrackerFilters(raw) {
   if (!raw || typeof raw !== "object") return { ...DEFAULT_TRACKER_FILTERS };
+  const parsedPage = Number.parseInt(raw.currentPage, 10);
   return {
     activeType: VALID_MEDIA_TYPES.has(raw.activeType) ? raw.activeType : "all",
     activeStatus: VALID_TRACKER_STATUSES.has(raw.activeStatus)
       ? raw.activeStatus
       : "all",
     viewMode: VALID_VIEW_MODES.has(raw.viewMode) ? raw.viewMode : "grid",
+    currentPage: Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1,
   };
 }
 

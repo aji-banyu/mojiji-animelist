@@ -26,7 +26,7 @@ export default function DetailInfoSidebar({ data, isAnime, totalCount }) {
       <div className="rounded-xl border border-border bg-surface p-5 space-y-6 shadow-sm">
         {/* Alternative Titles */}
         <div>
-          <h3 className="font-black text-text text-base sm:text-lg tracking-tight font-['Bricolage_Grotesque'] border-b border-border pb-2.5 mb-3">
+          <h3 className="font-black text-text text-base sm:text-lg tracking-tight font-heading border-b border-border pb-2.5 mb-3">
             Alternative Titles
           </h3>
           <div className="space-y-2 text-xs sm:text-sm text-text-2">
@@ -60,7 +60,7 @@ export default function DetailInfoSidebar({ data, isAnime, totalCount }) {
 
         {/* Information */}
         <div>
-          <h3 className="font-black text-text text-base sm:text-lg tracking-tight font-['Bricolage_Grotesque'] border-b border-border pb-2.5 mb-3">
+          <h3 className="font-black text-text text-base sm:text-lg tracking-tight font-heading border-b border-border pb-2.5 mb-3">
             Information
           </h3>
           <div className="space-y-2.5 text-xs sm:text-sm text-text-2">
@@ -96,7 +96,7 @@ export default function DetailInfoSidebar({ data, isAnime, totalCount }) {
 
             <p>
               <span className="font-semibold text-text-2">Ranked:</span>{" "}
-              <span className="text-accent-text font-bold">
+              <span className="text-text font-bold">
                 {data?.statistics?.ranked || "-"}
               </span>
             </p>
@@ -127,7 +127,7 @@ export default function DetailInfoSidebar({ data, isAnime, totalCount }) {
                 {data?.information?.premiered && (
                   <p>
                     <span className="font-semibold text-text-2">Premiered:</span>{" "}
-                    <span className="text-accent-text font-bold">
+                    <span className="text-text font-semibold">
                       {data.information.premiered}
                     </span>
                   </p>
@@ -147,7 +147,7 @@ export default function DetailInfoSidebar({ data, isAnime, totalCount }) {
                 {studios && (
                   <p>
                     <span className="font-semibold text-text-2">Studios:</span>{" "}
-                    <span className="text-accent-text font-bold">{studios}</span>
+                    <span className="text-text font-semibold">{studios}</span>
                   </p>
                 )}
                 {data?.information?.duration && (
@@ -174,7 +174,7 @@ export default function DetailInfoSidebar({ data, isAnime, totalCount }) {
                 {authors && (
                   <p>
                     <span className="font-semibold text-text-2">Authors:</span>{" "}
-                    <span className="text-accent-text font-bold">{authors}</span>
+                    <span className="text-text font-semibold">{authors}</span>
                   </p>
                 )}
                 {serializations && (

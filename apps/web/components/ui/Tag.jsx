@@ -11,10 +11,14 @@ const TAG_VARIANTS = {
     "bg-transparent text-text-2 border border-border hover:bg-surface-2 hover:border-border-hover hover:text-text font-medium",
   filter:
     "bg-surface-2 text-text-2 border border-border hover:bg-surface-2-hover hover:border-border-hover hover:text-text font-medium",
+  surface:
+    "bg-surface text-text-2 border border-border hover:bg-surface-2 hover:border-border-hover hover:text-text font-medium",
+  plain:
+    "bg-surface-2 text-text border border-border font-medium",
   neutral:
     "bg-surface text-text border border-border font-medium",
   active:
-    "bg-secondary text-white border border-secondary font-bold shadow-sm",
+    "bg-secondary text-secondary-foreground border border-secondary font-bold shadow-sm",
 };
 
 const TAG_SIZES = {

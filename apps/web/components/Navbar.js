@@ -21,19 +21,29 @@ import { logoutApi } from "@/lib/api";
 import NavbarSearch from "@/components/NavbarSearch";
 
 const NAV_ITEMS = [
-  { label: "Beranda", href: "/home/", aliases: ["/home", "/dashboard"] },
+  { label: "Beranda", href: "/", aliases: ["/", "/home", "/dashboard"] },
   { label: "Jelajah", href: "/explore/", aliases: ["/explore", "/detail"] },
   { label: "Tracker", href: "/tracker/", aliases: ["/tracker"] },
 ];
 
 const MOBILE_NAV_ITEMS = [
-  { label: "Beranda", href: "/home/", aliases: ["/home", "/dashboard"], icon: HomeIcon },
+  { label: "Beranda", href: "/", aliases: ["/", "/home", "/dashboard"], icon: HomeIcon },
   { label: "Jelajah", href: "/explore/", aliases: ["/explore", "/detail"], icon: Compass },
   { label: "Tracker", href: "/tracker/", aliases: ["/tracker"], icon: BookMarked },
   { label: "Cari", href: "/search/", aliases: ["/search"], icon: Search },
 ];
 
-const HIDE_NAVBAR_ROUTES = ["/", "/login", "/register"];
+const HIDE_NAVBAR_ROUTES = ["/login", "/register"];
+const KNOWN_NAVBAR_ROUTES = [
+  "/",
+  "/home",
+  "/dashboard",
+  "/explore",
+  "/detail",
+  "/tracker",
+  "/search",
+  "/profile",
+];
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -65,13 +75,21 @@ export default function Navbar() {
   // Normalisasi rute halaman aktif
   const normalizedPath = (pathname || "").replace(/\/+$/, "") || "/";
   const isTransparentHeaderPage =
+    normalizedPath === "/" ||
     normalizedPath === "/home" ||
     normalizedPath === "/dashboard" ||
     normalizedPath === "/detail";
 
   // Hangatkan prefetch rute navigasi utama agar transisi lebih responsif
   useEffect(() => {
-    if (!mounted || !user || HIDE_NAVBAR_ROUTES.includes(normalizedPath)) return;
+    if (
+      !mounted ||
+      !user ||
+      HIDE_NAVBAR_ROUTES.includes(normalizedPath) ||
+      !KNOWN_NAVBAR_ROUTES.includes(normalizedPath)
+    ) {
+      return;
+    }
     NAV_ITEMS.forEach((item) => {
       try {
         router.prefetch(item.href);
@@ -125,20 +143,14 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showLogoutModal, isLoggingOut]);
 
-  // Navbar hanya muncul saat user sudah login dan bukan di halaman login/register
-  if (!mounted || !user || HIDE_NAVBAR_ROUTES.includes(normalizedPath)) {
+  // Navbar disembunyikan di rute login/register maupun rute tidak dikenal (404)
+  if (
+    !mounted ||
+    HIDE_NAVBAR_ROUTES.includes(normalizedPath) ||
+    !KNOWN_NAVBAR_ROUTES.includes(normalizedPath)
+  ) {
     return null;
   }
-
-  // Helper inisial pengguna (misal: "andika" -> "AN")
-  const getInitials = (name) => {
-    if (!name) return "AN";
-    const parts = name.trim().split(/[\s_]+/);
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
-    return name.slice(0, 2).toUpperCase();
-  };
 
   // Handler toggle tema terpusat via themeStore
   const handleToggleTheme = () => {
@@ -184,7 +196,7 @@ export default function Navbar() {
         {/* ========================================================================= */}
         <div className="flex items-center gap-3">
           <Link
-            href="/home/"
+            href="/"
             className="flex items-center gap-2.5 transition-opacity hover:opacity-90 cursor-pointer"
           >
             <Image
@@ -195,7 +207,13 @@ export default function Navbar() {
               className="h-6 w-auto drop-shadow-sm select-none"
               priority
             />
-            <span className="text-xl sm:text-2xl font-black tracking-tight text-text font-['Bricolage_Grotesque'] select-none drop-shadow-sm">
+            <span
+              className={`text-xl sm:text-2xl font-black tracking-tight font-heading select-none drop-shadow-sm ${
+                isTransparentHeaderPage && !isScrolled
+                  ? "text-[#d4e4ed]"
+                  : "text-text dark:text-[#d4e4ed]"
+              }`}
+            >
               Mojiji
             </span>
           </Link>
@@ -211,7 +229,7 @@ export default function Navbar() {
           {/* Penanda Aktif Geser Halus — mengikuti perubahan rute aktif secara sinkron */}
           <span
             aria-hidden
-            className={`absolute inset-y-1 left-1 w-[calc(33.333%-2.67px)] rounded-full bg-accent transition-[transform,opacity] duration-300 ease-out pointer-events-none shadow-sm ${
+            className={`absolute inset-y-1 left-1 w-[calc(33.333%-2.67px)] rounded-full bg-primary transition-[transform,opacity] duration-300 ease-out pointer-events-none shadow-sm ${
               hasActiveNav ? "opacity-100" : "opacity-0"
             }`}
             style={{ transform: `translateX(${safeNavIndex * 100}%)` }}
@@ -226,10 +244,10 @@ export default function Navbar() {
                 prefetch={true}
                 onMouseEnter={() => router.prefetch(item.href)}
                 onFocus={() => router.prefetch(item.href)}
-                className={`relative z-10 flex h-8 items-center justify-center rounded-full text-xs sm:text-sm font-bold tracking-tight transition-colors duration-150 cursor-pointer select-none ${
+                className={`relative z-10 flex h-8 items-center justify-center rounded-full text-xs sm:text-sm font-bold tracking-tight transition-all duration-150 cursor-pointer select-none ${
                   isActive
-                    ? "text-white"
-                    : "text-text-2 hover:text-text"
+                    ? "text-primary-foreground hover:bg-black/15 dark:hover:bg-black/25 hover:text-primary-foreground/85 active:bg-black/25 dark:active:bg-black/40 active:scale-[0.98]"
+                    : "text-text-2 hover:text-text hover:bg-black/5 dark:hover:bg-black/25 active:bg-black/10 dark:active:bg-black/40 active:scale-[0.98]"
                 }`}
               >
                 {item.label}
@@ -250,71 +268,92 @@ export default function Navbar() {
             type="button"
             onClick={handleToggleTheme}
             aria-label="Ganti tema"
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-text-2 hover:text-text hover:border-accent/50 transition-all cursor-pointer shrink-0"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-text-2 hover:border-primary shadow-none outline-none focus:outline-none transition-colors duration-150 cursor-pointer shrink-0"
           >
             {isDark ? <Moon size={15} /> : <Sun size={15} />}
           </button>
 
-          {/* Avatar Pengguna (Lingkaran Ungu Konsisten dengan Inisial) */}
-          <div className="relative shrink-0" ref={avatarRef}>
-            <button
-              type="button"
-              onClick={() => setAvatarMenuOpen((prev) => !prev)}
-              aria-label="Menu profil pengguna"
-              aria-expanded={avatarMenuOpen}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-accent text-white text-xs font-bold shadow-sm hover:ring-2 hover:ring-accent/50 transition-all cursor-pointer select-none"
-            >
-              {getInitials(user?.username)}
-            </button>
+          {/* Autentikasi Pengguna: Avatar & Dropdown jika login, atau Tombol Masuk/Daftar jika tamu */}
+          {user ? (
+            <div className="relative shrink-0" ref={avatarRef}>
+              <button
+                type="button"
+                onClick={() => setAvatarMenuOpen((prev) => !prev)}
+                aria-label="Menu profil pengguna"
+                aria-expanded={avatarMenuOpen}
+                className={`flex h-9 w-9 items-center justify-center rounded-full border bg-surface shadow-none outline-none focus:outline-none transition-colors duration-150 cursor-pointer select-none ${
+                  avatarMenuOpen
+                    ? "border-primary text-text bg-surface-2"
+                    : "border-border text-text-2 hover:border-primary hover:text-text active:scale-95"
+                }`}
+              >
+                <User size={15} />
+              </button>
 
-            {/* Menu Dropdown Avatar */}
-            {avatarMenuOpen && (
-              <div className="absolute right-0 top-[46px] z-50 w-52 rounded-xl border border-border bg-surface p-1.5 shadow-xl">
-                <div className="border-b border-border px-3 py-2">
-                  <p className="truncate text-xs font-bold text-text">
-                    {user?.username}
-                  </p>
-                  <p className="truncate text-[11px] text-text-2">
-                    {user?.email}
-                  </p>
+              {/* Menu Dropdown Avatar */}
+              {avatarMenuOpen && (
+                <div className="absolute right-0 top-[46px] z-50 w-52 rounded-xl border border-border bg-surface/95 backdrop-blur-md p-1.5 shadow-xl origin-top-right animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200 ease-out">
+                  <div className="border-b border-border px-3 py-2">
+                    <p className="truncate text-xs font-bold text-text">
+                      {user?.username}
+                    </p>
+                    <p className="truncate text-[11px] text-text-2">
+                      {user?.email}
+                    </p>
+                  </div>
+
+                  <div className="py-1">
+                    <Link
+                      href="/profile/"
+                      onClick={() => setAvatarMenuOpen(false)}
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-text transition-colors hover:bg-surface-2"
+                    >
+                      <User size={14} className="text-text-2" />
+                      <span>Profil Saya</span>
+                    </Link>
+
+                    <Link
+                      href="/tracker/"
+                      onClick={() => setAvatarMenuOpen(false)}
+                      className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-text transition-colors hover:bg-surface-2"
+                    >
+                      <BookMarked size={14} className="text-text-2" />
+                      <span>Tracker Saya</span>
+                    </Link>
+                  </div>
+
+                  <div className="border-t border-border pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAvatarMenuOpen(false);
+                        setShowLogoutModal(true);
+                      }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 cursor-pointer"
+                    >
+                      <LogOut size={14} />
+                      <span>Keluar</span>
+                    </button>
+                  </div>
                 </div>
-
-                <div className="py-1">
-                  <Link
-                    href="/profile/"
-                    onClick={() => setAvatarMenuOpen(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-text transition-colors hover:bg-surface-2"
-                  >
-                    <User size={14} className="text-text-2" />
-                    <span>Profil Saya</span>
-                  </Link>
-
-                  <Link
-                    href="/tracker/"
-                    onClick={() => setAvatarMenuOpen(false)}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-text transition-colors hover:bg-surface-2"
-                  >
-                    <BookMarked size={14} className="text-text-2" />
-                    <span>Tracker Saya</span>
-                  </Link>
-                </div>
-
-                <div className="border-t border-border pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAvatarMenuOpen(false);
-                      setShowLogoutModal(true);
-                    }}
-                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs font-medium text-destructive transition-colors hover:bg-destructive/10 cursor-pointer"
-                  >
-                    <LogOut size={14} />
-                    <span>Keluar</span>
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/login/"
+                className="flex h-8 sm:h-9 min-w-[76px] sm:min-w-[84px] items-center justify-center rounded-md border border-border bg-surface hover:border-primary shadow-none outline-none focus:outline-none px-3.5 sm:px-4 text-xs sm:text-sm font-semibold text-text transition-colors duration-150 select-none"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register/"
+                className="flex h-8 sm:h-9 min-w-[76px] sm:min-w-[84px] items-center justify-center rounded-md border border-border bg-surface hover:border-primary shadow-none outline-none focus:outline-none px-3.5 sm:px-4 text-xs sm:text-sm font-semibold text-text transition-colors duration-150 select-none"
+              >
+                Sign Up
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -331,7 +370,7 @@ export default function Navbar() {
               href={item.href}
               prefetch={true}
               className={`flex flex-col items-center gap-1 text-[11px] font-medium transition-colors ${
-                isActive ? "text-accent-text" : "text-text-2"
+                isActive ? "text-primary-text" : "text-text-2"
               }`}
             >
               <Icon size={18} />
@@ -350,7 +389,7 @@ export default function Navbar() {
         role="dialog"
         aria-modal="true"
         aria-labelledby="logout-modal-title"
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-sm p-4 animate-in fade-in duration-150"
         onClick={() => !isLoggingOut && setShowLogoutModal(false)}
       >
         <div
@@ -361,7 +400,7 @@ export default function Navbar() {
           <div className="space-y-1.5">
             <h3
               id="logout-modal-title"
-              className="text-base sm:text-lg font-black tracking-tight text-text font-['Bricolage_Grotesque'] leading-snug"
+              className="text-base sm:text-lg font-black tracking-tight text-text font-heading leading-snug"
             >
               Keluar dari Akun
             </h3>
@@ -385,7 +424,7 @@ export default function Navbar() {
               type="button"
               onClick={handleConfirmLogout}
               disabled={isLoggingOut}
-              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-destructive hover:bg-destructive-hover px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
+              className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-destructive hover:bg-destructive-hover px-4 py-2.5 text-xs sm:text-sm font-bold text-primary-foreground shadow-sm transition-all cursor-pointer active:scale-95 disabled:opacity-50"
             >
               {isLoggingOut ? <span>Keluar...</span> : <span>Ya, Keluar</span>}
             </button>

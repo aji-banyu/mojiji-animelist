@@ -245,7 +245,7 @@ export default function CatalogSearch({ initialType = "anime", initialQuery = ""
           <button
             type="button"
             onClick={() => executeSearch(query, type)}
-            className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-destructive-hover active:scale-95 cursor-pointer shrink-0"
+            className="inline-flex items-center gap-2 rounded-xl bg-destructive px-4 py-2 text-xs font-bold text-primary-foreground shadow-sm transition-all hover:bg-destructive-hover active:scale-95 cursor-pointer shrink-0"
           >
             <RotateCcw size={14} />
             <span>Coba Lagi</span>

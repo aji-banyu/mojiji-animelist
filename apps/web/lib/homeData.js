@@ -4433,11 +4433,11 @@ export async function fetchHomeCategoryData(category, mediaType, page = 1, limit
         ...item,
         synopsis:
           item.synopsis ||
-          "Ikuti kisah perjuangan dan petualangan yang memikat di dunia penuh misteri dan aksi.",
+          "Follow an unforgettable journey filled with action, mystery, and compelling characters.",
         genres:
           Array.isArray(item.genres) && item.genres.length > 0
             ? item.genres
-            : ["Aksi", "Petualangan"],
+            : ["Action", "Adventure"],
         year: item.year || "2023",
         format: mediaType === "anime" ? "TV" : "Manga",
         cardKey: `${item.id}_p${page}_${i}`,
@@ -4458,19 +4458,38 @@ export async function fetchHomeCategoryData(category, mediaType, page = 1, limit
 const EXPLORE_GENRE_ID_MAP = {
   action: 1,
   adventure: 2,
+  "award winning": 46,
   comedy: 4,
   mystery: 7,
   drama: 8,
   fantasy: 10,
+  gourmet: 47,
   historical: 13,
   horror: 14,
+  isekai: 62,
+  iyashikei: 63,
+  josei: 43,
+  "martial arts": 17,
+  mecha: 18,
+  military: 38,
+  music: 19,
+  mythology: 6,
+  parody: 20,
   romance: 22,
+  school: 23,
   "sci-fi": 24,
+  seinen: 42,
+  shoujo: 25,
+  shounen: 27,
+  space: 29,
   sports: 30,
   "slice of life": 36,
+  "super power": 31,
   supernatural: 37,
+  "time travel": 78,
   psychological: 40,
   thriller: 41,
+  vampire: 32,
 };
 
 const ANIME_FORMAT_PARAM_MAP = {
@@ -4479,13 +4498,31 @@ const ANIME_FORMAT_PARAM_MAP = {
   ova: "ova",
   ona: "ona",
   special: "special",
+  "tv special": "tv_special",
 };
 
 const MANGA_FORMAT_PARAM_MAP = {
   manga: "manga",
   manhwa: "manhwa",
+  manhua: "manhua",
   "light novel": "lightnovel",
+  novel: "novel",
+  "one-shot": "oneshot",
 };
+
+/**
+ * Mencocokkan label format media dari API terhadap format filter yang dipilih
+ * dengan mengabaikan perbedaan spasi, tanda hubung, dan underscore.
+ */
+export function matchesSelectedFormat(itemFormat, selectedFormat) {
+  const target = String(selectedFormat || "").trim().toLowerCase();
+  if (!target || target === "semua") return true;
+  const normalize = (val) =>
+    String(val || "")
+      .toLowerCase()
+      .replace(/[\s_-]+/g, "");
+  return normalize(itemFormat) === normalize(target);
+}
 
 function matchesSelectedGenre(itemGenres, selectedGenre) {
   if (!Array.isArray(itemGenres) || itemGenres.length === 0) return false;
@@ -4502,7 +4539,7 @@ function matchesSelectedGenre(itemGenres, selectedGenre) {
 
 /**
  * fetchExploreCatalog — Mengambil katalog lengkap dari Tenrai API untuk Halaman Explore.
- * Mendukung filter tipe (all, anime, manga), genre, format, sorting (popularity, rating, newest),
+ * Mendukung filter tipe (all, anime, manga), genre, format, sorting (popularity, best, newest, trending),
  * query pencarian langsung ke Tenrai API, paginasi dinamis, serta fallback kurasi Tenrai.
  */
 export async function fetchExploreCatalog({
@@ -4518,6 +4555,12 @@ export async function fetchExploreCatalog({
   if (externalSignal?.aborted) {
     throw new DOMException("Aborted", "AbortError");
   }
+  const normalizedSort =
+    sortBy === "rating" || sortBy === "top_rated"
+      ? "best"
+      : sortBy === "latest"
+        ? "newest"
+        : sortBy || "popularity";
   const trimmedQuery = (query || "").trim();
   const normalizedGenres = [...(Array.isArray(genres) ? genres : [])]
     .map((g) => String(g).trim())
@@ -4529,7 +4572,7 @@ export async function fetchExploreCatalog({
   const formatKey = String(format || "Semua").trim().toLowerCase();
   const isFormatAll = !formatKey || formatKey === "semua";
 
-  const cacheKey = `explore_${type}_${trimmedQuery}_${genreCacheKey}_${formatKey}_${page}_${limit}_${sortBy}`;
+  const cacheKey = `explore_${type}_${trimmedQuery}_${genreCacheKey}_${formatKey}_${page}_${limit}_${normalizedSort}`;
   if (homeCache.has(cacheKey)) {
     return homeCache.get(cacheKey);
   }
@@ -4537,6 +4580,8 @@ export async function fetchExploreCatalog({
   const genreIds = normalizedGenres
     .map((g) => EXPLORE_GENRE_ID_MAP[g.toLowerCase()])
     .filter(Boolean);
+  const hasSearchOrFilter =
+    Boolean(trimmedQuery) || genreIds.length > 0 || !isFormatAll;
 
   const shouldFetchAnime =
     (type === "all" || type === "anime") &&
@@ -4601,16 +4646,45 @@ export async function fetchExploreCatalog({
     };
   };
 
-  // Build URL Tenrai API — Mengutamakan judul populer & terkenal
+  // Build URL Tenrai API — Selaras dengan endpoint Beranda saat tanpa filter, dan mendukung query/filter penuh
   const buildUrl = (mediaType, count) => {
+    const safeLimit = Math.min(Math.max(1, Number(count) || 15), 25);
+
+    if (!hasSearchOrFilter) {
+      const topParams = new URLSearchParams();
+      topParams.set("page", String(page));
+      topParams.set("limit", String(safeLimit));
+      topParams.set("sfw", "true");
+
+      if (normalizedSort === "newest") {
+        if (mediaType === "anime") {
+          return `${TENRAI_BASE_URL}/seasons/now?${topParams.toString()}`;
+        }
+        topParams.set("filter", "publishing");
+        return `${TENRAI_BASE_URL}/top/manga?${topParams.toString()}`;
+      }
+      if (normalizedSort === "trending") {
+        topParams.set("filter", mediaType === "anime" ? "airing" : "publishing");
+        return `${TENRAI_BASE_URL}/top/${mediaType}?${topParams.toString()}`;
+      }
+      if (normalizedSort === "best") {
+        return `${TENRAI_BASE_URL}/top/${mediaType}?${topParams.toString()}`;
+      }
+      topParams.set("filter", "bypopularity");
+      return `${TENRAI_BASE_URL}/top/${mediaType}?${topParams.toString()}`;
+    }
+
     const params = new URLSearchParams();
     if (trimmedQuery) {
       params.set("q", trimmedQuery);
     }
-    if (sortBy === "rating") {
+    if (normalizedSort === "best") {
       params.set("order_by", "score");
-    } else if (sortBy === "newest") {
+    } else if (normalizedSort === "newest") {
       params.set("order_by", "start_date");
+    } else if (normalizedSort === "trending") {
+      params.set("status", mediaType === "anime" ? "airing" : "publishing");
+      params.set("order_by", "members");
     } else {
       params.set("order_by", "members");
     }
@@ -4630,7 +4704,7 @@ export async function fetchExploreCatalog({
     }
 
     params.set("page", String(page));
-    params.set("limit", String(count));
+    params.set("limit", String(safeLimit));
     params.set("sfw", "true");
     return `${TENRAI_BASE_URL}/${mediaType}?${params.toString()}`;
   };
@@ -4744,15 +4818,30 @@ export async function fetchExploreCatalog({
 
   const getFallbackPool = (mType) => {
     const cat = FALLBACK_HOME_DATA[mType] || {};
-    const combined = [
-      ...(cat.top_rated || []),
-      ...(cat.recommended || []),
-      ...(cat.trending || []),
-      ...(cat.classic || []),
-    ];
+    const orderedSources =
+      normalizedSort === "trending" || normalizedSort === "newest"
+        ? [
+            ...(cat.trending || []),
+            ...(cat.recommended || []),
+            ...(cat.top_rated || []),
+            ...(cat.classic || []),
+          ]
+        : normalizedSort === "best"
+          ? [
+              ...(cat.top_rated || []),
+              ...(cat.recommended || []),
+              ...(cat.trending || []),
+              ...(cat.classic || []),
+            ]
+          : [
+              ...(cat.recommended || []),
+              ...(cat.top_rated || []),
+              ...(cat.trending || []),
+              ...(cat.classic || []),
+            ];
     const seen = new Set();
     const unique = [];
-    for (const it of combined) {
+    for (const it of orderedSources) {
       if (it && it.id && !seen.has(it.id)) {
         seen.add(it.id);
         unique.push({
@@ -4801,15 +4890,16 @@ export async function fetchExploreCatalog({
     );
   }
   if (!isFormatAll) {
-    filtered = filtered.filter(
-      (it) => String(it.format || "").toLowerCase() === formatKey
-    );
+    filtered = filtered.filter((it) => matchesSelectedFormat(it.format, format));
   }
 
-  if (sortBy === "rating") {
+  if (normalizedSort === "best") {
     filtered.sort((a, b) => (b.score || 0) - (a.score || 0));
-  } else if (sortBy === "newest") {
-    filtered.sort((a, b) => (b.id || 0) - (a.id || 0));
+  } else if (normalizedSort === "newest") {
+    filtered.sort((a, b) => {
+      const yearDiff = (Number(b.year) || 0) - (Number(a.year) || 0);
+      return yearDiff !== 0 ? yearDiff : (b.id || 0) - (a.id || 0);
+    });
   }
 
   const totalFallbackPages = Math.max(1, Math.ceil(filtered.length / limit));

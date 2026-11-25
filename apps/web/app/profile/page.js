@@ -1,48 +1,98 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowLeft, BookMarked, Wrench } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
 import AuthGuard from "@/components/AuthGuard";
+import useAuthStore from "@/store/authStore";
+import useTrackerStore from "@/store/trackerStore";
+import ProfileHeader from "@/components/profile/ProfileHeader";
+import ProfileTabs from "@/components/profile/ProfileTabs";
+import ProfileStats from "@/components/profile/ProfileStats";
+import TopGenres from "@/components/profile/TopGenres";
+import ProfileFavorites from "@/components/profile/ProfileFavorites";
+import RecentStatus from "@/components/profile/RecentStatus";
+import RecentActivity from "@/components/profile/RecentActivity";
+import ProfileMediaList from "@/components/profile/ProfileMediaList";
+import ProfileReviews from "@/components/profile/ProfileReviews";
+import ProfileHistory from "@/components/profile/ProfileHistory";
+import EditProfileModal from "@/components/profile/EditProfileModal";
 
 export default function ProfilePage() {
+  const user = useAuthStore((s) => s.user);
+  const trackerItems = useTrackerStore((s) => s.items);
+  const fetchTrackerList = useTrackerStore((s) => s.fetchTrackerList);
+
+  const [activeTab, setActiveTab] = useState("overview");
+  const [editModalOpen, setEditModalOpen] = useState(false);
+
+  // Fetch tracker data saat halaman profil dimuat
+  useEffect(() => {
+    fetchTrackerList();
+  }, [fetchTrackerList]);
+
+  const handleEditProfile = useCallback(() => {
+    setEditModalOpen(true);
+  }, []);
+
   return (
     <AuthGuard>
-      <div className="min-h-[calc(100vh-3.5rem)] bg-bg px-4 pt-24 pb-28 sm:px-6 md:pb-16 flex items-center justify-center">
-        <div className="w-full max-w-lg rounded-2xl border border-border/80 bg-surface/85 p-8 sm:p-10 text-center shadow-xl backdrop-blur-sm">
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent/25 bg-accent-soft text-accent-text shadow-inner">
-            <Wrench size={26} strokeWidth={2} />
-          </div>
+      <div className="min-h-[calc(100vh-3.5rem)] bg-bg pb-28 md:pb-16">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 pt-20 sm:pt-22 md:pt-24">
+          {/* Header: Banner + Avatar + Info */}
+          <ProfileHeader user={user} onEditProfile={handleEditProfile} />
 
-          <span className="inline-flex items-center rounded-full border border-border bg-surface-2 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-text-2">
-            Segera Hadir
-          </span>
+          {/* Tabs */}
+          <ProfileTabs activeTab={activeTab} onChangeTab={setActiveTab} />
 
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-text font-['Bricolage_Grotesque'] sm:text-3xl">
-            Halaman Profil Sedang Dalam Pengerjaan
-          </h1>
+          {/* Tab Content */}
+          <div className="mt-6">
+            {activeTab === "overview" && (
+              <div className="space-y-5">
+                {/* Statistik Ringkasan */}
+                <ProfileStats trackerItems={trackerItems} />
 
-          <p className="mt-3 text-sm leading-relaxed text-text-2">
-            Fitur profil akun dan ringkasan statistik sedang kami persiapkan agar tersinkronisasi penuh dengan akun dan koleksi tracker kamu. Sementara itu, semua fitur Beranda, Jelajah, dan Tracker sudah bisa digunakan seperti biasa.
-          </p>
+                {/* Grid: Top Genres + Favorites */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <TopGenres trackerItems={trackerItems} />
+                  <ProfileFavorites />
+                </div>
 
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <Link
-              href="/home/"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 active:scale-[0.98]"
-            >
-              <ArrowLeft size={16} />
-              <span>Kembali ke Beranda</span>
-            </Link>
-            <Link
-              href="/tracker/"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface-2 px-5 py-2.5 text-sm font-semibold text-text transition-colors hover:bg-surface-3 active:scale-[0.98]"
-            >
-              <BookMarked size={16} />
-              <span>Lihat Koleksi Tracker</span>
-            </Link>
+                {/* Grid: Recent Status + Recent Activity */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <RecentStatus trackerItems={trackerItems} />
+                  <RecentActivity trackerItems={trackerItems} />
+                </div>
+              </div>
+            )}
+
+            {activeTab === "anime" && (
+              <ProfileMediaList
+                trackerItems={trackerItems}
+                mediaType="anime"
+              />
+            )}
+
+            {activeTab === "manga" && (
+              <ProfileMediaList
+                trackerItems={trackerItems}
+                mediaType="manga"
+              />
+            )}
+
+            {activeTab === "reviews" && <ProfileReviews />}
+
+            {activeTab === "history" && (
+              <ProfileHistory trackerItems={trackerItems} />
+            )}
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        open={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        user={user}
+      />
     </AuthGuard>
   );
 }
