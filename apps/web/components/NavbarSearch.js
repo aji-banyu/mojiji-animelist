@@ -2,13 +2,17 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Search, ArrowRight, Loader2, Film, BookOpen } from "lucide-react";
 import { searchCatalogApi } from "@/lib/api";
 import { fetchExploreCatalog } from "@/lib/homeData";
 
 export default function NavbarSearch() {
   const router = useRouter();
+  const pathname = usePathname();
+  const normalizedPath = (pathname || "").replace(/\/+$/, "") || "/";
+  const isExplorePage = normalizedPath === "/explore";
+
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,14 +25,46 @@ export default function NavbarSearch() {
   const timerRef = useRef(null);
   const abortControllerRef = useRef(null);
 
+  // Sinkronkan input dengan ?q= di URL saat di halaman Explore
+  useEffect(() => {
+    if (!isExplorePage || typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setQuery(params.get("q") || "");
+  }, [isExplorePage]);
+
+  // Sinkronkan saat user navigasi back/forward di halaman Explore
+  useEffect(() => {
+    if (!isExplorePage) return;
+    const sync = () => {
+      const params = new URLSearchParams(window.location.search);
+      setQuery(params.get("q") || "");
+    };
+    window.addEventListener("popstate", sync);
+    return () => window.removeEventListener("popstate", sync);
+  }, [isExplorePage]);
+
   // Alihkan pencarian ke halaman Explore saat enter ditekan atau panah diklik
   const handleGoToExplore = useCallback(() => {
     const trimmed = query.trim();
-    if (!trimmed) return;
     setIsOpen(false);
     inputRef.current?.blur();
-    router.push(`/explore/?q=${encodeURIComponent(trimmed)}`);
-  }, [query, router]);
+
+    if (isExplorePage && typeof window !== "undefined") {
+      // Pertahankan filter params yang aktif, hanya update ?q= (dan reset page)
+      const current = new URLSearchParams(window.location.search);
+      if (trimmed) {
+        current.set("q", trimmed);
+      } else {
+        current.delete("q");
+      }
+      current.delete("page");
+      const qs = current.toString();
+      router.push(qs ? `/explore/?${qs}` : "/explore/");
+    } else {
+      if (!trimmed) return;
+      router.push(`/explore/?q=${encodeURIComponent(trimmed)}`);
+    }
+  }, [query, router, isExplorePage]);
 
   // Eksekusi pencarian gabungan (Anime & Manga) dengan AbortController
   const executeSearch = useCallback(async (searchTerm) => {
@@ -135,6 +171,16 @@ export default function NavbarSearch() {
       setIsOpen(false);
       setIsLoading(false);
       setHasSearched(false);
+      // Hapus ?q= dari URL saat input dikosongkan di halaman Explore
+      if (isExplorePage && typeof window !== "undefined") {
+        const current = new URLSearchParams(window.location.search);
+        if (current.has("q")) {
+          current.delete("q");
+          current.delete("page");
+          const qs = current.toString();
+          router.replace(qs ? `/explore/?${qs}` : "/explore/", { scroll: false });
+        }
+      }
       return;
     }
 
@@ -194,12 +240,12 @@ export default function NavbarSearch() {
   return (
     <div
       ref={containerRef}
-      className="relative w-36 sm:w-52 md:w-56 lg:w-60"
+      className="relative w-36 sm:w-52 md:w-48 lg:w-64 xl:w-80"
     >
       {/* ========================================================================= */}
-      {/* 1. INPUT CAPSULE / PILL SEARCH BAR (Sesuai Gambar 2)                      */}
+      {/* 1. INPUT CAPSULE / PILL SEARCH BAR (Outline Tipis Biru)                    */}
       {/* ========================================================================= */}
-      <div className="relative flex h-9 w-full items-center rounded-full border border-border bg-surface px-3 shadow-xs transition-colors focus-within:border-accent focus-within:ring-1 focus-within:ring-accent/25">
+      <div className="relative flex h-9 w-full items-center rounded-full border border-border bg-surface px-3 shadow-xs transition-colors hover:border-primary/50 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/35">
         <Search size={14} className="text-text-2 shrink-0 select-none" />
 
         <input
@@ -215,15 +261,15 @@ export default function NavbarSearch() {
             setIsFocused(false);
           }}
           onKeyDown={handleKeyDown}
-          placeholder="Cari judul..."
+          placeholder={isExplorePage ? "Cari judul di katalog..." : "Cari judul..."}
           aria-label="Pencarian judul"
-          className="w-full bg-transparent px-2 text-xs sm:text-sm text-text placeholder:text-text-2/60 outline-none selection:bg-accent/30 selection:text-text"
+          className="w-full bg-transparent px-2 text-xs sm:text-sm text-text placeholder:font-medium placeholder:text-text-2/75 outline-none selection:bg-primary/25 selection:text-text"
         />
 
         {/* Ikon Dinamis: Loading Spinner vs Tombol Panah -> vs Shortcut Badge [/] */}
         <div className="flex items-center justify-center shrink-0 min-w-5">
           {isLoading ? (
-            <Loader2 size={14} className="text-accent animate-spin shrink-0" />
+            <Loader2 size={14} className="text-primary animate-spin shrink-0" />
           ) : isFocused || query.trim().length > 0 ? (
             <button
               type="button"
@@ -235,7 +281,7 @@ export default function NavbarSearch() {
               onClick={handleGoToExplore}
               title="Cari di Jelajah (Enter)"
               aria-label="Cari di Jelajah"
-              className="text-text-2 hover:text-accent transition-colors cursor-pointer shrink-0 p-0.5"
+              className="text-text-2 hover:text-primary transition-colors cursor-pointer shrink-0 p-0.5"
             >
               <ArrowRight size={14} />
             </button>
@@ -251,11 +297,11 @@ export default function NavbarSearch() {
       {/* 2. DROPDOWN POPUP HASIL PENCARIAN (Sesuai Gambar 2)                        */}
       {/* ========================================================================= */}
       {isOpen && query.trim().length > 0 && (
-        <div className="absolute right-0 top-full mt-2 w-[280px] sm:w-[320px] md:w-[350px] z-50 rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 top-full mt-2 w-[280px] sm:w-[320px] md:w-[350px] xl:w-full z-50 rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-150">
           {isLoading ? (
             /* State Loading dengan Animasi Halus */
             <div className="p-6 flex items-center justify-center gap-2.5 text-text-2 text-xs sm:text-sm">
-              <Loader2 size={16} className="animate-spin text-accent" />
+              <Loader2 size={16} className="animate-spin text-primary" />
               <span>Mencari &ldquo;{query}&rdquo;...</span>
             </div>
           ) : hasSearched && results.length === 0 ? (
@@ -294,7 +340,7 @@ export default function NavbarSearch() {
 
                     {/* Badge Jenis Media: ANIME atau MANGA */}
                     <span
-                      className={`absolute top-1 left-1 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-wider text-white shadow-xs ${
+                      className={`absolute top-1 left-1 rounded px-1 py-0.5 text-[8px] font-black uppercase tracking-wider text-primary-foreground shadow-xs ${
                         item.type === "manga" ? "bg-media-manga" : "bg-media-anime"
                       }`}
                     >
@@ -305,7 +351,7 @@ export default function NavbarSearch() {
                   {/* Judul & Metadata Subtitle */}
                   <div className="flex-1 min-w-0">
                     <h4
-                      className="text-xs sm:text-sm font-bold text-text line-clamp-1 group-hover:text-secondary transition-colors"
+                      className="text-xs sm:text-sm font-bold text-text line-clamp-1"
                       title={item.title}
                     >
                       {item.title}

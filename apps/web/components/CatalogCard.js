@@ -111,7 +111,7 @@ export default function CatalogCard({ item, className = "" }) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-surface">
-            <span className="text-2xl sm:text-3xl font-black text-text/80 font-['Bricolage_Grotesque']">
+            <span className="text-2xl sm:text-3xl font-black text-text/80 font-heading">
               {initials}
             </span>
           </div>

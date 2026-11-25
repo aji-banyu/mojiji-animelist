@@ -5,14 +5,16 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-white: #d4e4ed;
+  --color-black: #16171b;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: "Plus Jakarta Sans", var(--font-jakarta), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  --font-heading: "Bricolage Grotesque", var(--font-bricolage), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-display: "Bricolage Grotesque", var(--font-bricolage), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-heading: "Outfit", "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Outfit", "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-jakarta: "Plus Jakarta Sans", system-ui, sans-serif;
-  --font-bricolage: "Bricolage Grotesque", system-ui, sans-serif;
+  --font-outfit: "Outfit", system-ui, sans-serif;
   --font-inter: "Inter", system-ui, sans-serif;
   --font-poppins: "Poppins", system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -115,6 +117,66 @@
   --color-st-done-soft-text: var(--st-done-soft-text);
   --color-st-done-muted: var(--st-done-muted);
   --color-st-done-muted-hover: var(--st-done-muted-hover);
+  --color-text-50: var(--text-50);
+  --color-text-100: var(--text-100);
+  --color-text-200: var(--text-200);
+  --color-text-300: var(--text-300);
+  --color-text-400: var(--text-400);
+  --color-text-500: var(--text-500);
+  --color-text-600: var(--text-600);
+  --color-text-700: var(--text-700);
+  --color-text-800: var(--text-800);
+  --color-text-900: var(--text-900);
+  --color-text-950: var(--text-950);
+
+  --color-background-50: var(--background-50);
+  --color-background-100: var(--background-100);
+  --color-background-200: var(--background-200);
+  --color-background-300: var(--background-300);
+  --color-background-400: var(--background-400);
+  --color-background-500: var(--background-500);
+  --color-background-600: var(--background-600);
+  --color-background-700: var(--background-700);
+  --color-background-800: var(--background-800);
+  --color-background-900: var(--background-900);
+  --color-background-950: var(--background-950);
+
+  --color-primary-50: var(--primary-50);
+  --color-primary-100: var(--primary-100);
+  --color-primary-200: var(--primary-200);
+  --color-primary-300: var(--primary-300);
+  --color-primary-400: var(--primary-400);
+  --color-primary-500: var(--primary-500);
+  --color-primary-600: var(--primary-600);
+  --color-primary-700: var(--primary-700);
+  --color-primary-800: var(--primary-800);
+  --color-primary-900: var(--primary-900);
+  --color-primary-950: var(--primary-950);
+
+  --color-secondary-50: var(--secondary-50);
+  --color-secondary-100: var(--secondary-100);
+  --color-secondary-200: var(--secondary-200);
+  --color-secondary-300: var(--secondary-300);
+  --color-secondary-400: var(--secondary-400);
+  --color-secondary-500: var(--secondary-500);
+  --color-secondary-600: var(--secondary-600);
+  --color-secondary-700: var(--secondary-700);
+  --color-secondary-800: var(--secondary-800);
+  --color-secondary-900: var(--secondary-900);
+  --color-secondary-950: var(--secondary-950);
+
+  --color-accent-50: var(--accent-50);
+  --color-accent-100: var(--accent-100);
+  --color-accent-200: var(--accent-200);
+  --color-accent-300: var(--accent-300);
+  --color-accent-400: var(--accent-400);
+  --color-accent-500: var(--accent-500);
+  --color-accent-600: var(--accent-600);
+  --color-accent-700: var(--accent-700);
+  --color-accent-800: var(--accent-800);
+  --color-accent-900: var(--accent-900);
+  --color-accent-950: var(--accent-950);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -127,397 +189,588 @@
 :root {
   --font-inter: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-poppins: "Poppins", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --background: #16171B;
-  --foreground: #ECEEF6;
-  --card: #1E1F24;
-  --card-foreground: #ECEEF6;
-  --popover: #1E1F24;
-  --popover-foreground: #ECEEF6;
 
-  /* Skema Warna Baru Mojiji */
-  --bg: #16171B;
-  --surface: #1E1F24;
-  --surface-2: #27292F;
-  --surface-2-hover: #2E313A;
-  --border: #373A42;
-  --border-hover: #5A5E6B;
-  --input: #373A42;
-  --accent: #6B68C6;
-  --accent-hover: #8582D6;
-  --accent-text: #A9A8D9;
-  --accent-foreground: #FFFFFF;
-  --accent-soft: rgba(107, 104, 198, 0.16);
-  --accent-ring: rgba(107, 104, 198, 0.45);
+  /* Realtime Colors - Softer, Eye-Friendly Light Theme (Warna Asli Mojiji Lembut) */
+  --text: #16242c;
+  --background: #f2f7fa;
+  --primary: #2b9ec9;
+  --secondary: #9685ed;
+  --accent: #bfa5c2;
 
-  --primary: #6B68C6;
-  --primary-hover: #5E5AB8;
-  --primary-foreground: #FFFFFF;
-  --primary-soft: rgba(107, 104, 198, 0.16);
-  --primary-text: #A9A8D9;
-  --primary-ring: rgba(107, 104, 198, 0.45);
+  --foreground: #16242c;
+  --card: #ffffff;
+  --card-foreground: #16242c;
+  --popover: #ffffff;
+  --popover-foreground: #16242c;
 
-  --secondary: #8E639C;
-  --secondary-hover: #7E558B;
-  --secondary-foreground: #FFFFFF;
-  --secondary-text: #C4A3D1;
-  --secondary-soft: rgba(196, 163, 209, 0.08);
+  --bg: #f2f7fa;
+  --surface: #ffffff;
+  --surface-2: #e6edf2;
+  --surface-2-hover: #dbe4ea;
+  --border: #d4e0e7;
+  --border-hover: #b8ccd6;
+  --input: #d4e0e7;
 
-  /* Tag & Chip Lembut (Genre di sebelah rating, dsb) */
-  --tag-soft-bg: rgba(196, 163, 209, 0.12);
+  --primary-hover: #1f89b0;
+  --primary-foreground: #ffffff;
+  --primary-soft: rgba(43, 158, 201, 0.12);
+  --primary-text: #1f89b0;
+  --primary-ring: rgba(43, 158, 201, 0.30);
+
+  --secondary-hover: #8471e3;
+  --secondary-foreground: #ffffff;
+  --secondary-text: #6a54d6;
+  --secondary-soft: rgba(150, 133, 237, 0.14);
+
+  --accent-hover: #b093b3;
+  --accent-text: #8e6394;
+  --accent-foreground: #241629;
+  --accent-soft: rgba(191, 165, 194, 0.22);
+  --accent-ring: rgba(191, 165, 194, 0.35);
+
+  /* Tag & Chip Lembut */
+  --tag-soft-bg: rgba(22, 36, 44, 0.05);
   --tag-soft-border: transparent;
-  --tag-soft-text: #D2B7DE;
+  --tag-soft-text: #3e5360;
 
-  /* Indikator Strip Banner (Pudar & Halus) */
-  --indicator-active: rgba(169, 168, 217, 0.50);
-  --indicator-inactive: rgba(255, 255, 255, 0.09);
-  --indicator-inactive-hover: rgba(255, 255, 255, 0.18);
+  /* Indikator Strip Banner (Aksen Pink Percilan Kecil) */
+  --indicator-active: #bfa5c2;
+  --indicator-inactive: rgba(22, 36, 44, 0.10);
+  --indicator-inactive-hover: rgba(22, 36, 44, 0.18);
 
-  --switch-pill-bg: #2A2B3D;
-  --switch-pill-border: #3C3E56;
-  --switch-pill-text: #C4C3E8;
+  --switch-pill-bg: #9685ed;
+  --switch-pill-border: #9685ed;
+  --switch-pill-text: #ffffff;
 
-  --muted: #1E1F24;
-  --muted-foreground: #A5AAC0;
-  --destructive: #EC5D74;
-  --destructive-hover: #D94A61;
-  --success: #34D399;
-  --success-soft: rgba(16, 185, 129, 0.14);
-  --success-border: rgba(16, 185, 129, 0.25);
-  --ring: rgba(107, 104, 198, 0.45);
+  --muted: #e6edf2;
+  --muted-foreground: #556c7a;
+  --destructive: #cc495b;
+  --destructive-hover: #ba3d4e;
+  --success: #348a60;
+  --success-soft: rgba(52, 138, 96, 0.12);
+  --success-border: rgba(52, 138, 96, 0.22);
+  --ring: rgba(43, 158, 201, 0.30);
   --radius: 0.625rem;
 
-  --sidebar: #1E1F24;
-  --sidebar-foreground: #ECEEF6;
-  --sidebar-primary: #6B68C6;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #27292F;
-  --sidebar-accent-foreground: #ECEEF6;
-  --sidebar-border: #373A42;
-  --sidebar-ring: rgba(107, 104, 198, 0.45);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #16242c;
+  --sidebar-primary: #2b9ec9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e6edf2;
+  --sidebar-accent-foreground: #16242c;
+  --sidebar-border: #d4e0e7;
+  --sidebar-ring: rgba(43, 158, 201, 0.30);
 
   /* Typography & Status Tokens */
-  --text: #ECEEF6;
-  --text-2: #A5AAC0;
-  --text-3: #6D7390;
-  --score-star: #D9895C;
-  --score-bg: #E2A63E;
-  --score-text: #16171B;
-  --detail-star: #FF7A3D;
-  --detail-members: #22A6E8;
-  --media-anime: #0EA5E9;
-  --media-manga: #F97316;
+  --text-2: #526775;
+  --text-3: #8296a3;
+  --score-star: #d9895c;
+  --score-bg: #e2a63e;
+  --score-text: #16242c;
+  --detail-star: #ff7a3d;
+  --detail-members: #526775;
+  --media-anime: #2b9ec9;
+  --media-manga: #d46529;
 
-  --st-plan: #98A2C8;
-  --st-active: #3CC4B2;
-  --st-done: #7CC76B;
-  --st-hold: #E2A63E;
-  --st-drop: #EC5D74;
+  --st-plan: #5d4fb8;
+  --st-active: #2b9ec9;
+  --st-done: #6e4ca8;
+  --st-hold: #1c87ab;
+  --st-drop: #cc495b;
 
   /* Palet Semantik Card & Modal Tracker */
-  --st-plan-badge: #4A7C9B;
-  --st-plan-badge-hover: #598DAD;
-  --st-plan-soft: #233E54;
-  --st-plan-soft-hover: #2A4963;
-  --st-plan-soft-text: #BAE2FC;
-  --st-plan-muted: #7DA5C2;
-  --st-plan-muted-hover: #A3C7E0;
+  --st-plan-badge: #7668c4;
+  --st-plan-badge-hover: #6557b4;
+  --st-plan-soft: #edeaf8;
+  --st-plan-soft-hover: #dedaf3;
+  --st-plan-soft-text: #2a206b;
+  --st-plan-muted: #7668c4;
+  --st-plan-muted-hover: #5d4fb8;
 
-  --st-hold-badge: #A37B3E;
-  --st-hold-badge-hover: #B58A4A;
-  --st-hold-soft: #45361E;
-  --st-hold-soft-hover: #524024;
-  --st-hold-soft-text: #F5DC93;
-  --st-hold-muted: #BFA86B;
-  --st-hold-muted-hover: #DBC488;
+  --st-hold-badge: #53b3d1;
+  --st-hold-badge-hover: #41a3c2;
+  --st-hold-soft: #e5f3f8;
+  --st-hold-soft-hover: #d2eaf2;
+  --st-hold-soft-text: #104e63;
+  --st-hold-muted: #2ea3c8;
+  --st-hold-muted-hover: #1c87ab;
 
-  --st-watching-badge: #8E639C;
-  --st-watching-badge-hover: #9B70AA;
-  --st-watching-soft: #3F2C4D;
-  --st-watching-soft-hover: #4B345C;
-  --st-watching-soft-text: #EAD2F7;
-  --st-watching-muted: #AD8EC0;
-  --st-watching-muted-hover: #CBB0DC;
+  --st-watching-badge: #2b9ec9;
+  --st-watching-badge-hover: #1f89b0;
+  --st-watching-soft: #e2f1f7;
+  --st-watching-soft-hover: #cee5f0;
+  --st-watching-soft-text: #0e455c;
+  --st-watching-muted: #2b9ec9;
+  --st-watching-muted-hover: #1f89b0;
 
-  --st-done-badge: #47876B;
-  --st-done-badge-hover: #55997B;
-  --st-done-soft: #1E4033;
-  --st-done-soft-hover: #244D3D;
-  --st-done-soft-text: #A3EBC9;
-  --st-done-muted: #70AD93;
-  --st-done-muted-hover: #96CCB5;
+  --st-done-badge: #8262b8;
+  --st-done-badge-hover: #7252a7;
+  --st-done-soft: #f0eaf7;
+  --st-done-soft-hover: #e4d9f1;
+  --st-done-soft-text: #391e63;
+  --st-done-muted: #8262b8;
+  --st-done-muted-hover: #6e4ca8;
 
-  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --scrollbar-thumb: rgba(2, 25, 34, 0.18);
+  --scrollbar-thumb-hover: rgba(2, 25, 34, 0.32);
   --brand-google-blue: #4285F4;
   --brand-google-green: #34A853;
   --brand-google-yellow: #FBBC05;
   --brand-google-red: #EA4335;
+
+  /* Shades (Light) */
+  --text-50: #e7f7fe;
+  --text-100: #cfeffc;
+  --text-200: #9fe0f9;
+  --text-300: #6ed0f7;
+  --text-400: #3ec0f4;
+  --text-500: #0eb1f1;
+  --text-600: #0b8dc1;
+  --text-700: #086a91;
+  --text-800: #064760;
+  --text-900: #032330;
+  --text-950: #011218;
+
+  --background-50: #e7f7fe;
+  --background-100: #cfeffc;
+  --background-200: #9ee0fa;
+  --background-300: #6ed0f7;
+  --background-400: #3dc1f5;
+  --background-500: #0db1f2;
+  --background-600: #0a8ec2;
+  --background-700: #086a91;
+  --background-800: #054761;
+  --background-900: #032330;
+  --background-950: #011218;
+
+  --primary-50: #e7f7fe;
+  --primary-100: #cfeffc;
+  --primary-200: #9ee0fa;
+  --primary-300: #6ed0f7;
+  --primary-400: #3dc1f5;
+  --primary-500: #0db1f2;
+  --primary-600: #0a8ec2;
+  --primary-700: #086a91;
+  --primary-800: #054761;
+  --primary-900: #032330;
+  --primary-950: #011218;
+
+  --secondary-50: #ebe7fe;
+  --secondary-100: #d6cffc;
+  --secondary-200: #ae9ff9;
+  --secondary-300: #856ef7;
+  --secondary-400: #5c3ef4;
+  --secondary-500: #340ef1;
+  --secondary-600: #290bc1;
+  --secondary-700: #1f0891;
+  --secondary-800: #150660;
+  --secondary-900: #0a0330;
+  --secondary-950: #050118;
+
+  --accent-50: #f1e7fe;
+  --accent-100: #e2cffc;
+  --accent-200: #c69efa;
+  --accent-300: #a96ef7;
+  --accent-400: #8d3df5;
+  --accent-500: #700df2;
+  --accent-600: #5a0ac2;
+  --accent-700: #430891;
+  --accent-800: #2d0561;
+  --accent-900: #160330;
+  --accent-950: #0b0118;
 }
 
 .dark {
-  --background: #16171B;
-  --foreground: #ECEEF6;
-  --card: #1E1F24;
-  --card-foreground: #ECEEF6;
-  --popover: #1E1F24;
-  --popover-foreground: #ECEEF6;
+  /* Realtime Colors - Softer, Eye-Friendly Dark Theme (Warna Asli Mojiji Lembut di Kanvas Charcoal) */
+  --text: #d4e4ed;
+  --background: #16171b;
+  --primary: #2fa3d0;
+  --secondary: #30427b;
+  --accent: #bfa5c2;
 
-  /* Skema Warna Baru Mojiji (Dark Theme) */
-  --bg: #16171B;
-  --surface: #1E1F24;
-  --surface-2: #27292F;
-  --surface-2-hover: #2E313A;
-  --border: #373A42;
-  --border-hover: #5A5E6B;
-  --input: #373A42;
-  --accent: #6B68C6;
-  --accent-hover: #8582D6;
-  --accent-text: #A9A8D9;
-  --accent-foreground: #FFFFFF;
-  --accent-soft: rgba(107, 104, 198, 0.16);
-  --accent-ring: rgba(107, 104, 198, 0.45);
+  --foreground: #d4e4ed;
+  --card: #1c1d22;
+  --card-foreground: #d4e4ed;
+  --popover: #1c1d22;
+  --popover-foreground: #d4e4ed;
 
-  --primary: #6B68C6;
-  --primary-hover: #5E5AB8;
-  --primary-foreground: #FFFFFF;
-  --primary-soft: rgba(107, 104, 198, 0.16);
-  --primary-text: #A9A8D9;
-  --primary-ring: rgba(107, 104, 198, 0.45);
+  --bg: #16171b;
+  --surface: #1c1d22;
+  --surface-2: #25262c;
+  --surface-2-hover: #2e3037;
+  --border: rgba(212, 228, 237, 0.08);
+  --border-hover: rgba(212, 228, 237, 0.16);
+  --input: rgba(212, 228, 237, 0.09);
 
-  --secondary: #8E639C;
-  --secondary-hover: #7E558B;
-  --secondary-foreground: #FFFFFF;
-  --secondary-text: #C4A3D1;
-  --secondary-soft: rgba(196, 163, 209, 0.08);
+  --primary-hover: #42b2de;
+  --primary-foreground: #ffffff;
+  --primary-soft: rgba(47, 163, 208, 0.15);
+  --primary-text: #4fc3f0;
+  --primary-ring: rgba(47, 163, 208, 0.35);
 
-  /* Tag & Chip Lembut (Genre di sebelah rating, dsb) */
-  --tag-soft-bg: rgba(196, 163, 209, 0.12);
+  --secondary-hover: #3b5194;
+  --secondary-foreground: #d4e4ed;
+  --secondary-text: #93aae6;
+  --secondary-soft: rgba(48, 66, 123, 0.28);
+
+  --accent-hover: #ceb6d1;
+  --accent-text: #dfcfe2;
+  --accent-foreground: #1a0f1d;
+  --accent-soft: rgba(191, 165, 194, 0.18);
+  --accent-ring: rgba(191, 165, 194, 0.35);
+
+  /* Tag & Chip Lembut */
+  --tag-soft-bg: rgba(212, 228, 237, 0.06);
   --tag-soft-border: transparent;
-  --tag-soft-text: #D2B7DE;
+  --tag-soft-text: #96abb7;
 
-  /* Indikator Strip Banner (Pudar & Halus) */
-  --indicator-active: rgba(169, 168, 217, 0.50);
-  --indicator-inactive: rgba(255, 255, 255, 0.09);
-  --indicator-inactive-hover: rgba(255, 255, 255, 0.18);
+  /* Indikator Strip Banner (Aksen Pink Percilan Kecil) */
+  --indicator-active: #bfa5c2;
+  --indicator-inactive: rgba(212, 228, 237, 0.12);
+  --indicator-inactive-hover: rgba(212, 228, 237, 0.20);
 
-  --switch-pill-bg: #2A2B3D;
-  --switch-pill-border: #3C3E56;
-  --switch-pill-text: #C4C3E8;
+  --switch-pill-bg: #30427b;
+  --switch-pill-border: rgba(147, 170, 230, 0.30);
+  --switch-pill-text: #d4e4ed;
 
-  --muted: #1E1F24;
-  --muted-foreground: #A5AAC0;
-  --destructive: #EC5D74;
-  --destructive-hover: #D94A61;
-  --success: #34D399;
-  --success-soft: rgba(16, 185, 129, 0.14);
-  --success-border: rgba(16, 185, 129, 0.25);
-  --ring: rgba(107, 104, 198, 0.45);
+  --muted: #25262c;
+  --muted-foreground: #8aa0ad;
+  --destructive: #db586b;
+  --destructive-hover: #ca495c;
+  --success: #389e72;
+  --success-soft: rgba(56, 158, 114, 0.15);
+  --success-border: rgba(56, 158, 114, 0.25);
+  --ring: rgba(47, 163, 208, 0.35);
 
-  --sidebar: #1E1F24;
-  --sidebar-foreground: #ECEEF6;
-  --sidebar-primary: #6B68C6;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #27292F;
-  --sidebar-accent-foreground: #ECEEF6;
-  --sidebar-border: #373A42;
-  --sidebar-ring: rgba(107, 104, 198, 0.45);
+  --sidebar: #1c1d22;
+  --sidebar-foreground: #d4e4ed;
+  --sidebar-primary: #2fa3d0;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #25262c;
+  --sidebar-accent-foreground: #d4e4ed;
+  --sidebar-border: rgba(212, 228, 237, 0.08);
+  --sidebar-ring: rgba(47, 163, 208, 0.35);
 
   /* Typography & Status Tokens */
-  --text: #ECEEF6;
-  --text-2: #A5AAC0;
-  --text-3: #6D7390;
-  --score-star: #D9895C;
-  --score-bg: #E2A63E;
-  --score-text: #16171B;
-  --detail-star: #FF7A3D;
-  --detail-members: #22A6E8;
-  --media-anime: #0EA5E9;
-  --media-manga: #F97316;
+  --text-2: #8aa0ad;
+  --text-3: #5b717d;
+  --score-star: #d9895c;
+  --score-bg: #e2a63e;
+  --score-text: #07171f;
+  --detail-star: #ff7a3d;
+  --detail-members: #8aa0ad;
+  --media-anime: #2fa3d0;
+  --media-manga: #f08c42;
 
-  --st-plan: #98A2C8;
-  --st-active: #3CC4B2;
-  --st-done: #7CC76B;
-  --st-hold: #E2A63E;
-  --st-drop: #EC5D74;
+  --st-plan: #786dc2;
+  --st-active: #2fa3d0;
+  --st-done: #977cd0;
+  --st-hold: #2291b8;
+  --st-drop: #db586b;
 
   /* Palet Semantik Card & Modal Tracker */
-  --st-plan-badge: #4A7C9B;
-  --st-plan-badge-hover: #598DAD;
-  --st-plan-soft: #233E54;
-  --st-plan-soft-hover: #2A4963;
-  --st-plan-soft-text: #BAE2FC;
-  --st-plan-muted: #7DA5C2;
-  --st-plan-muted-hover: #A3C7E0;
+  --st-plan-badge: #463e7d;
+  --st-plan-badge-hover: #544b94;
+  --st-plan-soft: rgba(150, 133, 237, 0.13);
+  --st-plan-soft-hover: rgba(150, 133, 237, 0.22);
+  --st-plan-soft-text: #cfc7f5;
+  --st-plan-muted: #8b80d4;
+  --st-plan-muted-hover: #a59be5;
 
-  --st-hold-badge: #A37B3E;
-  --st-hold-badge-hover: #B58A4A;
-  --st-hold-soft: #45361E;
-  --st-hold-soft-hover: #524024;
-  --st-hold-soft-text: #F5DC93;
-  --st-hold-muted: #BFA86B;
-  --st-hold-muted-hover: #DBC488;
+  --st-hold-badge: #1b7496;
+  --st-hold-badge-hover: #2285ab;
+  --st-hold-soft: rgba(34, 145, 184, 0.13);
+  --st-hold-soft-hover: rgba(34, 145, 184, 0.22);
+  --st-hold-soft-text: #96d6ee;
+  --st-hold-muted: #30a0c9;
+  --st-hold-muted-hover: #4fb3d9;
 
-  --st-watching-badge: #8E639C;
-  --st-watching-badge-hover: #9B70AA;
-  --st-watching-soft: #3F2C4D;
-  --st-watching-soft-hover: #4B345C;
-  --st-watching-soft-text: #EAD2F7;
-  --st-watching-muted: #AD8EC0;
-  --st-watching-muted-hover: #CBB0DC;
+  --st-watching-badge: #2fa3d0;
+  --st-watching-badge-hover: #42b2de;
+  --st-watching-soft: rgba(47, 163, 208, 0.13);
+  --st-watching-soft-hover: rgba(47, 163, 208, 0.22);
+  --st-watching-soft-text: #c0e8f7;
+  --st-watching-muted: #30a0c9;
+  --st-watching-muted-hover: #4fb3d9;
 
-  --st-done-badge: #47876B;
-  --st-done-badge-hover: #55997B;
-  --st-done-soft: #1E4033;
-  --st-done-soft-hover: #244D3D;
-  --st-done-soft-text: #A3EBC9;
-  --st-done-muted: #70AD93;
-  --st-done-muted-hover: #96CCB5;
+  --st-done-badge: #5b4387;
+  --st-done-badge-hover: #694e9b;
+  --st-done-soft: rgba(151, 124, 208, 0.13);
+  --st-done-soft-hover: rgba(151, 124, 208, 0.22);
+  --st-done-soft-text: #dfd4f6;
+  --st-done-muted: #9b7fd3;
+  --st-done-muted-hover: #bda6ed;
 
-  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
-  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --scrollbar-thumb: rgba(221, 244, 253, 0.15);
+  --scrollbar-thumb-hover: rgba(221, 244, 253, 0.3);
   --brand-google-blue: #4285F4;
   --brand-google-green: #34A853;
   --brand-google-yellow: #FBBC05;
   --brand-google-red: #EA4335;
+
+  /* Shades (Dark) */
+  --text-50: #011218;
+  --text-100: #032330;
+  --text-200: #064760;
+  --text-300: #086a91;
+  --text-400: #0b8dc1;
+  --text-500: #0eb1f1;
+  --text-600: #3ec0f4;
+  --text-700: #6ed0f7;
+  --text-800: #9fe0f9;
+  --text-900: #cfeffc;
+  --text-950: #e7f7fe;
+
+  --background-50: #011218;
+  --background-100: #032330;
+  --background-200: #054761;
+  --background-300: #086a91;
+  --background-400: #0a8ec2;
+  --background-500: #0db1f2;
+  --background-600: #3dc1f5;
+  --background-700: #6ed0f7;
+  --background-800: #9ee0fa;
+  --background-900: #cfeffc;
+  --background-950: #e7f7fe;
+
+  --primary-50: #011218;
+  --primary-100: #032330;
+  --primary-200: #054761;
+  --primary-300: #086a91;
+  --primary-400: #0a8ec2;
+  --primary-500: #0db1f2;
+  --primary-600: #3dc1f5;
+  --primary-700: #6ed0f7;
+  --primary-800: #9ee0fa;
+  --primary-900: #cfeffc;
+  --primary-950: #e7f7fe;
+
+  --secondary-50: #050118;
+  --secondary-100: #0a0330;
+  --secondary-200: #150660;
+  --secondary-300: #1f0891;
+  --secondary-400: #290bc1;
+  --secondary-500: #340ef1;
+  --secondary-600: #5c3ef4;
+  --secondary-700: #856ef7;
+  --secondary-800: #ae9ff9;
+  --secondary-900: #d6cffc;
+  --secondary-950: #ebe7fe;
+
+  --accent-50: #0b0118;
+  --accent-100: #160330;
+  --accent-200: #2d0561;
+  --accent-300: #430891;
+  --accent-400: #5a0ac2;
+  --accent-500: #700df2;
+  --accent-600: #8d3df5;
+  --accent-700: #a96ef7;
+  --accent-800: #c69efa;
+  --accent-900: #e2cffc;
+  --accent-950: #f1e7fe;
 }
 
 .light {
-  --background: #F5F6FA;
-  --foreground: #14162A;
-  --card: #FFFFFF;
-  --card-foreground: #14162A;
-  --popover: #FFFFFF;
-  --popover-foreground: #14162A;
+  /* Realtime Colors - Softer, Eye-Friendly Light Theme (Warna Asli Mojiji Lembut) */
+  --text: #16242c;
+  --background: #f2f7fa;
+  --primary: #2b9ec9;
+  --secondary: #9685ed;
+  --accent: #bfa5c2;
 
-  /* Skema Warna Mojiji Light Mode (Adopsi Tahap 1 & 2) */
-  --bg: #F5F6FA;
-  --surface: #FFFFFF;
-  --surface-2: #EEF0F6;
-  --surface-2-hover: #E4E7F0;
-  --border: #DDE0EB;
-  --border-hover: #C5C9D6;
-  --input: #DDE0EB;
+  --foreground: #16242c;
+  --card: #ffffff;
+  --card-foreground: #16242c;
+  --popover: #ffffff;
+  --popover-foreground: #16242c;
 
-  --accent: #6B68C6;
-  --accent-hover: #5E5AB8;
-  --accent-text: #5651E0;
-  --accent-foreground: #FFFFFF;
-  --accent-soft: rgba(107, 104, 198, 0.10);
-  --accent-ring: rgba(107, 104, 198, 0.45);
+  --bg: #f2f7fa;
+  --surface: #ffffff;
+  --surface-2: #e6edf2;
+  --surface-2-hover: #dbe4ea;
+  --border: #d4e0e7;
+  --border-hover: #b8ccd6;
+  --input: #d4e0e7;
 
-  --primary: #6B68C6;
-  --primary-hover: #5E5AB8;
-  --primary-foreground: #FFFFFF;
-  --primary-soft: rgba(107, 104, 198, 0.10);
-  --primary-text: #5651E0;
-  --primary-ring: rgba(107, 104, 198, 0.45);
+  --primary-hover: #1f89b0;
+  --primary-foreground: #ffffff;
+  --primary-soft: rgba(43, 158, 201, 0.12);
+  --primary-text: #1f89b0;
+  --primary-ring: rgba(43, 158, 201, 0.30);
 
-  --secondary: #86589A;
-  --secondary-hover: #7B4F8C;
-  --secondary-foreground: #FFFFFF;
-  --secondary-text: #6E4580;
-  --secondary-soft: rgba(134, 88, 154, 0.07);
+  --secondary-hover: #8471e3;
+  --secondary-foreground: #ffffff;
+  --secondary-text: #6a54d6;
+  --secondary-soft: rgba(150, 133, 237, 0.14);
 
-  /* Tag & Chip Lembut (Genre di sebelah rating, dsb) */
-  --tag-soft-bg: rgba(134, 88, 154, 0.10);
+  --accent-hover: #b093b3;
+  --accent-text: #8e6394;
+  --accent-foreground: #241629;
+  --accent-soft: rgba(191, 165, 194, 0.22);
+  --accent-ring: rgba(191, 165, 194, 0.35);
+
+  /* Tag & Chip Lembut */
+  --tag-soft-bg: rgba(22, 36, 44, 0.05);
   --tag-soft-border: transparent;
-  --tag-soft-text: #764A88;
+  --tag-soft-text: #3e5360;
 
-  /* Indikator Strip Banner (Pudar & Halus) */
-  --indicator-active: rgba(107, 104, 198, 0.55);
-  --indicator-inactive: rgba(20, 22, 42, 0.08);
-  --indicator-inactive-hover: rgba(20, 22, 42, 0.16);
+  /* Indikator Strip Banner (Aksen Pink Percilan Kecil) */
+  --indicator-active: #bfa5c2;
+  --indicator-inactive: rgba(22, 36, 44, 0.10);
+  --indicator-inactive-hover: rgba(22, 36, 44, 0.18);
 
-  --switch-pill-bg: #E4E6F0;
-  --switch-pill-border: #D0D3E2;
-  --switch-pill-text: #5651E0;
+  --switch-pill-bg: #9685ed;
+  --switch-pill-border: #9685ed;
+  --switch-pill-text: #ffffff;
 
-  --muted: #EEF0F6;
-  --muted-foreground: #4B5070;
-  --destructive: #EC5D74;
-  --destructive-hover: #D94A61;
-  --success: #059669;
-  --success-soft: rgba(16, 185, 129, 0.10);
-  --success-border: rgba(5, 150, 105, 0.25);
-  --ring: rgba(107, 104, 198, 0.45);
+  --muted: #e6edf2;
+  --muted-foreground: #556c7a;
+  --destructive: #cc495b;
+  --destructive-hover: #ba3d4e;
+  --success: #348a60;
+  --success-soft: rgba(52, 138, 96, 0.12);
+  --success-border: rgba(52, 138, 96, 0.22);
+  --ring: rgba(43, 158, 201, 0.30);
 
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #14162A;
-  --sidebar-primary: #6B68C6;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EEF0F6;
-  --sidebar-accent-foreground: #14162A;
-  --sidebar-border: #DDE0EB;
-  --sidebar-ring: rgba(107, 104, 198, 0.45);
+  --sidebar: #ffffff;
+  --sidebar-foreground: #16242c;
+  --sidebar-primary: #2b9ec9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #e6edf2;
+  --sidebar-accent-foreground: #16242c;
+  --sidebar-border: #d4e0e7;
+  --sidebar-ring: rgba(43, 158, 201, 0.30);
 
   /* Typography & Status Tokens */
-  --text: #14162A;
-  --text-2: #4B5070;
-  --text-3: #7A809C;
-  --score-star: #D9895C;
-  --score-bg: #E2A63E;
-  --score-text: #16171B;
-  --detail-star: #FF7A3D;
-  --detail-members: #22A6E8;
-  --media-anime: #0284C7;
-  --media-manga: #EA580C;
+  --text-2: #526775;
+  --text-3: #8296a3;
+  --score-star: #d9895c;
+  --score-bg: #e2a63e;
+  --score-text: #16242c;
+  --detail-star: #ff7a3d;
+  --detail-members: #526775;
+  --media-anime: #2b9ec9;
+  --media-manga: #d46529;
 
-  --st-plan: #7E8AB5;
-  --st-active: #20A593;
-  --st-done: #5EA84D;
-  --st-hold: #D49022;
-  --st-drop: #E03E58;
+  --st-plan: #5d4fb8;
+  --st-active: #2b9ec9;
+  --st-done: #6e4ca8;
+  --st-hold: #1c87ab;
+  --st-drop: #cc495b;
 
   /* Palet Semantik Card & Modal Tracker */
-  --st-plan-badge: #4A7C9B;
-  --st-plan-badge-hover: #3E6A85;
-  --st-plan-soft: #D9ECFA;
-  --st-plan-soft-hover: #CCE4F7;
-  --st-plan-soft-text: #1B4F72;
-  --st-plan-muted: #4B708A;
-  --st-plan-muted-hover: #2F536B;
+  --st-plan-badge: #7668c4;
+  --st-plan-badge-hover: #6557b4;
+  --st-plan-soft: #edeaf8;
+  --st-plan-soft-hover: #dedaf3;
+  --st-plan-soft-text: #2a206b;
+  --st-plan-muted: #7668c4;
+  --st-plan-muted-hover: #5d4fb8;
 
-  --st-hold-badge: #A37B3E;
-  --st-hold-badge-hover: #8C6833;
-  --st-hold-soft: #F7E8C8;
-  --st-hold-soft-hover: #F2DFB6;
-  --st-hold-soft-text: #6E4B16;
-  --st-hold-muted: #7A5E2B;
-  --st-hold-muted-hover: #57411B;
+  --st-hold-badge: #53b3d1;
+  --st-hold-badge-hover: #41a3c2;
+  --st-hold-soft: #e5f3f8;
+  --st-hold-soft-hover: #d2eaf2;
+  --st-hold-soft-text: #104e63;
+  --st-hold-muted: #2ea3c8;
+  --st-hold-muted-hover: #1c87ab;
 
-  --st-watching-badge: #8E639C;
-  --st-watching-badge-hover: #7C538A;
-  --st-watching-soft: #EADCF2;
-  --st-watching-soft-hover: #E1CEEE;
-  --st-watching-soft-text: #4E2C5E;
-  --st-watching-muted: #684778;
-  --st-watching-muted-hover: #4A2F57;
+  --st-watching-badge: #2b9ec9;
+  --st-watching-badge-hover: #1f89b0;
+  --st-watching-soft: #e2f1f7;
+  --st-watching-soft-hover: #cee5f0;
+  --st-watching-soft-text: #0e455c;
+  --st-watching-muted: #2b9ec9;
+  --st-watching-muted-hover: #1f89b0;
 
-  --st-done-badge: #47876B;
-  --st-done-badge-hover: #3B735B;
-  --st-done-soft: #D6F0E4;
-  --st-done-soft-hover: #C6EAD9;
-  --st-done-soft-text: #17543B;
-  --st-done-muted: #356B54;
-  --st-done-muted-hover: #214D3A;
+  --st-done-badge: #8262b8;
+  --st-done-badge-hover: #7252a7;
+  --st-done-soft: #f0eaf7;
+  --st-done-soft-hover: #e4d9f1;
+  --st-done-soft-text: #391e63;
+  --st-done-muted: #8262b8;
+  --st-done-muted-hover: #6e4ca8;
 
-  --scrollbar-thumb: rgba(20, 22, 42, 0.18);
-  --scrollbar-thumb-hover: rgba(20, 22, 42, 0.32);
+  --scrollbar-thumb: rgba(2, 25, 34, 0.18);
+  --scrollbar-thumb-hover: rgba(2, 25, 34, 0.32);
   --brand-google-blue: #4285F4;
   --brand-google-green: #34A853;
   --brand-google-yellow: #FBBC05;
   --brand-google-red: #EA4335;
+
+  /* Shades (Light) */
+  --text-50: #e7f7fe;
+  --text-100: #cfeffc;
+  --text-200: #9fe0f9;
+  --text-300: #6ed0f7;
+  --text-400: #3ec0f4;
+  --text-500: #0eb1f1;
+  --text-600: #0b8dc1;
+  --text-700: #086a91;
+  --text-800: #064760;
+  --text-900: #032330;
+  --text-950: #011218;
+
+  --background-50: #e7f7fe;
+  --background-100: #cfeffc;
+  --background-200: #9ee0fa;
+  --background-300: #6ed0f7;
+  --background-400: #3dc1f5;
+  --background-500: #0db1f2;
+  --background-600: #0a8ec2;
+  --background-700: #086a91;
+  --background-800: #054761;
+  --background-900: #032330;
+  --background-950: #011218;
+
+  --primary-50: #e7f7fe;
+  --primary-100: #cfeffc;
+  --primary-200: #9ee0fa;
+  --primary-300: #6ed0f7;
+  --primary-400: #3dc1f5;
+  --primary-500: #0db1f2;
+  --primary-600: #0a8ec2;
+  --primary-700: #086a91;
+  --primary-800: #054761;
+  --primary-900: #032330;
+  --primary-950: #011218;
+
+  --secondary-50: #ebe7fe;
+  --secondary-100: #d6cffc;
+  --secondary-200: #ae9ff9;
+  --secondary-300: #856ef7;
+  --secondary-400: #5c3ef4;
+  --secondary-500: #340ef1;
+  --secondary-600: #290bc1;
+  --secondary-700: #1f0891;
+  --secondary-800: #150660;
+  --secondary-900: #0a0330;
+  --secondary-950: #050118;
+
+  --accent-50: #f1e7fe;
+  --accent-100: #e2cffc;
+  --accent-200: #c69efa;
+  --accent-300: #a96ef7;
+  --accent-400: #8d3df5;
+  --accent-500: #700df2;
+  --accent-600: #5a0ac2;
+  --accent-700: #430891;
+  --accent-800: #2d0561;
+  --accent-900: #160330;
+  --accent-950: #0b0118;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   html {
     font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -541,6 +794,7 @@ div[data-nextjs-dev-tools-indicator] {
     transform: translateY(100%);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -552,6 +806,7 @@ div[data-nextjs-dev-tools-indicator] {
     transform: translateY(80px) scale(0.96);
     opacity: 0;
   }
+
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
@@ -574,6 +829,7 @@ div[data-nextjs-dev-tools-indicator] {
     transform: translateY(0);
     opacity: 1;
   }
+
   to {
     transform: translateY(100%);
     opacity: 0;
@@ -585,6 +841,7 @@ div[data-nextjs-dev-tools-indicator] {
     transform: translateY(0) scale(1);
     opacity: 1;
   }
+
   to {
     transform: translateY(80px) scale(0.96);
     opacity: 0;
@@ -636,9 +893,24 @@ div[data-nextjs-dev-tools-indicator] {
   }
 }
 
+/* Animasi Progress Bar Pengisi Waktu Hero Banner Carousel (Opsi 1) */
+@keyframes heroProgressBar {
+  from {
+    width: 0%;
+  }
+
+  to {
+    width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .collage-col {
     animation: none;
   }
 }
 
+/* Sembunyikan Navbar pada halaman 404 (not-found.js) */
+body:has([data-not-found="true"]) > header {
+  display: none;
+}

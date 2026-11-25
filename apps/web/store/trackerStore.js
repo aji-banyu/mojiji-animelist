@@ -202,12 +202,13 @@ const useTrackerStore = create((set, get) => ({
 
   updateTrackerItem: async (id, newStatus, newProgress, nextTotal = null) => {
     const prevItems = get().items;
-    const prevItem = prevItems.find((it) => it.id === id);
+    const prevItem = prevItems.find((it) => String(it.id) === String(id));
     const nextProgNum = Number(newProgress) || 0;
 
+    // 1. Pembaruan optimistik di state lokal seketika
     set((state) => ({
       items: state.items.map((it) =>
-        it.id === id
+        String(it.id) === String(id)
           ? {
               ...it,
               status: newStatus,
@@ -221,9 +222,25 @@ const useTrackerStore = create((set, get) => ({
     try {
       const response = await updateTrackerStatusApi(id, newStatus, nextProgNum);
       if (response?.data && typeof response.data === "object") {
+        const serverProgress = response.data.progress;
+        // Proteksi: jangan biarkan respons backend yang belum menyertakan progress atau progress 0
+        // (misalnya container backend belum di-rebuild) menimpa kembali progres baru yang diinput user ke 0.
+        const safeProgress =
+          typeof serverProgress === "number" && (serverProgress > 0 || nextProgNum === 0)
+            ? serverProgress
+            : nextProgNum;
+
         set((state) => ({
           items: state.items.map((it) =>
-            it.id === id ? { ...it, ...response.data } : it
+            String(it.id) === String(id)
+              ? {
+                  ...it,
+                  ...response.data,
+                  status: response.data.status || newStatus,
+                  progress: safeProgress,
+                  total: nextTotal || response.data.total || it.total,
+                }
+              : it
           ),
         }));
       }
@@ -231,7 +248,7 @@ const useTrackerStore = create((set, get) => ({
     } catch (err) {
       if (prevItem) {
         set((state) => ({
-          items: state.items.map((it) => (it.id === id ? prevItem : it)),
+          items: state.items.map((it) => (String(it.id) === String(id) ? prevItem : it)),
         }));
       }
       throw err;
@@ -241,7 +258,7 @@ const useTrackerStore = create((set, get) => ({
   deleteTrackerItem: async (id) => {
     await deleteTrackerApi(id);
     set((state) => ({
-      items: state.items.filter((it) => it.id !== id),
+      items: state.items.filter((it) => String(it.id) !== String(id)),
     }));
   },
 

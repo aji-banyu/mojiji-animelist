@@ -3,15 +3,18 @@ import { cn } from "@/lib/utils";
 
 const VARIANT_CLASSES = {
   primary:
-    "bg-accent hover:bg-primary-hover text-white shadow-sm shadow-accent/25 border border-transparent",
+    "bg-primary hover:bg-primary-hover text-primary-foreground shadow-sm shadow-primary/25 border border-transparent",
   secondary:
-    "bg-secondary hover:bg-secondary-hover text-white shadow-sm shadow-secondary/25 border border-transparent",
+    "bg-secondary hover:bg-secondary-hover text-secondary-foreground shadow-sm shadow-secondary/25 border border-transparent",
+  accent:
+    "bg-accent hover:bg-accent-hover text-accent-foreground shadow-sm shadow-accent/25 border border-transparent",
   outline:
     "border border-border bg-surface hover:bg-surface-2 hover:border-border-hover text-text shadow-sm",
   surface:
     "border border-border bg-surface-2 hover:bg-surface-2-hover hover:border-border-hover text-text-2 hover:text-text",
   ghost:
     "text-text-2 hover:text-text hover:bg-surface-2 border border-transparent",
+  unstyled: "",
 };
 
 const SIZE_CLASSES = {
@@ -21,6 +24,7 @@ const SIZE_CLASSES = {
   lg: "h-12 px-6 text-base rounded-xl font-bold",
   icon: "h-9 w-9 p-0 rounded-lg flex items-center justify-center",
   iconMd: "h-10 w-10 p-0 rounded-xl flex items-center justify-center",
+  none: "",
 };
 
 const Button = React.forwardRef(function Button(
@@ -36,8 +40,8 @@ const Button = React.forwardRef(function Button(
   },
   ref
 ) {
-  const variantClass = VARIANT_CLASSES[variant] || VARIANT_CLASSES.primary;
-  const sizeClass = SIZE_CLASSES[size] || SIZE_CLASSES.default;
+  const variantClass = VARIANT_CLASSES[variant] ?? VARIANT_CLASSES.primary;
+  const sizeClass = SIZE_CLASSES[size] ?? SIZE_CLASSES.default;
 
   return (
     <button
@@ -54,7 +58,7 @@ const Button = React.forwardRef(function Button(
     >
       {loading ? (
         <span className="flex items-center gap-2">
-          <svg className="size-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+          <svg className="size-4 animate-spin text-current" viewBox="0 0 24 24" fill="none">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path
               className="opacity-75"

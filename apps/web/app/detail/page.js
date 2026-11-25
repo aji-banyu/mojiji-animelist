@@ -8,6 +8,7 @@ import {
   Film,
   BookOpen,
   ArrowLeft,
+  ArrowUp,
   AlertCircle,
   PlusCircle,
   SearchX,
@@ -18,9 +19,11 @@ import {
   WifiOff,
   Home,
   Bookmark,
+  BookMarked,
 } from "lucide-react";
-import AuthGuard from "@/components/AuthGuard";
+import useAuthStore from "@/store/authStore";
 import DetailInfoSidebar from "@/components/detail/DetailInfoSidebar";
+import DetailComments from "@/components/detail/DetailComments";
 import DetailMediaSections, {
   DetailSynopsis,
 } from "@/components/detail/DetailMediaSections";
@@ -125,6 +128,7 @@ function DetailContent() {
 
   const [isSavingTracker, setIsSavingTracker] = useState(false);
   const [toast, setToast] = useState(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // State Banner 16:9 Fallback Index & Parallax Layer Ref
   const [bannerIdx, setBannerIdx] = useState(0);
@@ -132,6 +136,9 @@ function DetailContent() {
 
   // State Deteksi Error Pemutar Trailer (YouTube Embed)
   const [trailerHasError, setTrailerHasError] = useState(false);
+
+  // State tombol gulir cepat ke atas saat halaman digulir cukup dalam
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const isAnime = type === "anime";
   const itemKey = `${type}:${id || ""}`;
@@ -166,6 +173,18 @@ function DetailContent() {
     };
   }, [isLoading, data]);
 
+  // Tampilkan tombol gulir ke atas saat pengguna sudah menggulir cukup jauh
+  useEffect(() => {
+    const handleScrollVisibility = () => {
+      const shouldShow = window.scrollY > 420;
+      setShowScrollTop((prev) => (prev === shouldShow ? prev : shouldShow));
+    };
+
+    handleScrollVisibility();
+    window.addEventListener("scroll", handleScrollVisibility, { passive: true });
+    return () => window.removeEventListener("scroll", handleScrollVisibility);
+  }, []);
+
   // Pre-check ketersediaan embed video YouTube via oEmbed API publik
   useEffect(() => {
     const youtubeId = data?.trailer?.youtubeId;
@@ -182,7 +201,7 @@ function DetailContent() {
           setTrailerHasError(true);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       isCancelled = true;
@@ -218,7 +237,7 @@ function DetailContent() {
         ) {
           setTrailerHasError(true);
         }
-      } catch {}
+      } catch { }
     };
 
     window.addEventListener("message", handleYouTubeMessage);
@@ -231,6 +250,17 @@ function DetailContent() {
     const timer = setTimeout(() => setToast(null), 4000);
     return () => clearTimeout(timer);
   }, [toast]);
+
+  // Tutup modal auth dengan tombol Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && showAuthModal) {
+        setShowAuthModal(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showAuthModal]);
 
   // Pastikan halaman detail selalu mulai dari posisi scroll paling atas
   useEffect(() => {
@@ -253,7 +283,7 @@ function DetailContent() {
 
     let isMounted = true;
     const controller = new AbortController();
-    checkTrackerItem(type, id).catch(() => {});
+    checkTrackerItem(type, id).catch(() => { });
 
     const cached = getCachedDetail(type, id);
     if (cached) {
@@ -299,26 +329,26 @@ function DetailContent() {
             rawDetail.favorites != null;
           const hasBackendInformation = Boolean(
             Object.prototype.hasOwnProperty.call(rawDetail, "rank") &&
-              Object.prototype.hasOwnProperty.call(rawDetail, "popularity") &&
-              Object.prototype.hasOwnProperty.call(
-                rawDetail,
-                isAnime ? "aired" : "published"
-              ) &&
-              (hasCoreStats || hasDateField)
+            Object.prototype.hasOwnProperty.call(rawDetail, "popularity") &&
+            Object.prototype.hasOwnProperty.call(
+              rawDetail,
+              isAnime ? "aired" : "published"
+            ) &&
+            (hasCoreStats || hasDateField)
           );
 
           // Bila backend mengirim skema ringkas/parsial, segera panggil Tenrai /full paralel dengan AniList
           const tenraiMainPromise = !hasBackendInformation
             ? fetchTenraiDetailSupplement(type, id, {
-                signal: controller.signal,
-                includeCharacters: false,
-                includeStaff: false,
-              }).catch((err) => {
-                if (controller.signal.aborted || err?.name === "AbortError") {
-                  throw err;
-                }
-                return null;
-              })
+              signal: controller.signal,
+              includeCharacters: false,
+              includeStaff: false,
+            }).catch((err) => {
+              if (controller.signal.aborted || err?.name === "AbortError") {
+                throw err;
+              }
+              return null;
+            })
             : Promise.resolve(null);
 
           const [anilistRes, tenraiRes] = await Promise.allSettled([
@@ -390,10 +420,10 @@ function DetailContent() {
 
           const hasCacheableDetails = Boolean(
             hydratedPayload.statistics?.ranked ||
-              hydratedPayload.statistics?.popularity ||
-              hydratedPayload.statistics?.members ||
-              hydratedPayload.information?.aired ||
-              hydratedPayload.information?.published
+            hydratedPayload.statistics?.popularity ||
+            hydratedPayload.statistics?.members ||
+            hydratedPayload.information?.aired ||
+            hydratedPayload.information?.published
           );
           if (hasCacheableDetails) {
             setCachedDetail(type, id, hydratedPayload);
@@ -451,6 +481,12 @@ function DetailContent() {
 
   // Handler tambah judul ke tracker terpusat via store
   const handleToggleTracker = async () => {
+    const user = useAuthStore.getState().user;
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     if (trackedItem) {
       setToast({
         type: "info",
@@ -572,8 +608,8 @@ function DetailContent() {
       ? data.information.studios.join(", ")
       : "-"
     : data?.information?.authors?.length > 0
-    ? data.information.authors.join(", ")
-    : "-";
+      ? data.information.authors.join(", ")
+      : "-";
   const formatType = data?.information?.type || "-";
 
   return (
@@ -635,7 +671,7 @@ function DetailContent() {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20">
               <SearchX size={32} />
             </div>
-            <h2 className="mt-5 text-xl sm:text-2xl font-black text-text tracking-tight font-['Bricolage_Grotesque']">
+            <h2 className="mt-5 text-xl sm:text-2xl font-black text-text tracking-tight font-heading">
               Item Katalog Tidak Ditemukan
             </h2>
             <p className="mt-2 max-w-md text-xs sm:text-sm leading-relaxed text-text-2">
@@ -644,13 +680,13 @@ function DetailContent() {
             <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/explore/"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-accent hover:bg-primary-hover px-5 text-xs sm:text-sm font-bold text-white shadow-sm transition-all active:scale-95"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary-hover px-5 text-xs sm:text-sm font-bold text-primary-foreground shadow-sm shadow-primary/25 transition-all active:scale-95"
               >
                 <Search size={15} />
                 <span>Jelajahi Katalog Lainnya</span>
               </Link>
               <Link
-                href="/home/"
+                href="/"
                 className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-border bg-surface-2 hover:bg-surface-2-hover hover:border-border-hover px-5 text-xs sm:text-sm font-semibold text-text-2 hover:text-text transition-all active:scale-95"
               >
                 <ArrowLeft size={15} />
@@ -670,7 +706,7 @@ function DetailContent() {
                 <WifiOff size={22} />
               </div>
               <div className="space-y-1">
-                <h3 className="text-base sm:text-lg font-black text-text tracking-tight font-['Bricolage_Grotesque']">
+                <h3 className="text-base sm:text-lg font-black text-text tracking-tight font-heading">
                   Gagal Memuat Detail Katalog
                 </h3>
                 <p className="text-xs sm:text-sm text-text-2 leading-relaxed max-w-xl">{error}</p>
@@ -761,7 +797,7 @@ function DetailContent() {
                 </button>
 
                 <Link
-                  href="/home/"
+                  href="/"
                   aria-label="Beranda"
                   title="Beranda"
                   className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-surface/85 text-text shadow-md backdrop-blur-md transition-all duration-200 hover:bg-surface hover:border-border-hover hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent/40 cursor-pointer"
@@ -778,7 +814,7 @@ function DetailContent() {
               {/* Header: Cover Poster + Badge & Judul */}
               <div className="flex flex-col md:flex-row items-center md:items-end gap-5 sm:gap-7">
                 {/* Cover Potret menonjol ke atas menyentuh banner */}
-                <div className="relative -mt-24 sm:-mt-28 md:-mt-32 h-[200px] w-[135px] sm:h-[234px] sm:w-[158px] md:h-[262px] md:w-[176px] shrink-0 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
+                <div className="relative -mt-24 sm:-mt-28 md:-mt-32 h-[236px] w-[160px] sm:h-[248px] sm:w-[168px] md:h-[262px] md:w-[176px] shrink-0 overflow-hidden rounded-xl border border-border bg-surface shadow-2xl">
                   {poster ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img
@@ -794,9 +830,15 @@ function DetailContent() {
                   )}
                 </div>
 
-                {/* Judul, RatingBadge & Tags (Selaras Beranda) */}
-                <div className="flex flex-1 flex-col text-center md:text-left min-w-0 pt-1 md:pb-2">
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-3">
+                {/* Judul, lalu Badge Metadata bergaya Gambar 1 (Opsi A: judul di atas, badge di bawah) */}
+                <div className="flex flex-1 flex-col text-center md:text-left min-w-0 pt-1 md:justify-end md:pt-2 md:pb-2.5 md:gap-4">
+                  <h1 className="text-[26px] sm:text-[34px] lg:text-[42px] font-black text-text tracking-tight leading-[1.12] font-heading line-clamp-2">
+                    {data.title || "Untitled"}
+                  </h1>
+
+                  {/* Badge metadata bergaya cinematic rounded-md charcoal — Rating tetap */}
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mt-3 md:mt-0">
+                    {/* Rating — TIDAK DIRUBAH, tetap RatingBadge bawaan */}
                     {data.statistics?.score ? (
                       <RatingBadge score={data.statistics.score} size="hero" />
                     ) : (
@@ -805,19 +847,35 @@ function DetailContent() {
                         <span>Belum ada skor</span>
                       </Tag>
                     )}
-                    <Tag variant="secondary" size="pill" className="uppercase tracking-wider font-bold">
-                      {isAnime ? "Anime" : "Manga"}
-                    </Tag>
-                    <Tag variant="neutral" size="pill">
-                      {data.status || "-"}
-                    </Tag>
+
+                    {/* Tahun rilis */}
+                    {(data?.information?.year || data?.year) ? (
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-surface-2 text-text-2 border border-border/70 text-xs font-semibold select-none">
+                        {data?.information?.year || data?.year}
+                      </span>
+                    ) : null}
+
+                    {/* Format (TV, ONA, Movie, Manga, dsb) */}
+                    {formatType && formatType !== "-" ? (
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-surface-2 text-text-2 border border-border/70 text-xs font-semibold select-none">
+                        {formatType}
+                      </span>
+                    ) : null}
+
+                    {/* Tipe Media — Anime / Manga (hindari duplikasi jika formatType sudah sama) */}
+                    {(!formatType || formatType.toLowerCase() !== (isAnime ? "anime" : "manga")) ? (
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-surface-2 text-text-2 border border-border/70 text-xs font-semibold select-none">
+                        {isAnime ? "Anime" : "Manga"}
+                      </span>
+                    ) : null}
+
+                    {/* Genre pertama */}
+                    {genres[0] ? (
+                      <span className="inline-flex items-center justify-center px-2.5 py-1 rounded-md bg-surface-2 text-text-2 border border-border/70 text-xs font-semibold select-none">
+                        {genres[0]}
+                      </span>
+                    ) : null}
                   </div>
-                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-text tracking-tight leading-[1.15] font-['Bricolage_Grotesque'] line-clamp-2">
-                    {data.title || "Untitled"}
-                  </h1>
-                  <p className="mt-2 text-sm sm:text-base font-medium text-text-2">
-                    {data.status || "-"}
-                  </p>
                 </div>
               </div>
 
@@ -825,19 +883,24 @@ function DetailContent() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-border pb-6">
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
                   <Button
-                    variant={trackedItem ? "secondary" : "primary"}
-                    size="lg"
+                    variant="unstyled"
+                    size="none"
                     loading={isSavingTracker}
                     onClick={handleToggleTracker}
+                    className={`h-11 w-[160px] sm:w-[168px] md:w-[176px] px-3 text-xs sm:text-[13px] font-bold rounded-lg whitespace-nowrap border border-transparent text-white shadow-sm ${
+                      trackedItem
+                        ? "bg-[#216e8d] hover:bg-[#1a5973] shadow-[#216e8d]/25"
+                        : "bg-[#2fa3d0] hover:bg-[#2487ad] shadow-[#2fa3d0]/25"
+                    }`}
                   >
                     {trackedItem ? (
                       <>
-                        <CheckCircle2 size={18} className="text-white" />
+                        <CheckCircle2 size={16} className="shrink-0" />
                         <span>Sudah di Tracker</span>
                       </>
                     ) : (
                       <>
-                        <PlusCircle size={18} />
+                        <PlusCircle size={16} className="shrink-0" />
                         <span>Tambah ke Tracker</span>
                       </>
                     )}
@@ -845,23 +908,23 @@ function DetailContent() {
                 </div>
 
                 {/* Kartu Mini Statistik Score & Members */}
-                <div className="flex items-center justify-center sm:justify-end gap-4 rounded-xl border border-border bg-surface px-4 py-2.5 shadow-sm self-center sm:self-auto">
+                <div className="flex h-11 items-center justify-center sm:justify-end gap-3.5 rounded-lg border border-border bg-surface px-4 shadow-sm self-center sm:self-auto">
                   <div
                     className="flex items-center gap-2 cursor-help"
                     title={`Score: ${data.statistics?.score || "-"}`}
                   >
-                    <Star size={18} className="fill-detail-star text-detail-star shrink-0" />
-                    <span className="text-base sm:text-lg font-bold text-text tabular-nums">
+                    <Star size={16} className="fill-detail-star text-detail-star shrink-0" />
+                    <span className="text-sm sm:text-base font-bold text-text tabular-nums">
                       {data.statistics?.score || "-"}
                     </span>
                   </div>
-                  <div className="h-5 w-[1px] bg-border" aria-hidden="true" />
+                  <div className="h-4 w-[1px] bg-border" aria-hidden="true" />
                   <div
                     className="flex items-center gap-2 cursor-help"
                     title={`Members: ${data.statistics?.members || "-"}`}
                   >
-                    <Bookmark size={18} className="fill-detail-members text-detail-members shrink-0" />
-                    <span className="text-base sm:text-lg font-bold text-text tabular-nums">
+                    <Bookmark size={16} className="fill-detail-members text-detail-members shrink-0" />
+                    <span className="text-sm sm:text-base font-bold text-text tabular-nums">
                       {formatStatNumber(data.statistics?.members) || "-"}
                     </span>
                   </div>
@@ -886,7 +949,7 @@ function DetailContent() {
                             <Tag
                               variant="secondary"
                               size="default"
-                              className="px-3 py-1.5 hover:bg-secondary hover:text-white transition-colors cursor-pointer"
+                              className="px-3 py-1.5 hover:bg-secondary hover:text-secondary-foreground transition-colors cursor-pointer"
                             >
                               {g}
                             </Tag>
@@ -905,7 +968,7 @@ function DetailContent() {
                     <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-text-3">
                       {isAnime ? "Studio" : "Author"}
                     </span>
-                    <Tag variant="filter" size="default" className="px-3 py-1.5 text-text">
+                    <Tag variant="plain" size="default" className="px-3 py-1.5">
                       {studioOrAuthor}
                     </Tag>
                   </div>
@@ -917,7 +980,11 @@ function DetailContent() {
                     <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-text-3">
                       Format
                     </span>
-                    <Tag variant="filter" size="default" className="px-3 py-1.5 text-text">
+                    <Tag
+                      variant="plain"
+                      size="default"
+                      className="px-3 py-1.5 hover:bg-secondary hover:text-secondary-foreground hover:border-secondary transition-colors cursor-pointer"
+                    >
                       {formatType}
                     </Tag>
                   </div>
@@ -929,7 +996,7 @@ function DetailContent() {
                     <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-text-3">
                       {isAnime ? "Episode" : "Chapter"}
                     </span>
-                    <Tag variant="filter" size="default" className="px-3 py-1.5 text-text tabular-nums">
+                    <Tag variant="plain" size="default" className="px-3 py-1.5 tabular-nums">
                       {totalCount !== null ? `${totalCount} ${isAnime ? "Eps" : "Ch"}` : "-"}
                     </Tag>
                   </div>
@@ -950,9 +1017,159 @@ function DetailContent() {
                   trailerHasError={trailerHasError}
                 />
               </div>
+
+              {/* ===== 7. KOMENTAR ===== */}
+              <DetailComments type={type} malId={malId} />
             </div>
           </div>
         </>
+      )}
+
+      {/* Modal Dialog Prompt Auth — Desain Sinematik (Guest Tracker) */}
+      {showAuthModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="auth-modal-title"
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-background/80 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-200"
+          onClick={() => setShowAuthModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full sm:max-w-md animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-250"
+          >
+            {/* Tombol close ✕ polos di luar box popup */}
+            <button
+              type="button"
+              onClick={() => setShowAuthModal(false)}
+              aria-label="Tutup"
+              className="absolute -top-9 right-3 sm:top-0 sm:-right-10 z-10 flex h-8 w-8 items-center justify-center text-text hover:opacity-75 transition-opacity cursor-pointer"
+            >
+              <X size={20} strokeWidth={2.5} />
+            </button>
+
+            <div className="w-full rounded-t-xl sm:rounded-xl overflow-hidden shadow-2xl text-text bg-surface border border-border">
+              {/* ── ZONA HEADER: Banner sinematik + gradient scrim bawah ── */}
+              <div className="relative h-[220px] sm:h-[260px] w-full overflow-hidden bg-surface-2">
+                {/* Gambar banner anime/manga (sama persis dengan halaman detail) */}
+                {activeBannerUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={activeBannerUrl}
+                    alt={data?.title || "Banner"}
+                    referrerPolicy="no-referrer"
+                    className="absolute inset-0 h-full w-full object-cover object-center select-none scale-105"
+                    style={{ filter: "brightness(0.78)" }}
+                  />
+                ) : poster ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={poster}
+                    alt={data?.title || "Poster"}
+                    referrerPolicy="no-referrer"
+                    className="absolute inset-0 h-full w-full object-cover object-top select-none scale-110"
+                    style={{ filter: "brightness(0.72)" }}
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-surface-2 to-surface" />
+                )}
+
+                {/* Scrim bawah — menyatu halus ke konten kartu */}
+                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-surface via-surface/80 to-transparent" />
+              </div>
+
+              {/* ── ZONA KONTEN: Di atas background semantik kartu ── */}
+              <div className="bg-surface px-5 pb-6 pt-0 space-y-4 -mt-1">
+                {/* Judul & Badge Metadata */}
+                <div className="space-y-2">
+                  <h3
+                    id="auth-modal-title"
+                    className="text-xl sm:text-2xl font-black leading-tight tracking-tight text-text font-heading"
+                  >
+                    {data?.title || "Untitled"}
+                  </h3>
+
+                  {/* Badge kapsul metadata: Tahun • Tipe • Genre utama • Skor */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    {data?.information?.year || data?.year ? (
+                      <span className="rounded-md bg-surface-2 border border-border/80 px-2 py-0.5 text-[11px] font-semibold text-text dark:text-[#e6f0f5]">
+                        {data?.information?.year || data?.year}
+                      </span>
+                    ) : null}
+                    {data?.information?.type || formatType !== "-" ? (
+                      <span className="rounded-md bg-surface-2 border border-border/80 px-2 py-0.5 text-[11px] font-semibold text-text dark:text-[#e6f0f5]">
+                        {data?.information?.type || formatType}
+                      </span>
+                    ) : null}
+                    {isAnime ? (
+                      <span className="rounded-md bg-surface-2 border border-border/80 px-2 py-0.5 text-[11px] font-semibold text-text dark:text-[#e6f0f5]">Anime</span>
+                    ) : (
+                      <span className="rounded-md bg-surface-2 border border-border/80 px-2 py-0.5 text-[11px] font-semibold text-text dark:text-[#e6f0f5]">Manga</span>
+                    )}
+                    {data?.statistics?.score ? (
+                      <span className="rounded-md bg-score-bg border border-score-bg px-2 py-0.5 text-[11px] font-bold text-score-text">
+                        ★ {data.statistics.score}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                {/* Sinopsis ringkas — maks 3 baris */}
+                {data?.synopsis ? (
+                  <p className="text-xs sm:text-sm text-text-2 leading-relaxed line-clamp-3">
+                    {data.synopsis}
+                  </p>
+                ) : null}
+
+                {/* CTA utama: Masuk sesuai warna tema + tautan daftar */}
+                <div className="pt-1 space-y-3">
+                  <Link
+                    href={`/login/?redirect=${encodeURIComponent(
+                      typeof window !== "undefined"
+                        ? window.location.pathname + window.location.search
+                        : `/detail/?type=${type}&id=${id}`
+                    )}`}
+                    className="flex w-full items-center justify-center gap-2.5 rounded-lg bg-primary hover:bg-primary-hover active:scale-95 px-5 py-3 text-sm font-bold text-primary-foreground shadow-md transition-all select-none"
+                  >
+                    <span>Masuk untuk Melacak</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+                  </Link>
+
+                  <p className="text-center text-xs text-text-3">
+                    Belum punya akun?{" "}
+                    <Link
+                      href={`/register/?redirect=${encodeURIComponent(
+                        typeof window !== "undefined"
+                          ? window.location.pathname + window.location.search
+                          : `/detail/?type=${type}&id=${id}`
+                      )}`}
+                      className="font-semibold text-primary underline underline-offset-2 hover:opacity-85 transition-opacity"
+                    >
+                      Daftar Akun Gratis
+                    </Link>
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tombol Mengambang Transparan: Gulir Cepat ke Atas saat halaman digulir jauh */}
+      {!isLoading && !isNotFound && !error && data && (
+        <button
+          type="button"
+          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          aria-label="Gulir ke atas"
+          title="Kembali ke atas"
+          className={`fixed bottom-20 md:bottom-7 right-4 sm:right-6 lg:right-8 z-40 flex h-10 w-10 items-center justify-center rounded-full border border-border/90 dark:border-white/15 bg-surface/50 dark:bg-surface/40 text-text shadow-sm backdrop-blur-md transition-all duration-200 ease-out hover:bg-surface/75 dark:hover:bg-surface/65 hover:border-primary/60 hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-primary/35 cursor-pointer ${
+            showScrollTop
+              ? "opacity-100 translate-y-0 pointer-events-auto"
+              : "opacity-0 translate-y-3 pointer-events-none"
+          }`}
+        >
+          <ArrowUp size={18} strokeWidth={2.2} />
+        </button>
       )}
     </div>
   );
@@ -960,16 +1177,14 @@ function DetailContent() {
 
 export default function DetailPage() {
   return (
-    <AuthGuard>
-      <Suspense
-        fallback={
-          <div className="flex min-h-screen items-center justify-center bg-bg pt-16 text-text-2">
-            <p className="text-base text-text-2 animate-pulse">Memuat data katalog...</p>
-          </div>
-        }
-      >
-        <DetailContent />
-      </Suspense>
-    </AuthGuard>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-bg pt-16 text-text-2">
+          <p className="text-base text-text-2 animate-pulse">Memuat data katalog...</p>
+        </div>
+      }
+    >
+      <DetailContent />
+    </Suspense>
   );
 }

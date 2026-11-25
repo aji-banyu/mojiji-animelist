@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { RegisterForm } from "@/components/auth/register-form";
 
 export const metadata = { title: "Daftar · Mojiji" };
@@ -9,7 +10,9 @@ export default function RegisterPage() {
         Daftar
       </h1>
       <div className="mt-6">
-        <RegisterForm />
+        <Suspense fallback={<div className="h-48 animate-pulse rounded-lg bg-surface" />}>
+          <RegisterForm />
+        </Suspense>
       </div>
     </>
   );

@@ -9,34 +9,51 @@ import {
   Suspense,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { SearchX, RotateCcw, Loader2 } from "lucide-react";
-import AuthGuard from "@/components/AuthGuard";
+import { RotateCcw, Loader2 } from "lucide-react";
 import CatalogCard from "@/components/CatalogCard";
 import ExploreFilterSidebar from "@/components/ExploreFilterSidebar";
 import ExploreToolbar from "@/components/ExploreToolbar";
 import Pagination from "@/components/ui/Pagination";
 import SegmentedSwitch from "@/components/ui/SegmentedSwitch";
-import Tag from "@/components/ui/Tag";
-import { Button } from "@/components/ui/button";
-import { fetchExploreCatalog } from "@/lib/homeData";
+import { fetchExploreCatalog, matchesSelectedFormat } from "@/lib/homeData";
 import useFilterStore, { buildExploreCacheKey } from "@/store/filterStore";
 
+// Diurutkan dari label terpanjang ke terpendek agar susunan tag mengecil bertahap ke bawah
 const ALL_GENRES = [
-  "Action",
-  "Adventure",
-  "Comedy",
-  "Drama",
-  "Fantasy",
-  "Historical",
-  "Horror",
-  "Mystery",
+  "Award Winning",
   "Psychological",
-  "Romance",
-  "Sci-Fi",
   "Slice of Life",
-  "Sports",
+  "Martial Arts",
   "Supernatural",
+  "Super Power",
+  "Time Travel",
+  "Historical",
+  "Adventure",
+  "Iyashikei",
+  "Mythology",
+  "Military",
   "Thriller",
+  "Fantasy",
+  "Gourmet",
+  "Mystery",
+  "Romance",
+  "Shounen",
+  "Vampire",
+  "Action",
+  "Comedy",
+  "Horror",
+  "Isekai",
+  "Parody",
+  "School",
+  "Sci-Fi",
+  "Seinen",
+  "Shoujo",
+  "Sports",
+  "Drama",
+  "Josei",
+  "Mecha",
+  "Music",
+  "Space",
 ];
 
 const ALL_GENRE_LOWER_MAP = new Map(
@@ -58,13 +75,30 @@ function parseGenreParam(rawGenre) {
   return parsed;
 }
 
-function buildExploreUrl({ q = "", type = "all", genres = [] } = {}) {
+function buildExploreUrl({
+  q = "",
+  type = "all",
+  genres = [],
+  format = "Semua",
+  sort = "popularity",
+  page = 1,
+} = {}) {
   const params = new URLSearchParams();
   const trimmedQ = String(q || "").trim();
   if (trimmedQ) params.set("q", trimmedQ);
   if (type === "anime" || type === "manga") params.set("type", type);
   if (Array.isArray(genres) && genres.length > 0) {
     params.set("genre", genres.join(","));
+  }
+  if (format && format !== "Semua") {
+    params.set("format", format);
+  }
+  if (sort && sort !== "popularity") {
+    params.set("sort", sort);
+  }
+  const numericPage = Number(page) || 1;
+  if (numericPage > 1) {
+    params.set("page", String(numericPage));
   }
   const qs = params.toString();
   return qs ? `/explore/?${qs}` : "/explore/";
@@ -77,24 +111,42 @@ const TYPE_OPTIONS = [
 ];
 
 const FORMAT_OPTIONS_ALL = [
-  "Semua",
   "TV",
   "Movie",
   "OVA",
   "ONA",
   "Special",
-  "Manga",
   "Manhwa",
+  "Manhua",
+  "TV Special",
   "Light Novel",
+  "Novel",
+  "One-shot",
 ];
-const FORMAT_OPTIONS_ANIME = ["Semua", "TV", "Movie", "OVA", "ONA", "Special"];
-const FORMAT_OPTIONS_MANGA = ["Semua", "Manga", "Manhwa", "Light Novel"];
+const FORMAT_OPTIONS_ANIME = [
+  "TV",
+  "Movie",
+  "OVA",
+  "ONA",
+  "Special",
+  "TV Special",
+];
+const FORMAT_OPTIONS_MANGA = ["Manhwa", "Manhua", "Light Novel", "Novel", "One-shot"];
 
 const SORT_OPTIONS = [
   { value: "popularity", label: "Popularitas" },
+  { value: "best", label: "Terbaik" },
   { value: "newest", label: "Terbaru" },
-  { value: "rating", label: "Rating" },
+  { value: "trending", label: "Trending" },
 ];
+
+function parseSortParam(rawSort) {
+  const normalized = String(rawSort || "").trim().toLowerCase();
+  if (normalized === "rating" || normalized === "top_rated") return "best";
+  if (normalized === "latest") return "newest";
+  if (SORT_OPTIONS.some((s) => s.value === normalized)) return normalized;
+  return "popularity";
+}
 
 function ExploreContent() {
   const router = useRouter();
@@ -102,6 +154,9 @@ function ExploreContent() {
   const qParam = searchParams.get("q") || "";
   const typeParam = searchParams.get("type") || "";
   const genreParam = searchParams.get("genre") || "";
+  const formatParam = searchParams.get("format") || "";
+  const sortParam = searchParams.get("sort") || "";
+  const pageParam = searchParams.get("page") || "";
 
   const getExploreCatalogCache = useFilterStore(
     (state) => state.getExploreCatalogCache
@@ -118,24 +173,33 @@ function ExploreContent() {
   const [selectedGenres, setSelectedGenres] = useState(() =>
     parseGenreParam(genreParam)
   );
-  const [selectedFormat, setSelectedFormat] = useState("Semua");
-  const [genreSearch, setGenreSearch] = useState("");
+  const [selectedFormat, setSelectedFormat] = useState(
+    () =>
+      FORMAT_OPTIONS_ALL.find(
+        (f) => f.toLowerCase() === formatParam.toLowerCase()
+      ) || "Semua"
+  );
 
   // State Pencarian & Sorting
   const [searchQuery, setSearchQuery] = useState(qParam);
-  const [sortBy, setSortBy] = useState("popularity");
+  const [sortBy, setSortBy] = useState(() => parseSortParam(sortParam));
 
   // State Data & Loading dari Tenrai API
   const [catalogItems, setCatalogItems] = useState([]);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(() =>
+    Math.max(1, Number.parseInt(pageParam, 10) || 1)
+  );
 
   // State Mobile Sidebar
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Sinkronisasi saat q parameter dari URL berubah
+  // Sinkronisasi saat q parameter dari URL berubah (hanya saat berubah, tidak saat mount)
+  const prevQParamRef = useRef(qParam);
   useEffect(() => {
+    if (prevQParamRef.current === qParam) return;
+    prevQParamRef.current = qParam;
     setSearchQuery(qParam);
     setCurrentPage(1);
   }, [qParam]);
@@ -159,6 +223,33 @@ function ExploreContent() {
     setSelectedGenres(parseGenreParam(genreParam));
     setCurrentPage(1);
   }, [genreParam]);
+
+  // Sinkronisasi saat format, sort, atau page parameter dari URL berubah
+  const prevFormatParamRef = useRef(formatParam);
+  useEffect(() => {
+    if (prevFormatParamRef.current === formatParam) return;
+    prevFormatParamRef.current = formatParam;
+    const matched =
+      FORMAT_OPTIONS_ALL.find(
+        (f) => f.toLowerCase() === formatParam.toLowerCase()
+      ) || "Semua";
+    setSelectedFormat(matched);
+  }, [formatParam]);
+
+  const prevSortParamRef = useRef(sortParam);
+  useEffect(() => {
+    if (prevSortParamRef.current === sortParam) return;
+    prevSortParamRef.current = sortParam;
+    setSortBy(parseSortParam(sortParam));
+    setCurrentPage(1);
+  }, [sortParam]);
+
+  const prevPageParamRef = useRef(pageParam);
+  useEffect(() => {
+    if (prevPageParamRef.current === pageParam) return;
+    prevPageParamRef.current = pageParam;
+    setCurrentPage(Math.max(1, Number.parseInt(pageParam, 10) || 1));
+  }, [pageParam]);
 
   // Ambil data katalog dengan cache store TTL 5 menit sebelum memanggil Tenrai API
   useEffect(() => {
@@ -253,24 +344,34 @@ function ExploreContent() {
   const handleClearSearch = useCallback(() => {
     setSearchQuery("");
     setCurrentPage(1);
+    prevQParamRef.current = "";
+    prevPageParamRef.current = "";
     router.push(
       buildExploreUrl({
         q: "",
         type: selectedType,
         genres: selectedGenres,
+        format: selectedFormat,
+        sort: sortBy,
+        page: 1,
       })
     );
-  }, [router, selectedType, selectedGenres]);
+  }, [router, selectedType, selectedGenres, selectedFormat, sortBy]);
 
   const handleSearchChange = (value) => {
     setSearchQuery(value);
     setCurrentPage(1);
+    prevPageParamRef.current = "";
     if (!value.trim() && qParam) {
+      prevQParamRef.current = "";
       router.push(
         buildExploreUrl({
           q: "",
           type: selectedType,
           genres: selectedGenres,
+          format: selectedFormat,
+          sort: sortBy,
+          page: 1,
         })
       );
     }
@@ -278,11 +379,17 @@ function ExploreContent() {
 
   const handleSearchSubmit = () => {
     const trimmed = searchQuery.trim();
+    setCurrentPage(1);
+    prevQParamRef.current = trimmed;
+    prevPageParamRef.current = "";
     router.push(
       buildExploreUrl({
         q: trimmed,
         type: selectedType,
         genres: selectedGenres,
+        format: selectedFormat,
+        sort: sortBy,
+        page: 1,
       })
     );
   };
@@ -295,11 +402,15 @@ function ExploreContent() {
     setCurrentPage(1);
     const nextGenreQuery = nextGenres.join(",");
     prevGenreParamRef.current = nextGenreQuery;
+    prevPageParamRef.current = "";
     router.replace(
       buildExploreUrl({
         q: qParam,
         type: selectedType,
         genres: nextGenres,
+        format: selectedFormat,
+        sort: sortBy,
+        page: 1,
       }),
       { scroll: false }
     );
@@ -316,6 +427,7 @@ function ExploreContent() {
   const handleTypeChange = (newType) => {
     setSelectedType(newType);
     setCurrentPage(1);
+    let nextFormat = selectedFormat;
     if (selectedFormat !== "Semua") {
       const allowed =
         newType === "anime"
@@ -324,15 +436,21 @@ function ExploreContent() {
           ? FORMAT_OPTIONS_MANGA
           : FORMAT_OPTIONS_ALL;
       if (!allowed.includes(selectedFormat)) {
+        nextFormat = "Semua";
         setSelectedFormat("Semua");
       }
     }
     prevTypeParamRef.current = newType === "all" ? "" : newType;
+    prevFormatParamRef.current = nextFormat === "Semua" ? "" : nextFormat;
+    prevPageParamRef.current = "";
     router.replace(
       buildExploreUrl({
         q: qParam,
         type: newType,
         genres: selectedGenres,
+        format: nextFormat,
+        sort: sortBy,
+        page: 1,
       }),
       { scroll: false }
     );
@@ -342,24 +460,17 @@ function ExploreContent() {
     setSelectedType("all");
     setSelectedGenres([]);
     setSelectedFormat("Semua");
-    setGenreSearch("");
     setSortBy("popularity");
     setSearchQuery("");
     setCurrentPage(1);
+    prevQParamRef.current = "";
     prevTypeParamRef.current = "";
     prevGenreParamRef.current = "";
+    prevFormatParamRef.current = "";
+    prevSortParamRef.current = "";
+    prevPageParamRef.current = "";
     router.push("/explore/");
   };
-
-  const visibleGenres = useMemo(
-    () =>
-      genreSearch
-        ? ALL_GENRES.filter((g) =>
-            g.toLowerCase().includes(genreSearch.toLowerCase())
-          )
-        : ALL_GENRES,
-    [genreSearch]
-  );
 
   const sortedItems = useMemo(() => {
     const filtered = catalogItems.filter((item) => {
@@ -373,14 +484,12 @@ function ExploreContent() {
               (g === "Thriller" && ig.toLowerCase() === "suspense")
           )
         );
-      const matchFormat =
-        selectedFormat === "Semua" ||
-        String(item.format || "").toLowerCase() === selectedFormat.toLowerCase();
+      const matchFormat = matchesSelectedFormat(item.format, selectedFormat);
       return matchType && matchGenre && matchFormat;
     });
 
     return [...filtered].sort((a, b) => {
-      if (sortBy === "rating") return (b.score || 0) - (a.score || 0);
+      if (sortBy === "best") return (b.score || 0) - (a.score || 0);
       if (sortBy === "newest") {
         const yearDiff = (Number(b.year) || 0) - (Number(a.year) || 0);
         return yearDiff !== 0 ? yearDiff : (b.id || 0) - (a.id || 0);
@@ -394,29 +503,34 @@ function ExploreContent() {
     selectedGenres.length +
     (selectedFormat !== "Semua" ? 1 : 0);
 
-  const catalogTypeLabel =
-    selectedType === "all"
-      ? "Campuran Anime & Manga"
-      : selectedType === "anime"
-      ? "Katalog Anime Populer"
-      : "Katalog Manga Populer";
-
   return (
     <div className="min-h-[calc(100vh-65px)] bg-bg text-text selection:bg-accent/30 selection:text-text lg:flex">
       {/* Sidebar Filter Kiri Docked (Desktop Sticky Full-Height + Mobile Drawer) */}
       <ExploreFilterSidebar
         selectedType={selectedType}
         onTypeChange={handleTypeChange}
-        genres={visibleGenres}
+        genres={ALL_GENRES}
         selectedGenres={selectedGenres}
         onToggleGenre={toggleGenre}
-        genreSearch={genreSearch}
-        onGenreSearchChange={setGenreSearch}
         formats={availableFormats}
         selectedFormat={selectedFormat}
         onSelectFormat={(fmt) => {
-          setSelectedFormat(fmt);
+          const nextFormat = selectedFormat === fmt ? "Semua" : fmt;
+          setSelectedFormat(nextFormat);
           setCurrentPage(1);
+          prevFormatParamRef.current = nextFormat === "Semua" ? "" : nextFormat;
+          prevPageParamRef.current = "";
+          router.replace(
+            buildExploreUrl({
+              q: qParam,
+              type: selectedType,
+              genres: selectedGenres,
+              format: nextFormat,
+              sort: sortBy,
+              page: 1,
+            }),
+            { scroll: false }
+          );
         }}
         activeFilterCount={activeFilterCount}
         onReset={resetAll}
@@ -426,56 +540,56 @@ function ExploreContent() {
 
       {/* Area Konten Utama */}
       <main className="flex-1 min-w-0 pb-24">
-        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 space-y-6">
-          {/* Header Halaman Selaras dengan Section Beranda */}
-          <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-black text-text tracking-tight font-['Bricolage_Grotesque'] select-none">
-                Jelajah Katalog
-              </h1>
-              <Tag variant="secondary" size="pill">
-                {catalogTypeLabel}
-              </Tag>
-            </div>
-
-            {/* Switch Tipe Cepat untuk Mobile/Tablet (Desktop memakai Sidebar Kiri) */}
-            <SegmentedSwitch
-              options={TYPE_OPTIONS}
-              value={selectedType}
-              onChange={handleTypeChange}
-              className="w-full sm:w-56 lg:hidden"
-              ariaLabel="Filter Tipe Media Cepat"
-            />
-          </header>
-
+        <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 space-y-5">
           <div className="space-y-5">
             <ExploreToolbar
+              headerContent={
+                <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:block">
+                  <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-text tracking-tight leading-tight font-heading select-none">
+                    Jelajah Katalog
+                  </h1>
+
+                  {/* Switch Tipe Cepat untuk Mobile/Tablet (Desktop memakai Sidebar Kiri) */}
+                  <SegmentedSwitch
+                    options={TYPE_OPTIONS}
+                    value={selectedType}
+                    onChange={handleTypeChange}
+                    className="w-full sm:w-56 lg:hidden"
+                    ariaLabel="Filter Tipe Media Cepat"
+                  />
+                </header>
+              }
+              leftMeta={
+                <span className="text-xs font-semibold text-text truncate">
+                  Menampilkan {sortedItems.length} judul
+                </span>
+              }
               searchQuery={searchQuery}
-              onSearchChange={handleSearchChange}
-              onSearchSubmit={handleSearchSubmit}
               onClearSearch={handleClearSearch}
               sortBy={sortBy}
               sortOptions={SORT_OPTIONS}
               onSortChange={(nextSort) => {
                 setSortBy(nextSort);
                 setCurrentPage(1);
+                prevSortParamRef.current =
+                  nextSort === "popularity" ? "" : nextSort;
+                prevPageParamRef.current = "";
+                router.replace(
+                  buildExploreUrl({
+                    q: qParam,
+                    type: selectedType,
+                    genres: selectedGenres,
+                    format: selectedFormat,
+                    sort: nextSort,
+                    page: 1,
+                  }),
+                  { scroll: false }
+                );
               }}
               activeFilterCount={activeFilterCount}
               onOpenMobileSidebar={() => setSidebarOpen(true)}
               isLoading={isLoading}
             />
-
-            {/* Info Jumlah Judul & Halaman */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs py-0.5">
-              <span className="font-semibold text-text">
-                Menampilkan {sortedItems.length} judul
-              </span>
-              {totalPages > 1 && (
-                <span className="text-text-2 font-medium text-[11px] sm:text-xs">
-                  Halaman {currentPage} dari {totalPages}
-                </span>
-              )}
-            </div>
 
             {/* Grid Katalog */}
             {isLoading ? (
@@ -498,26 +612,22 @@ function ExploreContent() {
               </div>
             ) : sortedItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center rounded-xl border border-border bg-surface px-6 py-16 text-center shadow-sm">
-                <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-surface-2 text-text-2 border border-border">
-                  <SearchX size={26} />
-                </div>
-                <h3 className="mt-4 text-base font-black text-text tracking-tight font-['Bricolage_Grotesque']">
-                  Tidak Ada Judul Ditemukan
+                <h3 className="text-base font-black text-text tracking-tight font-heading">
+                  Tidak Ada Judul yang ditemukan
                 </h3>
-                <p className="mt-1 max-w-sm text-xs text-text-2 leading-relaxed">
-                  {searchQuery.trim()
-                    ? `Tidak ada judul yang cocok dengan "${searchQuery}".`
-                    : "Coba ubah filter atau reset untuk melihat lebih banyak judul."}
-                </p>
-                <Button
-                  variant="primary"
-                  size="md"
+                {searchQuery.trim() && (
+                  <p className="mt-1 max-w-sm text-xs text-text-2 leading-relaxed">
+                    Tidak ada judul yang cocok dengan &ldquo;{searchQuery}&rdquo;.
+                  </p>
+                )}
+                <button
+                  type="button"
                   onClick={resetAll}
-                  className="mt-5 text-xs font-bold"
+                  className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline underline-offset-4 transition-colors cursor-pointer"
                 >
                   <RotateCcw size={13} />
                   <span>Reset Semua Filter</span>
-                </Button>
+                </button>
               </div>
             ) : (
               <>
@@ -527,16 +637,36 @@ function ExploreContent() {
                   ))}
                 </div>
 
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  activeColor="accent"
-                  onPageChange={(newPage) => {
-                    setCurrentPage(newPage);
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  }}
-                  className="pt-8 pb-4"
-                />
+                <div className="pt-8 pb-4 space-y-4">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    activeColor="primary"
+                    onPageChange={(newPage) => {
+                      setCurrentPage(newPage);
+                      prevPageParamRef.current =
+                        newPage > 1 ? String(newPage) : "";
+                      router.replace(
+                        buildExploreUrl({
+                          q: qParam,
+                          type: selectedType,
+                          genres: selectedGenres,
+                          format: selectedFormat,
+                          sort: sortBy,
+                          page: newPage,
+                        }),
+                        { scroll: false }
+                      );
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                    className="pt-0 pb-0"
+                  />
+                  {totalPages > 1 && (
+                    <p className="text-center text-xs font-medium text-text-2 tabular-nums">
+                      Halaman {currentPage} dari {totalPages}
+                    </p>
+                  )}
+                </div>
               </>
             )}
           </div>
@@ -548,16 +678,14 @@ function ExploreContent() {
 
 export default function ExplorePage() {
   return (
-    <AuthGuard>
-      <Suspense
-        fallback={
-          <div className="min-h-screen bg-bg flex items-center justify-center">
-            <Loader2 size={28} className="animate-spin text-accent" />
-          </div>
-        }
-      >
-        <ExploreContent />
-      </Suspense>
-    </AuthGuard>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-bg flex items-center justify-center">
+          <Loader2 size={28} className="animate-spin text-accent" />
+        </div>
+      }
+    >
+      <ExploreContent />
+    </Suspense>
   );
 }

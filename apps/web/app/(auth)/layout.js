@@ -18,7 +18,7 @@ export default function AuthLayout({ children }) {
 
         {/* Logo Mojiji di pojok kiri atas (polos, terlindungi vignette gelap) */}
         <Link
-          href="/home/"
+          href="/"
           className="absolute left-12 top-10 z-20 flex items-center gap-3 transition-opacity hover:opacity-90"
         >
           <Image
@@ -49,7 +49,7 @@ export default function AuthLayout({ children }) {
         <div className="w-full max-w-sm">
           {/* Logo Mojiji khusus mobile / small screen */}
           <Link
-            href="/home/"
+            href="/"
             className="mb-8 flex items-center justify-center sm:justify-start gap-3 font-heading text-2xl font-black tracking-tight text-text md:hidden hover:opacity-90 transition-opacity"
           >
             <Image

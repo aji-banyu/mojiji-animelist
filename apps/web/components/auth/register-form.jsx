@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { PasswordStrength } from "@/components/auth/password-strength";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,18 @@ import { validateEmail, validatePassword, validateUsername } from "@/lib/validat
 
 export function RegisterForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rawRedirect = searchParams.get("redirect");
+
+  // Validasi jalur lokal redirect aman
+  const getSafeRedirect = (url) => {
+    if (!url || typeof url !== "string") return "/";
+    if (url.startsWith("/") && !url.startsWith("//") && !url.includes("\\")) {
+      return url;
+    }
+    return "/";
+  };
+
   const user = useAuthStore((s) => s.user);
 
   const [v, setV] = useState({ username: "", email: "", password: "" });
@@ -21,12 +33,12 @@ export function RegisterForm() {
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Jika sudah login, jangan izinkan buka form register -> alihkan ke /home
+  // Jika sudah login, jangan izinkan buka form register -> alihkan ke target aman
   useEffect(() => {
     if (user) {
-      router.replace("/home/");
+      router.replace(getSafeRedirect(rawRedirect));
     }
-  }, [user, router]);
+  }, [user, router, rawRedirect]);
 
   const bind = (k) => ({
     value: v[k],
@@ -61,8 +73,9 @@ export function RegisterForm() {
 
       if (result.success) {
         setSuccessMessage("Akun berhasil dibuat! Mengalihkan ke halaman masuk...");
+        const redirectQuery = rawRedirect ? `?redirect=${encodeURIComponent(rawRedirect)}` : "";
         setTimeout(() => {
-          router.push("/login/");
+          router.push(`/login/${redirectQuery}`);
         }, 1200);
       }
     } catch (err) {
@@ -146,8 +159,8 @@ export function RegisterForm() {
       <p className="mt-6 text-center text-sm text-text-2">
         Sudah punya akun?{" "}
         <Link
-          href="/login/"
-          className="inline-flex min-h-11 items-center font-semibold text-accent-text hover:underline cursor-pointer"
+          href={rawRedirect ? `/login/?redirect=${encodeURIComponent(rawRedirect)}` : "/login/"}
+          className="inline-flex min-h-11 items-center font-semibold text-primary-text hover:underline cursor-pointer"
         >
           Masuk
         </Link>

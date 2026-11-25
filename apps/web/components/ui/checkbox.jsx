@@ -12,7 +12,7 @@ export const Checkbox = React.forwardRef(({ label, className, ...rest }, ref) =>
     )}
   >
     <input ref={ref} type="checkbox" className="peer sr-only" {...rest} />
-    <span className="grid size-5 place-items-center rounded-md border border-border bg-surface text-accent-foreground transition-all duration-150 peer-checked:border-accent peer-checked:bg-accent peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent/50 [&>svg]:scale-0 peer-checked:[&>svg]:scale-100">
+    <span className="grid size-5 place-items-center rounded-md border border-border bg-surface text-primary-foreground transition-all duration-150 peer-checked:border-primary peer-checked:bg-primary peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary/50 [&>svg]:scale-0 peer-checked:[&>svg]:scale-100">
       <Check className="size-3.5 transition-transform duration-150 ease-out" strokeWidth={2.5} />
     </span>
     {label}

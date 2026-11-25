@@ -128,6 +128,9 @@ export default function TrackerEditModal({
     setDraftProgress(nextProg);
     if (total > 0 && nextProg >= total) {
       setDraftStatus("completed");
+    } else if (draftStatus === "plan" && nextProg > 0) {
+      // Jika sebelumnya berstatus Plan to Watch/Read dan progres mulai diisi, otomatis ubah ke Watching/Reading
+      setDraftStatus(mediaType === "manga" ? "reading" : "watching");
     }
   };
 
@@ -146,7 +149,7 @@ export default function TrackerEditModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-tracker-title"
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 backdrop-blur-sm p-0 sm:p-4 transition-opacity duration-200 ease-out ${
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-background/80 backdrop-blur-sm p-0 sm:p-4 transition-opacity duration-200 ease-out ${
         isClosing ? "opacity-0 pointer-events-none" : "opacity-100"
       }`}
       onClick={handleCloseWithoutSaving}
@@ -198,7 +201,7 @@ export default function TrackerEditModal({
 
             <h3
               id="modal-tracker-title"
-              className="text-sm sm:text-base font-black text-text line-clamp-2 leading-snug tracking-tight font-['Bricolage_Grotesque']"
+              className="text-sm sm:text-base font-black text-text line-clamp-2 leading-snug tracking-tight font-heading"
               title={item.title}
             >
               {item.title}
@@ -220,7 +223,7 @@ export default function TrackerEditModal({
                 type="button"
                 onClick={() => onDelete(item.id, item.title)}
                 disabled={isLoading}
-                className="flex-1 rounded-xl bg-destructive hover:bg-destructive/90 px-3 py-2 text-xs font-bold text-white shadow-sm active:scale-95 transition-all cursor-pointer text-center"
+                className="flex-1 rounded-xl bg-destructive hover:bg-destructive/90 px-3 py-2 text-xs font-bold text-primary-foreground shadow-sm active:scale-95 transition-all cursor-pointer text-center"
               >
                 Ya, Hapus Sekarang
               </button>
@@ -289,7 +292,7 @@ export default function TrackerEditModal({
               type="button"
               onClick={() => handleIncrementClick(1)}
               disabled={isLoading || confirmDelete || (total > 0 && draftProgress >= total)}
-              className="flex-1 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-2.5 py-2 text-xs font-bold text-text transition-all hover:border-accent hover:bg-accent hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="flex-1 inline-flex items-center justify-center rounded-xl border border-border bg-surface px-2.5 py-2 text-xs font-bold text-text transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <span>+1 {mediaType === "manga" ? "Chapter" : "Episode"}</span>
             </button>
@@ -298,7 +301,7 @@ export default function TrackerEditModal({
               type="button"
               onClick={() => handleIncrementClick(5)}
               disabled={isLoading || confirmDelete || (total > 0 && draftProgress >= total)}
-              className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-all hover:border-accent hover:bg-accent hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               title={`+5 ${mediaType === "manga" ? "Chapter" : "Episode"}`}
             >
               <span>+5</span>
@@ -308,7 +311,7 @@ export default function TrackerEditModal({
               type="button"
               onClick={() => handleIncrementClick(10)}
               disabled={isLoading || confirmDelete || (total > 0 && draftProgress >= total)}
-              className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-all hover:border-accent hover:bg-accent hover:text-white active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="inline-flex items-center justify-center rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-text transition-all hover:border-primary hover:bg-primary hover:text-primary-foreground active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               title={`+10 ${mediaType === "manga" ? "Chapter" : "Episode"}`}
             >
               <span>+10</span>
@@ -353,7 +356,7 @@ export default function TrackerEditModal({
               type="button"
               onClick={handleSaveAndClose}
               disabled={isLoading}
-              className="flex-1 h-9 inline-flex items-center justify-center rounded-xl bg-accent hover:bg-primary-hover px-4 text-xs sm:text-sm font-bold text-white shadow-sm active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              className="flex-1 h-9 inline-flex items-center justify-center rounded-xl bg-primary hover:bg-primary-hover px-4 text-xs sm:text-sm font-bold text-primary-foreground shadow-sm shadow-primary/25 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
             >
               Selesai
             </button>

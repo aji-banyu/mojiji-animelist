@@ -9,8 +9,9 @@ import {
 import { cn } from "@/lib/utils";
 
 const ACTIVE_CLASSES = {
-  accent: "bg-accent text-white shadow-sm border border-accent",
-  secondary: "bg-secondary text-white shadow-sm border border-secondary",
+  primary: "bg-primary text-primary-foreground shadow-sm border border-primary",
+  accent: "bg-accent text-accent-foreground shadow-sm border border-accent",
+  secondary: "bg-secondary text-secondary-foreground shadow-sm border border-secondary",
 };
 
 const SIZE_CLASSES = {

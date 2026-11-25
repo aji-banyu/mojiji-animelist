@@ -4,8 +4,26 @@ import * as React from "react";
 import { Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+const SEARCH_VARIANTS = {
+  default: {
+    icon: "text-text-3",
+    input:
+      "rounded-xl bg-surface-2 pl-8 pr-7 text-xs placeholder:text-text-3 hover:border-secondary/40 focus:border-secondary focus:bg-surface focus:ring-1 focus:ring-secondary/40",
+  },
+  surface: {
+    icon: "text-text-2",
+    input:
+      "rounded-full bg-surface pl-8.5 pr-8 text-xs shadow-xs placeholder:font-medium placeholder:text-text-2/75 hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary/35",
+  },
+  navbar: {
+    icon: "text-text-2",
+    input:
+      "rounded-full bg-surface pl-8.5 pr-8 text-xs sm:text-sm shadow-xs placeholder:font-medium placeholder:text-text-2/75 hover:border-primary/50 focus:border-primary focus:ring-1 focus:ring-primary/35",
+  },
+};
+
 /**
- * Reusable soft search input matching Tracker and Explore toolbars.
+ * Reusable soft search input matching Tracker, Explore, and Navbar toolbars.
  */
 const SearchInput = React.forwardRef(function SearchInput(
   {
@@ -14,6 +32,7 @@ const SearchInput = React.forwardRef(function SearchInput(
     onClear,
     onKeyDown,
     placeholder = "Cari...",
+    variant = "default",
     disabled = false,
     title,
     clearAriaLabel = "Hapus pencarian",
@@ -23,11 +42,16 @@ const SearchInput = React.forwardRef(function SearchInput(
   },
   ref
 ) {
+  const variantStyles = SEARCH_VARIANTS[variant] || SEARCH_VARIANTS.default;
+
   return (
     <div className={cn("relative h-9 w-full", className)}>
       <Search
         size={14}
-        className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-text-3"
+        className={cn(
+          "pointer-events-none absolute left-3 top-1/2 -translate-y-1/2",
+          variantStyles.icon
+        )}
       />
       <input
         ref={ref}
@@ -39,9 +63,9 @@ const SearchInput = React.forwardRef(function SearchInput(
         placeholder={placeholder}
         title={title}
         className={cn(
-          "h-full w-full rounded-xl border border-border bg-surface-2 pl-8 pr-7 text-xs text-text placeholder:text-text-3 outline-none transition-all",
-          "hover:border-secondary/40 focus:border-secondary focus:bg-surface focus:outline-none focus:ring-1 focus:ring-secondary/40",
+          "h-full w-full border border-border text-text outline-none transition-colors focus:outline-none",
           "disabled:opacity-40 disabled:cursor-not-allowed disabled:bg-surface-2/40",
+          variantStyles.input,
           inputClassName
         )}
         {...props}
